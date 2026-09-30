@@ -123,7 +123,7 @@
 
 1. **点击状态行进入设置页**——设计里写过"可点进设置"，但客户端没有公开的"打开设置面板"服务；(A) 方案改用悬浮提示承载细节，点击行为暂不做。
 2. **`.d.ts` 产物**——`tsdown` 配置 `dts: false`，不产出类型声明（运行时消费不需要）。
-3. **平台兼容性声明**——平台 manifest schema **没有** `compatibility` 字段（`dsh.bundle` / `dsh.client` / `profile` / `configTrees` / `sessionFormatMigration` / `moduleFallback` 才是它认识的）；实测环境是 DSH `0.1.5-rc.2` + Node ≥20（见 `engines`）。cost-meter 的 `dsh.compatibility` / `dshhub` 是市场元数据，未被平台读取。**DSH 版本要求本身**已按修订 14 用 `engines.dsh` 声明（市场读它做徽标与兼容判定）。
+3. **平台兼容性声明**——平台 manifest schema **没有** `compatibility` 字段（`dsh.bundle` / `dsh.client` / `profile` / `configTrees` / `sessionFormatMigration` / `moduleFallback` 才是它认识的）；实测环境是 DSH `0.1.5-rc.2` 与 `0.2.0-rc.2` + Node ≥20（见 `engines`）。cost-meter 的 `dsh.compatibility` / `dshhub` 是市场元数据，未被平台读取。**DSH 版本要求本身**已按修订 14 用 `engines.dsh` 声明（市场读它做徽标与兼容判定），并按修订 16 放宽到 `>=0.1.5-rc.1 <0.3.0-0`。
 4. ~~**`peerDependencies.react` 是否移除**~~ → **已移除**（0.3.1，见 `design-consensus.md` 修订 15）：端到端安装（§10）时 pnpm 报 `✕ missing peer react`——任何 profile 的依赖图里都没有 react（浏览器半边的 react 由平台在运行时注入，不走 node_modules），而 `peerDependencies` 里却声明了它。移除后安装输出干净，且市场只对 `@deepseek-ai/dsh*` 的 peer 做兼容评估，不受影响；`react` 仍留在 `devDependencies` 供构建与类型使用。
 
 > 原"回合行的固定值 + Δ"已**结案否决**（账户级读数不放在回合上），见 `design-consensus.md` §13 修订 13；不再是待办项。
@@ -169,6 +169,7 @@ npm publish --cache /tmp/npm-cache              # ~/.npm 不可写时必须带 -
 | 发布与收录（0.3.0） | `098a31c` 去 `private` + `engines.dsh` + README 安装段改 npm 优先 · `cf1acdf` 修订 14 / §10 发布与收录 |
 | 截图与 0.3.1 | `4ff2c0f` `screenshots.json` + `assets/screenshots/*` + README 内嵌 · `9f8b863` 移除 `peerDependencies.react`、发 0.3.1（修订 15） |
 | 收录结果（本轮） | 条目 PR 已合并、条目已在 plugins.json；本条补记「站点 ≠ 市场」的目录双源事实与修正后的自检命令 |
+| 0.2 线兼容复核（0.3.2） | 放宽 `engines.dsh` 到 `>=0.1.5-rc.1 <0.3.0-0`（修订 16）；无代码改动——两版声明构建出的 `lib/` 逐字节相同 |
 
 ## 9. 从真机调试里学到的平台事实（下次直接复用）
 
@@ -224,6 +225,7 @@ npm publish --cache /tmp/npm-cache              # ~/.npm 不可写时必须带 -
 截图按市场约定声明在**本仓库**：`screenshots.json` 列 3 张（状态行 / 设置页供应商列表 / 高级区），图片在 `assets/screenshots/*.webp`（39–98 kB）；两个 README 也内嵌了同一组（用 `raw.githubusercontent.com` 绝对链接，GitHub 与 npm 页都能显示）。截图声明不需要再提 PR——市场下一次 nightly 构建会自行采集。
 
 **npm 发布记录**：`dsh-usage-state@0.3.0` 已发布（2026-09-22），`repository` 指回本仓库、`engines.dsh` 随包带出（`npm view` 已核对）。本机 web profile 已从 GitHub 源切到 npm 源（`pnpm-lock.yaml` 里 `specifier: ^0.3.0`、integrity 与发布输出逐字符一致），重启后运行中的客户端产物只剩 `conversation.composer.dock` 一个挂载点。**`0.3.1`**（同日发布）移除 `peerDependencies.react`（见修订 15）。验证：在**全新 pnpm store + 全新 XDG** 下跑 `dsh plugin --profile smoke add dsh-usage-state` → 装到 **0.3.1**、profile 里写 `^0.3.1`、**不再出现 `✕ missing peer react`**（只剩 pnpm 那句 `Added 1 entry to minimumReleaseAgeExclude` 提示，与我们的包无关）。
+**`0.3.2`**（2026-09-30）只放宽 `engines.dsh` 到 `>=0.1.5-rc.1 <0.3.0-0`（修订 16），源码与产物零改动——同一份源码对 0.1.5-rc.2 与 0.2.0-rc.2 两套声明构建出的 `lib/` 逐字节相同。
 踩过的坑：第一次复用了同一个 pnpm store，metadata 缓存里还只有 0.3.0，于是装到 0.3.0 并照旧报 peer 警告——那是我自己的缓存假象，不是发布问题。另注意 pnpm 12 对**刚发布**的版本有内置静置期（`pnpm config get minimumReleaseAge` 为 `undefined`，说明是默认值而非显式配置），它会自动往 profile 的 `pnpm-workspace.yaml` 写 `minimumReleaseAgeExclude` 并在装好后打印提示；所以"刚发的版本要显式指定或等静置期过去"是**预期行为**，不是故障。发布后在 `/tmp` 做了一次产物级安装校验：安装树里 `package.json` 的 `dsh.bundle.patch`、`cordis.patch.yml`（`insert.name: dsh-usage-state`）、`lib/{index,client,typert}.js` 全部存在。
 
 **端到端安装验证**（2026-09-22，把 `DSH_HOME` 指到 `/tmp/dsh-home-verify` 绕开宿主沙箱对 `~/.dsh` 的写限制，因此不需要动用户的真实 profile）：跑市场将来会执行的那条命令
@@ -243,7 +245,34 @@ DSH_HOME=/tmp/dsh-home-verify dsh --profile smoke --dump-config
 
 即「npm 源 → profile 依赖 → patch 行 → 装配树」整条链路可用。**唯一的噪声是 pnpm 的 `✕ missing peer react`**：fresh profile 的依赖图里没有 react（浏览器半边的 react 是平台在运行时交给插件的，不走 node_modules），而我们 `peerDependencies` 里声明了 `react: ^18.2.0`。它只是警告（安装照常成功），且市场只对 `@deepseek-ai/dsh*` 的 peer 做兼容评估，所以不影响条目的兼容判定与徽标；是否移除这个 peer 仍在待定（见 §6 备忘）。
 
-**维护待办**：DSH 出现 0.2 发布线时复核 `engines.dsh` 区间（超出区间会被市场标 incompatible，可选筛选会因此隐藏条目）；改描述只改自己那条 yml，换截图只改本仓库的 `screenshots.json`，都不要动对方 README。
+**0.2 线复核步骤**（2026-09-30，宿主 `0.2.0-rc.2`；结论与理由见 `design-consensus.md` 修订 16）。这五步是可重跑的，宿主再跳版本时照做：
+
+```bash
+# 1) 类型与单测对上界：把 devDeps 的 @deepseek-ai/* 临时改成被测宿主的版本，
+#    在仓库副本里装一遍（本机 ~/.npm 不可写，必须带 --cache）
+rsync -a --exclude node_modules --exclude .git --exclude lib ./ /tmp/dsh-compat/
+cd /tmp/dsh-compat && npm install --cache /tmp/npm-cache && npm run typecheck && npm run build
+
+# 2) 产物是否随宿主版本变化：对着下界构建一次，逐字节比对
+cmp /tmp/dsh-compat/lib/client.js <repo>/lib/client.js   # 三份产物都应相同
+
+# 3) 真机装配 + 启动（DSH_HOME 指到 /tmp，不动用户 profile）
+#    第 1 条会建好 profile 并直接启动；确认建立后 Ctrl-C 即可
+DSH_HOME=/tmp/dsh-home-verify "$DSH" <profile> --from-default-profile web
+DSH_HOME=/tmp/dsh-home-verify "$DSH" plugin --profile <profile> add "$PWD"
+DSH_HOME=/tmp/dsh-home-verify "$DSH" --profile <profile> --port 3081   # 3081 换成任一空闲端口
+
+# 4) 客户端入口是否进图（带 token 取首页后解析 __DSH_BOOT__）
+#    期望：entries 里有 dsh-usage-state，url 形如 plugins/??dsh-usage-state/client.js&rev=…
+#    且 plugins/??dsh-usage-state/client.js 用 curl --path-as-is 取回 200
+
+# 5) 外部模块是否齐全：在 shell 产物里找 staticModules 表（`rM()`），
+#    确认 react / react/jsx-runtime / @deepseek-ai/dsh-client-ui-primitives 都在
+```
+
+其中 `$DSH` = `/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh`（CLI 不注册到 PATH）。第 3 步的 `--port` 是 app 参数，写在 `--profile` 之后；profile 名后**不要**再跟 `web`，否则报 `too many arguments`。
+
+**维护待办**：DSH 出现 0.3 发布线时复核 `engines.dsh` 区间（当前 `<0.3.0-0`，0.3 的一切预发布都会被判 incompatible，而市场对 `engines` 是硬判定：`findCompatibleVersion()` 只挑 `compatible` 的版本，update 路由还会在安装前拒绝声明不兼容的版本）；改描述只改自己那条 yml，换截图只改本仓库的 `screenshots.json`，都不要动对方 README。
 
 **收录自检**（合并后随时可跑）。**两个源都要查**：站点是合并后立刻重建的，而中国大陆区市场读的是每日构建的 npm 目录包——只查站点会把"站点已收录"误当成"市场能搜到"：
 

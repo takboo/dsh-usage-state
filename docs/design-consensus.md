@@ -91,7 +91,7 @@ font-size: var(--dsh-content-font-size-secondary, 13px);
 
 - **TypeScript + `tsdown` 构建**，产出宿主 `lib/index.js`、`lib/typert.js` 与客户端 `lib/client.js`（不产出 `.d.ts`：运行时消费不需要）；解析器用 `node:test` 写单测（sub2api 字段漂移、z.ai 窗口语义推断最需要测）。
 - 包名 `dsh-usage-state`；插件/profile 条目 id 与设置命名空间 `usage-state`；`package.json` 的 `dsh` 字段声明 `bundle.patch` + `client.platform: "web"`；`cordis.patch.yml` 里 `insert` 一行。
-- **实测环境**：DSH `0.1.5-rc.2` + Node ≥20（`engines`）。平台的 manifest schema **没有** `compatibility` 字段（它只认 `bundle` / `profile` / `client` / `configTrees` / `sessionFormatMigration` / `moduleFallback`），因此没有声明这一项；cost-meter 的 `dsh.compatibility` 与 `dshhub` 是市场元数据，未被平台读取。
+- **实测环境**：DSH `0.1.5-rc.2` 与 `0.2.0-rc.2` + Node ≥20（`engines.dsh = ">=0.1.5-rc.1 <0.3.0-0"`，见修订 16）。平台的 manifest schema **没有** `compatibility` 字段（它只认 `bundle` / `profile` / `client` / `configTrees` / `sessionFormatMigration` / `moduleFallback`），因此没有声明这一项；cost-meter 的 `dsh.compatibility` 与 `dshhub` 是市场元数据，未被平台读取。
 - 文档：`README.md`（中文，公开仓库门面）+ `README.en.md`（英文）、`docs/implementation.md`（实现与验证总览）、`docs/adapters.md`（adapter 契约 + 已实现厂商字段路径与陷阱 + 未实现候选清单）、`src/host/sources/_template.ts`（新数据源骨架）。
 
 ## 10. 交付与验收
@@ -179,3 +179,12 @@ font-size: var(--dsh-content-font-size-secondary, 13px);
     起因是端到端安装验证（`implementation.md` §10）：把 `DSH_HOME` 指到 `/tmp` 后跑 `dsh plugin --profile smoke add dsh-usage-state`，pnpm 报 `✕ missing peer react`。原因是任何 profile 的依赖图里都没有 react——浏览器半边的 react 由平台在**运行时**注入（客户端产物是 CJS 工厂，靠平台模块表拿到 React），根本不走 node_modules；而我们从一开始就在 `peerDependencies` 里声明了 `react: ^18.2.0`（那是 React 库的惯例，不是 DSH 插件的惯例）。
     现决策：**移除该 peer**，`react` 仍留在 `devDependencies` 供构建与类型检查使用。
     **代价（需知悉）**：几乎没有——市场只对 `@deepseek-ai/dsh*` 的 peer 做兼容评估（我们另有 `engines.dsh` 承担版本声明），安装照常成功，只是不再有那行警告；生态里 `dsh-better-sidebar` 等 UI 插件同样不声明 react peer。
+
+16. **放宽 `engines.dsh` 到 0.2 发布线**（0.3.2）
+    触发条件是修订 14 写下的维护义务：宿主换到了 **DSH `0.2.0-rc.2`**（桌面壳 `@deepseek-ai/dsh-desktop`、`dsh-desktop-runtime`、`@deepseek-ai/dsh` 三个包都是 `0.2.0-rc.2`），而旧区间 `>=0.1.5-rc.1 <0.2.0-0` 的上界 `<0.2.0-0` **按定义排除 0.2.0 的一切预发布**（`0.2.0-rc.2 > 0.2.0-0`：`0` 是数值标识符，优先级低于 `rc` 这样的字母数字标识符）。后果不止徽标：市场源码里 `findCompatibleVersion()` 只挑判定为 `compatible` 的版本，update 路由还会在安装前拒绝"声明不兼容"的版本，所以旧区间会让本插件在新宿主上被判成 incompatible 并**被更新路径挡掉**。
+    现决策：区间改为 **`>=0.1.5-rc.1 <0.3.0-0`**。上界仍写成 `<0.3.0-0` 而不是 `<0.3.0`，是为了让 0.3.0 的预发布同样被挡住——我们没有任何 0.3 的实测。
+    **为什么不是 `^0.1.5-rc.1 || ^0.2.0-rc.1`**：caret 把 `^0.2.0-rc.1` 的上界算成 `0.3.0`（不含预发布比较符），于是 `0.3.0-rc.1` 也会被判为满足（`compareSemver` 认为 `0.3.0-rc.1 < 0.3.0`）。每条边界都不能跨过未实测的预发布线。
+    **为什么不缩成"只支持 0.2"**：0.1 线上的用户仍在正常工作，而证据表明两条线跑的是同一份代码（见下），缩窄只会把他们挡在市场之外。
+    **验证（2026-09-30，宿主 `0.2.0-rc.2`）**：① `tsc --noEmit` 通过；② 259 条单测全绿（在 0.2.0-rc.2 的 `@deepseek-ai/dsh-client-*` 类型下跑的独立副本，源码同一份）；③ **同一份源码分别对 0.1.5-rc.2 与 0.2.0-rc.2 的声明构建，`lib/{index,client,typert}.js` 逐字节相同**——这是"两条线共用一份代码"的硬证据；④ 真机启动 0.2.0-rc.2 宿主（临时 `DSH_HOME`、独立端口的 web profile）：插件出现在装配树里，出现在 `__DSH_BOOT__` 的 66 条客户端入口中（`inject` 四项原样带出），`plugins/??dsh-usage-state/client.js` 返回 200 且内容就是我们的产物；⑤ 产物只 `require` 三个外部模块（`react`、`react/jsx-runtime`、`@deepseek-ai/dsh-client-ui-primitives`），三者都在 0.2.0-rc.2 shell 的静态模块表 `rM()` 中，我们用到的五个导出（`Tooltip`/`Button`/`Input`/`Switch`/`Tag`）也都在；⑥ 两个挂载点的契约——`conversation.composer.dock` 与 `settings.section`——在两版之间逐字符相同。
+    **未覆盖（需知悉）**：没有在真实浏览器里跑 0.2.0-rc.2 的渲染与 typert RPC 往返（本机沙箱里 Chrome 起不来，Electron 又没法规避用户正在用的 GUI 去挂 CDP）。④⑤⑥ 证明的是"能加载、依赖齐全、挂载点契约未变"，肉眼端到端确认留给下一次真机使用。
+    **维护义务（沿用修订 14）**：0.3 发布线出现时必须再复核一次。`devDependencies` **刻意留在 `^0.1.5-rc.2`**（区间下界），这样类型检查始终对着最老的受支持宿主——宽区间因此是持续可验证的声明，而不是一次性的口头承诺。

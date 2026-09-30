@@ -24,7 +24,7 @@
 
 ## 安装
 
-**前置条件**：DSH `0.1.5-rc.2` 或更高、Node ≥ 20，装进 `web` profile。包内**自带预构建的 `lib/`**，安装时没有构建步骤。
+**前置条件**：DSH `0.1.5-rc.2` ～ `0.2.x`、Node ≥ 20，装进 `web` profile。包内**自带预构建的 `lib/`**，安装时没有构建步骤。
 
 ```bash
 # 1) 安装（npm 包）
@@ -122,9 +122,9 @@ dsh plugin --profile web add /path/to/dsh-usage-state
 
 ## 兼容性
 
-- 实测环境：DSH `0.1.5-rc.2`，Node ≥ 20；DSH 版本要求通过 `engines.dsh` 声明为 `>=0.1.5-rc.1 <0.2.0-0`（dsh-market 的兼容徽标读的就是它）。
+- 实测环境：DSH `0.1.5-rc.2` 与 `0.2.0-rc.2`，Node ≥ 20。DSH 版本要求通过 `engines.dsh` 声明为 `>=0.1.5-rc.1 <0.3.0-0`，即 **0.1.5 起的整条 0.1 线与 0.2 线**（dsh-market 的兼容徽标与"可安装"判定读的就是它）。
 - 同名发布在 npm（[`dsh-usage-state`](https://www.npmjs.com/package/dsh-usage-state)），也可从 GitHub 直接安装。
-- 版本 `0.3.1`：DeepSeek、z.ai 与 OpenCode Zen Go 已在真机验证，其余见下。
+- 版本 `0.3.2`：DSH 0.2 发布线的兼容复核（无代码改动，只放宽 `engines.dsh`）；DeepSeek、z.ai 与 OpenCode Zen Go 已在真机验证，其余见下。
 
 ## 已知限制
 

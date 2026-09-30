@@ -7,7 +7,10 @@ import type { CredentialReport, RemoteResult, UsageStateView } from '../shared/r
  * The client bundle runs inside the shell's module table, so it must not import
  * platform packages at runtime — and typing them structurally also avoids
  * interface-merge collisions between host and client package typings. The shapes
- * below come from the installed 0.1.5-rc.2 declarations.
+ * below come from the installed 0.1.5-rc.2 declarations: `devDependencies` are
+ * deliberately pinned to the *floor* of the supported `engines.dsh` range
+ * (`>=0.1.5-rc.1 <0.3.0-0`), so type-checking keeps proving the plugin still
+ * compiles against the oldest host it claims to support.
  */
 
 export interface Translate {

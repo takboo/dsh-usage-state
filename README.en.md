@@ -22,7 +22,7 @@ hover any segment:           Source DeepSeek · Mode API balance · Granted 0 ·
 
 ## Install
 
-**Requirements**: DSH `0.1.5-rc.2` or newer, Node ≥ 20, installed into the `web` profile. The package **ships the prebuilt `lib/`**, so installation has no build step.
+**Requirements**: DSH `0.1.5-rc.2` through `0.2.x`, Node ≥ 20, installed into the `web` profile. The package **ships the prebuilt `lib/`**, so installation has no build step.
 
 ```bash
 # 1) install (npm package)
@@ -98,9 +98,9 @@ Expanding **Advanced** lets you override the source and endpoint, name a credent
 
 ## Compatibility
 
-- Verified against DSH `0.1.5-rc.2`, Node ≥ 20; the DSH requirement is declared as `>=0.1.5-rc.1 <0.2.0-0` through `engines.dsh` (this is what dsh-market's compatibility badge reads).
+- Verified against DSH `0.1.5-rc.2` and `0.2.0-rc.2`, Node ≥ 20. The DSH requirement is declared as `>=0.1.5-rc.1 <0.3.0-0` through `engines.dsh` — the whole 0.1 line from 0.1.5 up, plus the 0.2 line (this is what dsh-market's compatibility badge and install gate read).
 - Published to npm as [`dsh-usage-state`](https://www.npmjs.com/package/dsh-usage-state); GitHub installs work too.
-- Version `0.3.1`: DeepSeek, z.ai and OpenCode Zen Go are verified against live accounts; see the limitations below.
+- Version `0.3.2`: 0.2-line compatibility review (no code change — only `engines.dsh` was widened); DeepSeek, z.ai and OpenCode Zen Go are verified against live accounts; see the limitations below.
 
 ## Limitations
 
