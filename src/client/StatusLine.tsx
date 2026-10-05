@@ -1,4 +1,3 @@
-import { Fragment } from 'react'
 import { Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
 
 import { describeStatus, type ModelStatus, type Severity, type StatusSegment } from '../shared/display.ts'
@@ -56,6 +55,31 @@ const DOCK_STYLE = {
 const LABEL_STYLE = { color: 'var(--dsw-alias-label-tertiary)' }
 const SEPARATOR_STYLE = { color: 'var(--dsw-alias-separator-primary, var(--dsw-alias-label-dimmed))' }
 
+/**
+ * One segment and the separator that introduces it, boxed together.
+ *
+ * The line wraps between these boxes, never inside one: with the separator as a
+ * sibling of the segments, a wrap ended a line on a dangling `·` while the segment it
+ * introduces moved to the next line.
+ */
+const PART_STYLE = { display: 'inline-flex', alignItems: 'center', gap: '6px' }
+
+/**
+ * The mini bar, drawn with `█`/`░`.
+ *
+ * The shell's UI font has no coverage for block/shade glyphs, so a fallback serves
+ * them at roughly **twice** the advance width: eight cells measured ~180px in a real
+ * window and three of them wrapped the line. A monospace stack with a hair of
+ * negative tracking keeps the same eight cells near 56px, and renders them as actual
+ * blocks instead of diagonal hatch.
+ */
+const BAR_STYLE = {
+  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+  fontSize: '0.85em',
+  letterSpacing: '-0.5px',
+  marginLeft: '4px',
+}
+
 function severityColor(severity: Severity): string {
   if (severity === 'critical') return 'var(--dsw-alias-state-error-primary)'
   if (severity === 'warn') return 'var(--dsw-alias-state-warn-primary)'
@@ -98,7 +122,7 @@ function renderPart(part: StatusPart, t: Translate, key: number) {
         <span key={key} style={{ color: severityColor(part.severity) }}>
           {part.text}
           {part.countdown === undefined ? '' : ` (${part.countdown})`}
-          {part.bar === undefined ? '' : ` ${part.bar}`}
+          {part.bar === undefined ? '' : <span style={BAR_STYLE}>{part.bar}</span>}
         </span>
       )
     case 'state':
@@ -188,14 +212,14 @@ export function StatusLine(props: StatusLineProps) {
   return (
     <div data-usage-state="dock" style={DOCK_STYLE}>
       {fullParts.map((part, index) => (
-        <Fragment key={index}>
+        <span key={index} data-usage-part={index === 0 ? 'first' : 'following'} style={PART_STYLE}>
           {index > 0 ? (
             <span style={SEPARATOR_STYLE} aria-hidden="true">
               {SEPARATOR}
             </span>
           ) : null}
           {withTooltip(renderPart(part, t, index), part.tooltip, index)}
-        </Fragment>
+        </span>
       ))}
     </div>
   )

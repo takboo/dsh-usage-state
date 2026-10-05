@@ -514,3 +514,64 @@ test('the settings page reports an unavailable settings transport instead of ren
   assert.match(html, /does not serve settings/)
   assert.doesNotMatch(html, /API balance/)
 })
+
+test('the mini bar cannot blow the line up through font fallback', () => {
+  // `█`/`░` are not covered by the shell's UI font; served by a fallback they advance
+  // at roughly twice the width, which is how three bars wrapped a real window. The bar
+  // is therefore pinned to a monospace stack instead of inheriting the line's font.
+  const html = renderToStaticMarkup(
+    h(StatusLine, {
+      t,
+      usageState: storeWith({
+        catalog: CATALOG,
+        snapshots: {
+          'zai:coding-plan': {
+            sourceId: 'zai',
+            mode: 'coding-plan',
+            balances: [],
+            windows: [{ id: '5h', usedPercent: 10, resetsAt: 0 }],
+            fetchedAt: 1_000,
+          },
+        },
+      }),
+      settings: settingsWith(configWith({ 'zai-coding-cn': { mode: 'coding-plan' } })),
+      useProjection: projectionOf({ provider: 'zai-coding-cn', model: 'glm-5.3' }),
+    }),
+  )
+
+  const bar = /<span style="font-family:ui-monospace[^"]*">[█░]+<\/span>/.exec(html)
+  assert.notEqual(bar, null, 'the bar must render inside its own monospace span')
+})
+
+test('a separator is boxed with the segment it introduces, so a wrap cannot orphan it', () => {
+  const html = renderToStaticMarkup(
+    h(StatusLine, {
+      t,
+      usageState: storeWith({
+        catalog: CATALOG,
+        snapshots: {
+          'zai:coding-plan': {
+            sourceId: 'zai',
+            mode: 'coding-plan',
+            balances: [],
+            windows: [
+              { id: '5h', usedPercent: 10, resetsAt: 0 },
+              { id: '7d', usedPercent: 4, resetsAt: 0 },
+              { id: '30d', usedPercent: 10, resetsAt: 0 },
+            ],
+            fetchedAt: 1_000,
+          },
+        },
+      }),
+      settings: settingsWith(configWith({ 'zai-coding-cn': { mode: 'coding-plan' } })),
+      useProjection: projectionOf({ provider: 'zai-coding-cn', model: 'glm-5.3' }),
+    }),
+  )
+
+  const groups = html.split('data-usage-part=')
+  // Label plus three windows.
+  assert.equal(groups.length - 1, 4)
+  // Every following group carries its own separator, and the first one does not.
+  assert.doesNotMatch(groups[1] ?? '', />·</)
+  for (const group of groups.slice(2)) assert.match(group.slice(0, 200), />·</)
+})
