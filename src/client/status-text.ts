@@ -26,7 +26,8 @@ export type StatusPart =
       text: string
       percent: string
       severity: 'normal' | 'warn' | 'critical'
-      bar?: string
+      /** Used percentage 0..100 for the ring; absent when the user turned it off. */
+  progress?: number
       countdown?: string
       tooltip?: string
     }
@@ -133,7 +134,7 @@ export function statusParts(input: StatusPartsInput): StatusPart[] {
           percent: segment.percent,
           severity: segment.severity,
           ...(countdown === undefined ? {} : { countdown }),
-          ...(segment.bar === undefined ? {} : { bar: segment.bar }),
+          ...(segment.progress === undefined ? {} : { progress: segment.progress }),
           ...(tooltipOf([resetHint, context]) === undefined ? {} : { tooltip: tooltipOf([resetHint, context]) as string }),
         })
         break

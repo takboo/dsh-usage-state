@@ -8,7 +8,6 @@ import {
   formatBalance,
   formatCountdown,
   formatPercent,
-  progressBar,
   severityOf,
   type SourceCatalog,
 } from '../../src/shared/display.ts'
@@ -51,14 +50,6 @@ test('formatAge reports how old a kept reading is', () => {
   assert.equal(formatAge(now - 12 * 60_000, now), '12m')
   assert.equal(formatAge(now - (4 * 60 + 12) * 60_000, now), '4h12m')
   assert.equal(formatAge(now - 3 * 24 * 3600_000, now), '3d')
-})
-
-test('progressBar fills proportionally and respects its width', () => {
-  assert.equal(progressBar(0, 4), '░░░░')
-  assert.equal(progressBar(50, 4), '██░░')
-  assert.equal(progressBar(100, 4), '████')
-  assert.equal(progressBar(150, 4), '████')
-  assert.equal(progressBar(42), '███░░░░░')
 })
 
 test('severityOf uses the configured thresholds', () => {
@@ -188,13 +179,13 @@ test('describeStatus renders balance and quota modes with severity and reset tim
       percent: '42%',
       severity: 'normal',
       resetsAt: 1_000_000_000_000 + 4 * 3600_000,
-      bar: '███░░░░░',
+      progress: 42,
     },
-    { kind: 'window', windowId: '7d', percent: '96%', severity: 'critical', bar: '████████' },
+    { kind: 'window', windowId: '7d', percent: '96%', severity: 'critical', progress: 96 },
   ])
 })
 
-test('describeStatus hides the progress bar when the user turned it off', () => {
+test('describeStatus hides the progress ring when the user turned it off', () => {
   const on = describeStatus({
     sourceLabel: 'Kimi',
     status: { kind: 'ready', key: 'kimi:coding-plan', sourceId: 'kimi', mode: 'coding-plan' },
@@ -212,6 +203,6 @@ test('describeStatus hides the progress bar when the user turned it off', () => 
 
   const windowOn = on[1]
   const windowOff = off[1]
-  assert.equal(windowOn?.kind === 'window' && windowOn.bar?.length, 8)
-  assert.equal(windowOff?.kind === 'window' && windowOff.bar, undefined)
+  assert.equal(windowOn?.kind === 'window' && windowOn.progress, 42)
+  assert.equal(windowOff?.kind === 'window' && windowOff.progress, undefined)
 })

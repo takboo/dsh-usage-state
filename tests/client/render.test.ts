@@ -547,10 +547,12 @@ test('the dock line matches the typography of the platform stats row', () => {
   assert.doesNotMatch(html, /font:inherit/)
 })
 
-test('the mini bar cannot blow the line up through font fallback', () => {
-  // `█`/`░` are not covered by the shell's UI font; served by a fallback they advance
-  // at roughly twice the width, which is how three bars wrapped a real window. The bar
-  // is therefore pinned to a monospace stack instead of inheriting the line's font.
+test('a window shows the platform-style progress ring, not a text bar', () => {
+  // The ring replaced an eight-cell `█`/`░` bar: those glyphs have no coverage in the
+  // shell's UI font, so a fallback served them at roughly twice the advance width and
+  // three bars wrapped the line. Geometry is copied from the platform's own context
+  // meter (14x14 viewBox, r=5.5, 2px stroke, arc from twelve o'clock), and the stroke
+  // is `currentColor` so the severity colour carries into it.
   const html = renderToStaticMarkup(
     h(StatusLine, {
       t,
@@ -571,8 +573,19 @@ test('the mini bar cannot blow the line up through font fallback', () => {
     }),
   )
 
-  const bar = /<span style="font-family:ui-monospace[^"]*">[█░]+<\/span>/.exec(html)
-  assert.notEqual(bar, null, 'the bar must render inside its own monospace span')
+  assert.match(html, /<svg viewBox="0 0 14 14" width="14" height="14"/)
+  assert.match(html, /r="5.5"/)
+  assert.match(html, /stroke="currentColor"/)
+  assert.match(html, /transform="rotate\(-90 7 7\)"/)
+  // 10% of an r=5.5 circle, expressed the way the component computes it.
+  const circumference = 2 * Math.PI * 5.5
+  assert.ok(
+    html.includes(`stroke-dasharray="${circumference / 10} ${circumference}"`),
+    'the arc must encode the used percentage',
+  )
+  // The glyph bar and its monospace crutch are gone for good.
+  assert.doesNotMatch(html, /[█░]/)
+  assert.doesNotMatch(html, /ui-monospace/)
 })
 
 test('a separator is boxed with the segment it introduces, so a wrap cannot orphan it', () => {

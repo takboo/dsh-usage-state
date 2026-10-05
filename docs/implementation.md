@@ -176,6 +176,7 @@ npm publish --cache /tmp/npm-cache              # ~/.npm 不可写时必须带 -
 | 状态行独占一行（0.4.2） | 侦察 0.2 全部槽位后确认：输入框之下只有与平台统计共排的 pill 行（无 `flex-wrap`），`composer` 之后没有任何槽位；`conversation.input.dock`（`{kind:list, scope:session}`，平台排队消息 dock 就在此）是唯一整行位置。状态行改挂该槽位（`order:200`），样式改为整行块 + `flex-wrap:wrap`（修订 20） |
 | 进度条宽度与分隔符（0.4.3） | `█`/`░` 被回落字体按两倍宽度排版（8 格 ≈180px，三条把行挤到折行）；改用等宽字体栈 + 缩字号/字距（≈56px）。分隔符改为与它引导的段落同盒（`data-usage-part`），折行不再留下孤立 `·`（修订 21） |
 | 排版对齐平台统计行（0.4.3） | `font: inherit` 在 `.composerStack` 下继承到输入卡片的 14px，比平台统计行（`StatsPills` 的 `secondary - 1px`）大一号；照抄平台的两条显式声明，并加测试钉住（修订 22） |
+| 进度环替换文字条（0.4.3） | 文字条依赖 `█`/`░` 的字形覆盖（回落字体两倍宽，修订 21）；改为平台 `ContextMeter` 同款 SVG 圆环（14×14、r=5.5、2px、12 点起弧），`currentColor` 传导 severity 变色。`StatusSegment.bar?: string` → `progress?: number`，删除 `progressBar()` 与 `PROGRESS_WIDTH`；配置键 `display.progressBar` 保留（修订 23） |
 
 ## 9. 从真机调试里学到的平台事实（下次直接复用）
 
@@ -245,7 +246,7 @@ npm publish --cache /tmp/npm-cache              # ~/.npm 不可写时必须带 -
 **`0.4.0`**（2026-10-05）迁到 0.2 原生设置模型，`engines.dsh` 收成 `>=0.2.0-rc.2 <0.3.0-0`，新增 `peerDependencies: @deepseek-ai/dsh-settings@^0.2.0-rc.2`（让 0.1.x 宿主的运行时安装闸门直接拒绝，而不是装上后崩）与 `@deepseek-ai/schemastery@^3.18.2`（loader 要用它校验导出的 `Config`）。代码面：`src/host/settings.ts` 重写（volatile `Config` + 根引用读取 + `configEditor` 跨条目读取）、`src/client/settings-form.ts` 新增（`configForms` → settings scope 适配器）、`src/client/{index.tsx,context.ts}` 换服务名、`cordis.patch.yml` 补 `config: {}`、客户端 `devDependencies` 上移到 `^0.2.0-rc.2`。发布记录与验证见 §10。
 **`0.4.1`**（2026-10-05）修 0.4.0 的读数缺失：客户端 contribution 的参数 codec 缺 `create()`，被 0.2 的**客户端** registry 拒绝（0.1.5 不要求），`remote.usageState` 从未挂载，于是 catalog 为空、状态行误报 `Mode not supported`。同一轮还修了 dock 布局（0.2 的 dock 是与平台统计/上下文计量器共用的一排居中 pill，原 `width:100%` 的假设导致首尾裁切并挤压平台 pill，见修订 19）。修法与守护见修订 18/19；发布产物仍是同一份 `engines.dsh`/peer 声明，因此 0.3.2↔0.4.x 的市场兼容判定不变。
 **`0.4.2`**（2026-10-05）把状态行从「与平台统计共排的 pill」改为**输入框上方的独立一行**：0.2 的 `conversation.input.dock` 是 composer 纵列里唯一的整行槽位（输入框之下只有那一排 nowrap 的 pill）。挂载点、样式与代价见修订 20；`tests/client/{slots,render}.test.ts` 断言挂载点与几何。
-**`0.4.3`**（2026-10-05，未发布）修 0.4.2 真机上的三个问题：折行与孤立分隔符（修订 21）、以及比平台统计行大一号的排版（修订 22，照抄平台的显式字号/行高表达式）：进度条改用等宽字体栈（回落字形的两倍宽度是主因），分隔符与段落同盒。见修订 21。
+**`0.4.3`**（2026-10-05，未发布）修 0.4.2 真机上的三个问题：折行与孤立分隔符（修订 21）、比平台统计行大一号的排版（修订 22，照抄平台的显式字号/行高表达式）、以及把文字进度条换成平台同款 SVG 圆环（修订 23）：进度条改用等宽字体栈（回落字形的两倍宽度是主因），分隔符与段落同盒。见修订 21。
 
 **端到端安装验证**（2026-09-22，把 `DSH_HOME` 指到 `/tmp/dsh-home-verify` 绕开宿主沙箱对 `~/.dsh` 的写限制，因此不需要动用户的真实 profile）：跑市场将来会执行的那条命令
 

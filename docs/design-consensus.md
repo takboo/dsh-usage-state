@@ -317,3 +317,20 @@ font-size: var(--dsh-content-font-size-secondary, 13px);
     现决策：**照抄平台那两行表达式**（连同 fallback 一起），而不是猜一个 px 值：无论 shell 的变量实际解析成多少，两侧都按定义相等；**不设置 `font-family`**，好让 UI 字体插件照常生效。新增测试断言这两条表达式存在、且**不出现** `font:inherit`。
 
     **代价（需知悉）**：平台若调整它自己那排的字号，我们不会自动跟随（测试把这两个表达式钉成了契约，改平台时要同步改这里）；`severity` 变色（warn/critical）与进度条的等宽字体栈是为功能服务的**有意差异**，不追求与平台逐像素相同。
+
+23. **进度条改成平台同款圆环（SVG）**（并入 0.4.3）
+    用户反馈"平台的圆圈进度比我们的文字条更好更简洁"。这不只是好看：文字条本身就是麻烦的来源——
+    它依赖 `█`/`░` 的字形覆盖（回落字体把它们排成两倍宽，修订 21），修法只是把宽度从"不可控"变成
+    "可控但还得维护字体栈"。**改成 SVG 之后这类问题整类消失**：矢量图形没有字形度量。
+
+    实现取自平台自己的 `ContextMeter`（`conversation` 包）：
+    - 几何：`viewBox="0 0 14 14"`、`r = 5.5`、`stroke-width: 2`、`stroke-linecap: round`、
+      `transform="rotate(-90 7 7)"`（弧从 12 点开始）、`strokeDasharray = [周长 × percent/100, 周长]`；
+    - 配色：轨道 `stroke: var(--dsw-alias-border-l3)`（照抄平台的 `.track`）；进度弧用
+      **`stroke: currentColor`**，于是段落的 `severity` 颜色（normal/warn/critical）自动传导到环上——
+      这是与平台 `.fill{stroke:label-tertiary}` 的**有意差异**（我们要保留阈值变色）；
+    - 位置：环在文字**之前**（`◐ 1%` 的排法：图标在前），14px 与平台那一排的图标同尺寸。
+
+    数据模型也跟着改了：`StatusSegment.bar?: string`（画好的 8 字字符串）→ `progress?: number`
+    （0..100 的数值），`progressBar()` 文本函数与 `PROGRESS_WIDTH` 一并删除——不再有"谁来画条"的
+    字面量。`display.progressBar` 配置键**保留**（改名会破坏既有配置），仍可关闭环。

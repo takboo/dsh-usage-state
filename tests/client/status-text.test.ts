@@ -29,8 +29,8 @@ test('an empty segment list renders nothing (a hidden model)', () => {
 test('the parts of a quota line carry the label, percentages and countdown', () => {
   const segments: StatusSegment[] = [
     { kind: 'label', text: 'z.ai / GLM' },
-    { kind: 'window', windowId: '5h', percent: '42%', severity: 'normal', resetsAt: NOW + 4 * 3600_000, bar: '███░░░░░' },
-    { kind: 'window', windowId: '7d', percent: '96%', severity: 'critical', bar: '████████' },
+    { kind: 'window', windowId: '5h', percent: '42%', severity: 'normal', resetsAt: NOW + 4 * 3600_000, progress: 42 },
+    { kind: 'window', windowId: '7d', percent: '96%', severity: 'critical', progress: 96 },
   ]
 
   const parts = statusParts({ segments, t, now: NOW, sourceLabel: 'z.ai / GLM', modeLabel: 'Coding plan' })

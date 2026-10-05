@@ -92,7 +92,7 @@ Expanding **Advanced** lets you override the source and endpoint, name a credent
 ## Display, refresh, credentials
 
 - **Placement**: directly below the composer's stats row, aligned with the native row's geometry. The line is always visible — it never depends on hover or a click.
-- **Elements**: provider label · balance + currency · each window (5h / 7d / 30d) used % · reset countdown · mini progress bar · threshold colours (defaults: amber ≥80%, red ≥95%).
+- **Elements**: provider label · balance + currency · each window (5h / 7d / 30d) used % · reset countdown · mini progress ring · threshold colours (defaults: amber ≥80%, red ≥95%).
 - **Semantics**: percentages are always *used*; balances only appear in API mode, and coding-plan mode shows the windows the source actually has (5h / 7d for z.ai and Sub2API, plus 30d for OpenCode Zen Go); a stale reading shows its age instead of hiding.
 - **Refresh**: 2s after a turn ends, plus a 5-minute idle fallback; at most one real request per source per 60s, in-flight calls are shared, failures are not throttled.
 - **Credentials**: override → the provider's declared `apiKeyEnv` → the source's built-in ref → DSH credential store. Keys are written to `~/.dsh/.credentials.yaml`; **this plugin never stores a plaintext key** and the browser never receives a key value.

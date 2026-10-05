@@ -42,7 +42,19 @@ export type Severity = 'normal' | 'warn' | 'critical'
 export type StatusSegment =
   | { kind: 'label'; text: string; stale?: boolean; /** epoch ms of the kept reading, when stale. */ staleSince?: number }
   | { kind: 'balance'; amount: string; currency: string; granted?: number; toppedUp?: number }
-  | { kind: 'window'; windowId: string; percent: string; severity: Severity; resetsAt?: number; bar?: string }
+  | {
+      kind: 'window'
+      windowId: string
+      percent: string
+      severity: Severity
+      resetsAt?: number
+      /**
+       * Used percentage, 0..100, for the progress ring. A number rather than a drawn
+       * string on purpose: the ring is an SVG (see `StatusLine`), so its width cannot
+       * depend on which font ends up serving block/shade glyphs.
+       */
+      progress?: number
+    }
   | {
       kind: 'state'
       state: 'loading' | 'unconfigured' | 'unsupported' | 'needs-endpoint' | 'error'
@@ -53,7 +65,6 @@ export type StatusSegment =
 
 const CURRENCY_SYMBOLS: Record<string, string> = { CNY: '¥', USD: '$' }
 
-const PROGRESS_WIDTH = 8
 
 /** `¥66.28`, `$6.80`, `EUR 1.50`; an unknown code keeps its numeric form. */
 export function formatBalance(balance: BalanceAmount): string {
@@ -91,11 +102,6 @@ export function formatCountdown(resetsAt: number | undefined, now: number): stri
   if (hours >= 1) return `${hours}h${Math.floor((seconds % 3600) / 60)}m`
   const minutes = Math.floor(seconds / 60)
   return minutes >= 1 ? `${minutes}m` : `${seconds}s`
-}
-
-export function progressBar(percent: number, width: number = PROGRESS_WIDTH): string {
-  const filled = Math.min(width, Math.max(0, Math.round((percent / 100) * width)))
-  return '█'.repeat(filled) + '░'.repeat(width - filled)
 }
 
 export function severityOf(usedPercent: number, display: DisplayConfig): Severity {
@@ -176,7 +182,7 @@ export function describeStatus(input: StatusInput): StatusSegment[] {
     // A reset instant already in the past means the window rolled over and the
     // provider will report fresh numbers on the next poll — showing "0s" is noise.
     if (window.resetsAt !== undefined && window.resetsAt > now) segment.resetsAt = window.resetsAt
-    if (display.progressBar) segment.bar = progressBar(window.usedPercent)
+    if (display.progressBar) segment.progress = Math.min(100, Math.max(0, window.usedPercent))
     segments.push(segment)
   }
 

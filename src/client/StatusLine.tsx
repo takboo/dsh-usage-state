@@ -76,19 +76,43 @@ const SEPARATOR_STYLE = { color: 'var(--dsw-alias-separator-primary, var(--dsw-a
 const PART_STYLE = { display: 'inline-flex', alignItems: 'center', gap: '6px' }
 
 /**
- * The mini bar, drawn with `█`/`░`.
- *
- * The shell's UI font has no coverage for block/shade glyphs, so a fallback serves
- * them at roughly **twice** the advance width: eight cells measured ~180px in a real
- * window and three of them wrapped the line. A monospace stack with a hair of
- * negative tracking keeps the same eight cells near 56px, and renders them as actual
- * blocks instead of diagonal hatch.
+ * The platform's own ring geometry (`ContextMeter.module.css`): a 14x14 viewBox with
+ * two circles of radius 5.5 and a 2px stroke, the filled one rotated so the arc
+ * starts at twelve o'clock.
  */
-const BAR_STYLE = {
-  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-  fontSize: '0.85em',
-  letterSpacing: '-0.5px',
-  marginLeft: '4px',
+const RING_RADIUS = 5.5
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS
+
+/**
+ * How full a window is, drawn rather than typed.
+ *
+ * This replaced an eight-cell `█`/`░` text bar. Those glyphs are not covered by the
+ * shell's UI font, so a fallback served them at roughly twice the advance width and
+ * three bars wrapped the line — and pinning them to a monospace stack only made the
+ * width predictable, not small. An SVG ring has no glyph metrics at all, and it
+ * matches the context meter sitting in the platform's stats row.
+ *
+ * The stroke uses `currentColor`, so the severity colour on the segment carries into
+ * the ring; the track copies the platform's `--dsw-alias-border-l3`.
+ */
+function ProgressRing({ percent }: { percent: number }) {
+  const filled = (RING_CIRCUMFERENCE * Math.min(100, Math.max(0, percent))) / 100
+  return (
+    <svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true" style={{ flex: 'none' }}>
+      <circle cx="7" cy="7" r={RING_RADIUS} fill="none" stroke="var(--dsw-alias-border-l3)" strokeWidth="2" />
+      <circle
+        cx="7"
+        cy="7"
+        r={RING_RADIUS}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeDasharray={`${filled} ${RING_CIRCUMFERENCE}`}
+        transform="rotate(-90 7 7)"
+      />
+    </svg>
+  )
 }
 
 function severityColor(severity: Severity): string {
@@ -130,10 +154,11 @@ function renderPart(part: StatusPart, t: Translate, key: number) {
       )
     case 'window':
       return (
-        <span key={key} style={{ color: severityColor(part.severity) }}>
+        // The ring leads, exactly like the platform's own `◐ 1%` in the stats row.
+        <span key={key} style={{ color: severityColor(part.severity), display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+          {part.progress === undefined ? null : <ProgressRing percent={part.progress} />}
           {part.text}
           {part.countdown === undefined ? '' : ` (${part.countdown})`}
-          {part.bar === undefined ? '' : <span style={BAR_STYLE}>{part.bar}</span>}
         </span>
       )
     case 'state':
