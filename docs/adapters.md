@@ -68,25 +68,9 @@ export interface UsageSource {
 | OpenCode Zen Go | Coding Plan | `GET https://opencode.ai/zen/go/v1/usage` | **必须带浏览器 UA**（否则 Cloudflare error 1010 → 403，实测）。根对象是 `usage.{rolling,weekly,monthly}`（文档写作 `data.usage`，两种都接受），字段 `percent` 已是 0..100 已用百分比（用 `clampPercent`，**不要**用 `normalizePercent`，否则 `1` 会变成 100%），`resetsAt` 是 ISO 串。窗口名 `rolling/weekly/monthly` → 规范键 `5h/7d/30d`。401/403 = 无订阅或密钥无效（**不是** 0%）。`resolveProvider` 会把 provider 声明的 `baseURL` 归一成 origin、`normalizeBaseUrl` 会剥掉尾部 `/vN`，所以请求前还要再剥掉 `/zen/go` 尾段，否则出现 `/zen/go/zen/go/v1/usage` |
 | Sub2API（自建） | API + Coding Plan | `GET {base}/v1/usage` | 未文档化的内部接口，字段曾出现前后端漂移；所有字段可选、未知结构降级。一个接口覆盖两种模式：`quota.remaining` 或钱包 `balance` 视为 USD 余额，`rate_limits[]` 的 `window` 直接是 `5h`/`1d`/`7d`（美元计价，百分比自算 `used/limit`）。`requiresBaseUrl: true` |
 
-## 候选数据源（未实现）
+## 候选数据源
 
-以下接口已侦察确认存在（详见 `docs/research/provider-balance-quota-apis.md`），但都**不适合 v1 的凭据模型**（本插件只支持环境变量风格字符串密钥，经 DSH 凭据库存取）：
-
-| 厂商 | 端点 | 为什么还没做 |
-|---|---|---|
-| Anthropic Claude Pro/Max | `GET https://api.anthropic.com/api/oauth/usage` | 必须 OAuth 访问令牌（`user:profile`），普通 API key 无法调用；需要新增 OAuth 凭据的存取通道。返回 `five_hour` / `seven_day` 的 `utilization` + `resets_at`，是最标准的 5h/7d 形态 |
-| Codex / ChatGPT 订阅 | `GET https://chatgpt.com/backend-api/wham/usage` | 需要 ChatGPT OAuth；`rate_limit.primary_window`（18000s）与 `secondary_window`（604800s） |
-| MiniMax Token Plan | `GET https://www.minimaxi.com/v1/token_plan/remains` | 纯 API key，**可以**按本模板实现：`current_interval_remaining_percent` / `current_weekly_remaining_percent`（注意是"剩余"，要反转） |
-| Kimi Code 国际版 | `GET https://api.kimi.com/coding/v1/usages` | 与已实现的国内版同端点，无需新增 |
-| OpenRouter | `GET {base}/api/v1/credits`、`/api/v1/key` | 余额接口按官方 OpenAPI 需要 management key；`/key` 的 `limit_remaining/limit` 可换算已用 %，但无 5h/7d 概念 |
-| SiliconFlow | `GET https://api.siliconflow.cn/v1/user/info` | 纯 CNY 余额，可照模板实现 |
-| CommandCode | `GET https://api.commandcode.ai/alpha/billing/credits` | 返回 `windowLimits.{fiveHour,weekly}.{used,cap,resetAt}`，形态与我们的窗口模型几乎一致 |
-| Volcengine Ark Coding Plan | `open.volcengineapi.com` 控制面 | 需要 AK/SK HMAC 签名，凭据形态超出 v1 |
-| Gemini Code Assist / Antigravity | 私有端点 / 本地语言服务 | OAuth 或本地进程通信，且 Google 已关闭个人版 CLI OAuth |
-
-> OpenCode Zen 已实现（见上表），不再是候选；它只差一个 `user-agent` 就能直连，不需要 OAuth。
-
-**优先级建议**：MiniMax → CommandCode → SiliconFlow（都是纯 API key、返回结构简单），再考虑为 Anthropic / Codex 增加 OAuth 凭据通道。
+以下接口已侦察确认存在但**尚未实现**——候选清单、各家的"为什么还没做"与优先级建议统一维护在 [`backlog.md`](backlog.md) §3，此处不重复。新增适配器前先读它，再回到上面的「加一个适配器的步骤」。
 
 ## 排查
 
