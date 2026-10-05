@@ -17,28 +17,42 @@ export interface StatusLineProps {
 }
 
 const BASE_STYLE = {
-  display: 'flex',
+  display: 'inline-flex',
   alignItems: 'center',
-  justifyContent: 'center',
-  gap: '8px',
-  fontSize: 'var(--dsh-content-font-size-secondary, 13px)',
-  lineHeight: 'calc(20px + var(--dsh-content-font-delta-secondary, 0px))',
+  // Contents start at the leading edge: any clipping this row does must eat the
+  // tail, never the first segment (centered contents clip at both ends).
+  justifyContent: 'flex-start',
+  gap: '6px',
+  // `font: inherit` is the platform's own `.pill` convention: the dock row is shared
+  // with those pills, so inheriting its type keeps this line the same size as them
+  // instead of one step smaller.
+  font: 'inherit',
+  lineHeight: 'inherit',
   fontVariantNumeric: 'tabular-nums',
   whiteSpace: 'nowrap' as const,
+  // Shrinkable, but never wider than the dock: `minWidth: 0` is what allows a flex
+  // item to shrink below its content width instead of overflowing the row.
+  maxWidth: '100%',
+  minWidth: 0,
   overflow: 'hidden',
-  textOverflow: 'ellipsis',
 }
 
 /**
- * The composer mount point: one line directly under the platform's stats row, so
- * it reads as that row's second line rather than a stray block.
+ * The composer mount point.
+ *
+ * DSH 0.2 renders `conversation.composer.dock` as a centered flex row that already
+ * holds the platform's own stats pill (`id: "stats"`) and the context meter, so this
+ * is **one item in that row**, not a row of its own. Claiming `width: 100%` here
+ * squeezed every sibling down to its minimum width and, because this component also
+ * centered its contents inside an `overflow: hidden` box, clipped its own first and
+ * last segments at both ends. It now follows the platform's `.pill` convention:
+ * content-sized, 999px radius, inherited typography.
  */
 const DOCK_STYLE = {
   ...BASE_STYLE,
-  width: '100%',
-  maxWidth: 'var(--dsh-chat-content-width)',
-  margin: '0 auto',
-  padding: '4px calc(var(--dsh-composer-side-clearance) + 16px) 0',
+  maxWidth: '100%',
+  padding: '1px 8px',
+  borderRadius: '999px',
 }
 
 const LABEL_STYLE = { color: 'var(--dsw-alias-label-tertiary)' }

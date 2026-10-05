@@ -1,11 +1,11 @@
 # dsh-usage-state
 
-See your **account balance** or **coding-plan quota** at a glance in [DSH (DeepSeek Harness)](https://github.com/deepseek-ai) — right under the composer stats row.
+See your **account balance** or **coding-plan quota** at a glance in [DSH (DeepSeek Harness)](https://github.com/deepseek-ai) — in the composer's stats row itself (since DSH 0.2 that slot is one centered row of pills).
 
 > 中文说明见 [README.md](README.md)。
 
 ```
-below the composer stats:   z.ai / GLM · 5h 12% (4h0m) ▓▓▓░░░░░ · 7d 59% (3d17h) ▓▓▓▓▓░░░
+in the composer stats row:   z.ai / GLM · 5h 12% (4h0m) ▓▓▓░░░░░ · 7d 59% (3d17h) ▓▓▓▓▓░░░
                              DeepSeek · ¥58.13
 hover any segment:           Source DeepSeek · Mode API balance · Granted 0 · Topped up 58.13
 ```
@@ -14,7 +14,7 @@ hover any segment:           Source DeepSeek · Mode API balance · Granted 0 ·
 
 - **Works with zero configuration**: the plugin figures out which data source and mode a provider needs, and reuses the API key DSH already has.
 - **Configured per provider, not per model** — readings are account-level, so each provider gets one setting: `Auto` / `API` / `Coding Plan` / `Hidden`. The model list is informational.
-- **One line, always visible**: directly below the composer's stats row (the native stats row and its popover are left untouched, not replaced) — no hover, no click.
+- **One line, always visible**: in the row under the composer (DSH 0.2 renders `conversation.composer.dock` as one centered row holding the native stats pill and the context meter; both are left untouched, not replaced) — no hover, no click.
 - **Never invents data**: a failed refresh keeps the last good value and marks it stale (`12m ago ⚠`); rejected keys, endpoint errors and network problems each get a readable reason.
 - **Hover details**: source and mode, the window's absolute reset time, the granted/topped-up split of a balance, the failure reason with the provider's own message.
 - **Bilingual** (zh / en), following the DSH locale setting.
@@ -55,7 +55,7 @@ Nothing showing up after installing? See the troubleshooting table at the end of
 
 1. Open **Settings → Usage state**: one row per provider configured in DSH.
 2. Leave it on **Auto** (it detects the data source and its primary mode), or pick `API` / `Coding Plan` / `Hidden`; use ↑↓ to reorder.
-3. The reading appears directly below the composer's stats row.
+3. The reading appears in the composer's stats row, after the native stats pill.
 
 If a source needs an endpoint or a key (a self-hosted Sub2API, or a provider without a credential yet), expand that row's **Advanced** block to override the source, set the endpoint, name the credential, or paste a key (written to the DSH credential store).
 

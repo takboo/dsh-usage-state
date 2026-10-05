@@ -246,3 +246,21 @@ font-size: var(--dsh-content-font-size-secondary, 13px);
 
     **流程教训（已写进 `implementation.md` §10 第 7 步）**：迁平台契约时，"入口激活"只覆盖了 **cordis 服务注入**；**RPC contribution 的挂载**是另一条独立契约，必须拿**真实 registry** 校验，而且**任何被静默吞掉的 rejection 都是不可接受的**——它把一个确定性失败变成一次长时间的猜测。
     **代价（需知悉）**：状态行多了一个 `loading` 态（文案复用既有的"读取中…/Reading…"）；catalog 为空时不再显示"模式不支持"，因此"真的不支持该模式"只会在客户端确实拿到了数据源目录时才出现。
+
+19. **0.2 的 composer dock 变成"共享一排 pill"，状态行改成其中的一项**（0.4.1）
+    读数恢复之后，真机看到的是：我们那一行被塞进平台自己的统计行里——`1 turns 1 st…`、`7.8K tok…`、我们的 `5h/7d/30d`、平台的 `◐ 1%` 挤成一排，数据源名被截成 `en Go`。
+
+    **根因（平台侧，0.1.5 → 0.2 的布局语义变了）**：
+    - 0.2 的 `conversation.composer.dock` 是 **`display:flex; justify-content:center; align-items:center; gap:12px`**（`InputBar_module_css`），子节点是 `[renderSlot("conversation.composer.dock"), ContextMeter]`；
+    - 平台自己往这个槽位注册的是 **`StatsPills`（`id: "stats"`, `order: 0`，就是 `1 turns · 7.8K tok…`）**，其样式是 `.pill{display:inline-flex;max-width:100%;color:var(--dsw-alias-label-tertiary);font:inherit;font-variant-numeric:tabular-nums;border-radius:999px;gap:6px;padding:1px 8px;white-space:nowrap}`；
+    - 也就是说这个槽位在 0.2 是**一排居中的小 pill**，而不是"统计行下方的一整行"。我们的 `DOCK_STYLE` 仍按 0.1 的假设写了 `width:100% + max-width:var(--dsh-chat-content-width) + margin:0 auto + 大内边距`。
+
+    **症状机制（值得记住）**：`width:100%` 让它在这一排里吃掉几乎全部宽度，把兄弟压到 min-content（平台那两个 pill 因此显示成 `st…`/`tok…`）；而它自身又 `justify-content:center` + `overflow:hidden`，被压缩后内容居中溢出 → **首尾同时被裁**，于是 `OpenCode Zen Go` 只剩尾巴那段 `en Go`。这不是"信息太多"，是 flex 语义用错。
+
+    现决策：
+    - `DOCK_STYLE` 改成与平台 `.pill` 同构：`display:inline-flex`、`max-width:100%`、`min-width:0`、`gap:6px`、`padding:1px 8px`、`border-radius:999px`、`font:inherit`、`line-height:inherit`、`font-variant-numeric:tabular-nums`；**去掉** `width:100%` / `margin:0 auto` / `max-width:var(--dsh-chat-content-width)` / 大内边距。
+    - `justify-content` 由 `center` 改为 `flex-start`：任何溢出只裁尾，不裁首。
+    - 字号改为继承（平台 pill 就是 `font:inherit`）：此前写死的 `--dsh-content-font-size-secondary` 让我们的字比同排 pill 小一号。
+    - 新增几何回归测试（`tests/client/render.test.ts`：断言无 `width:100%`/`margin:0 auto`、有 `max-width:100%`/`min-width:0`/`border-radius:999px`/`justify-content:flex-start`）。样式回归靠断言，不靠肉眼。
+
+    **代价与边界（需知悉）**：**0.2 里已经没有"输入框下方独占一整行"的挂载点**——`conversation.composer.dock` 是唯一在输入框之下的槽位，且与平台统计、上下文计量器共排；`conversation.chat.*` 是回合级插槽（修订 13 已否决），`shell.overlay` 是浮层。因此本插件现在只能是这一排里的一个 pill；要恢复独立一行，只能请上游提供第二个槽位。行宽不足时，因为只有我们设了 `min-width:0`，被压缩的是我们这一项（尾部裁切、完整内容在 tooltip 与设置页里）——这是有意的取舍。

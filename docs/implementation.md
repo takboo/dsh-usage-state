@@ -172,6 +172,7 @@ npm publish --cache /tmp/npm-cache              # ~/.npm 不可写时必须带 -
 | 0.2 线兼容复核（0.3.2） | 放宽 `engines.dsh` 到 `>=0.1.5-rc.1 <0.3.0-0`（修订 16）；无代码改动——两版声明构建出的 `lib/` 逐字节相同 |
 | 0.2 设置模型迁移（0.4.0） | 0.2 删除了 `settingsScope`/`settings.register`，0.3.2 的兼容声明被真机推翻；改为 `Config`（volatile `any`）+ `configForms` + `configEditor` 跨条目读，`engines.dsh` 收成 `>=0.2.0-rc.2 <0.3.0-0`（修订 17） |
 | 客户端 RPC 契约补课（0.4.1） | 0.2 的客户端 registry 要求 strict codec 带 `create()`，0.4.0 因此从未挂载 `remote.usageState`（读数全缺 + 误报 Mode not supported）；补 `create()`、不再静默吞 mount rejection、catalog 为空时改说"读取中"，并把真实 registry 契约测试写进单测（修订 18） |
+| dock 布局适配（0.4.1） | 0.2 把 `conversation.composer.dock` 变成与平台 `StatsPills`、`ContextMeter` 共用的一排居中 pill；状态行原先按 0.1 假设用 `width:100%` + 居中原点，导致首尾被裁（`OpenCode Zen Go` → `en Go`）并把平台 pill 压成 `st…`/`tok…`。改为与平台 `.pill` 同构 + `justify-content:flex-start` + `font:inherit`，并加几何回归测试（修订 19） |
 
 ## 9. 从真机调试里学到的平台事实（下次直接复用）
 
@@ -239,7 +240,7 @@ npm publish --cache /tmp/npm-cache              # ~/.npm 不可写时必须带 -
 **`0.3.2` 的结论被推翻（2026-10-05）**：`0.3.2` 声称 0.2 线可用，但真机在桌面壳 `0.2.0-rc.2` 上启动崩溃——`web boot: 1 entry did not activate / dsh-usage-state: pending (waiting for service: settingsScope)`，桌面壳据此弹"启动失败"对话框，用户选择"禁用第三方插件"后 profile 里 5 个第三方插件全被关掉。原因是 0.2 **删除了** `settingsScope`（客户端）与 `settings.register`（宿主），换成 `configForms` + 插件自带 `Config`（详见 `design-consensus.md` 修订 17）。上面那条"`__DSH_BOOT__` 里有这个入口就算通过"的验证方法**本身不成立**：pending 的入口照样在列表里、`client.js` 照样返回 200。**§10 的复核步骤已据此改写。**
 
 **`0.4.0`**（2026-10-05）迁到 0.2 原生设置模型，`engines.dsh` 收成 `>=0.2.0-rc.2 <0.3.0-0`，新增 `peerDependencies: @deepseek-ai/dsh-settings@^0.2.0-rc.2`（让 0.1.x 宿主的运行时安装闸门直接拒绝，而不是装上后崩）与 `@deepseek-ai/schemastery@^3.18.2`（loader 要用它校验导出的 `Config`）。代码面：`src/host/settings.ts` 重写（volatile `Config` + 根引用读取 + `configEditor` 跨条目读取）、`src/client/settings-form.ts` 新增（`configForms` → settings scope 适配器）、`src/client/{index.tsx,context.ts}` 换服务名、`cordis.patch.yml` 补 `config: {}`、客户端 `devDependencies` 上移到 `^0.2.0-rc.2`。发布记录与验证见 §10。
-**`0.4.1`**（2026-10-05）修 0.4.0 的读数缺失：客户端 contribution 的参数 codec 缺 `create()`，被 0.2 的**客户端** registry 拒绝（0.1.5 不要求），`remote.usageState` 从未挂载，于是 catalog 为空、状态行误报 `Mode not supported`。修法与守护见修订 18；发布产物仍是同一份 `engines.dsh`/peer 声明，因此 0.3.2↔0.4.x 的市场兼容判定不变。
+**`0.4.1`**（2026-10-05）修 0.4.0 的读数缺失：客户端 contribution 的参数 codec 缺 `create()`，被 0.2 的**客户端** registry 拒绝（0.1.5 不要求），`remote.usageState` 从未挂载，于是 catalog 为空、状态行误报 `Mode not supported`。同一轮还修了 dock 布局（0.2 的 dock 是与平台统计/上下文计量器共用的一排居中 pill，原 `width:100%` 的假设导致首尾裁切并挤压平台 pill，见修订 19）。修法与守护见修订 18/19；发布产物仍是同一份 `engines.dsh`/peer 声明，因此 0.3.2↔0.4.x 的市场兼容判定不变。
 
 **端到端安装验证**（2026-09-22，把 `DSH_HOME` 指到 `/tmp/dsh-home-verify` 绕开宿主沙箱对 `~/.dsh` 的写限制，因此不需要动用户的真实 profile）：跑市场将来会执行的那条命令
 

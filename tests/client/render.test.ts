@@ -142,9 +142,46 @@ test('the status line renders a balance for the session model', () => {
   assert.match(html, /data-usage-state="dock"/)
   assert.match(html, /DeepSeek/)
   assert.match(html, /¥66\.28/)
-  assert.match(html, /max-width:var\(--dsh-chat-content-width\)/)
   // Hovering the line explains where the number comes from.
   assert.match(html, /data-tooltip="Source DeepSeek · Mode API balance"/)
+})
+
+test('the dock line is an item in the platform row, not a row of its own', () => {
+  // DSH 0.2 renders `conversation.composer.dock` as a centered flex row that already
+  // holds the platform's stats pill and the context meter. Claiming `width: 100%`
+  // there shrank every sibling to its minimum and clipped this line at both ends
+  // (its own centering plus `overflow: hidden` ate the first and last segments), so
+  // the geometry is asserted here rather than left to the next style edit.
+  const html = renderToStaticMarkup(
+    h(StatusLine, {
+      t,
+      usageState: storeWith({
+        catalog: CATALOG,
+        snapshots: {
+          'deepseek:api': {
+            sourceId: 'deepseek',
+            mode: 'api',
+            balances: [{ amount: 66.28, currency: 'CNY' }],
+            windows: [],
+            fetchedAt: 1_000,
+          },
+        },
+      }),
+      settings: settingsWith(configWith({ 'deepseek-official': { mode: 'api' } })),
+      useProjection: projectionOf({ provider: 'deepseek-official', model: 'deepseek-flash' }),
+    }),
+  )
+
+  // The platform's `.pill` convention: content-sized, rounded, shrinkable.
+  // (`width` unqualified — `max-width: 100%` is expected and correct.)
+  assert.doesNotMatch(html, /(?<![-a-z])width:100%/)
+  assert.doesNotMatch(html, /margin:0 auto/)
+  assert.match(html, /max-width:100%/)
+  assert.match(html, /min-width:0/)
+  assert.match(html, /border-radius:999px/)
+  assert.match(html, /padding:1px 8px/)
+  // Contents align to the leading edge, so overflow can only clip the tail.
+  assert.match(html, /justify-content:flex-start/)
 })
 
 test('a hidden or unselected model renders nothing at all', () => {
