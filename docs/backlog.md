@@ -40,7 +40,7 @@
 1. **DSH 出现 0.3 发布线时复核 `engines.dsh` 区间**（当前 `>=0.2.0-rc.2 <0.3.0-0`，0.3 的一切预发布都会被判 incompatible——市场对 `engines` 是硬判定：`findCompatibleVersion()` 只挑 `compatible` 的版本，update 路由还会在安装前拒绝声明不兼容的版本）。**平台破坏性变更已发生过两次**（0.1.7 去掉 `installSettingsSection`、0.2 去掉 `settingsScope` / `settings.register`，后者让修订 16 的"两线兼容"结论被真机推翻），所以每次跳发布线都要跑 [`release.md`](release.md) 的六步复核，不能只看"入口在列"。
 2. **平台若调整自身统计行的字号表达式**，`StatusLine.tsx` 里照抄的两行要与平台同步（渲染测试把它们钉成了契约，改平台时测试会提醒）。
 3. **市场元数据维护**：改描述只改 awesome-dsh-plugin 仓库里自己那条 yml；换截图只改本仓库的 `screenshots.json`。都不改对方生成的 README（会覆写）。
-   **当前欠账**：条目 [`takboo__dsh-usage-state.yml`](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/blob/main/data/plugins/takboo__dsh-usage-state.yml) 的描述仍写 "in one line under the composer / 在输入框统计行下方"——那是 0.3.x 时代的位置，0.4.2 起状态行在输入框**上方**（修订 20）。市场要求描述与源码逐句相符，需提 PR 更正为 "above the composer input / 输入框上方"。
+   **当前欠账**：条目 [`takboo__dsh-usage-state.yml`](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/blob/main/data/plugins/takboo__dsh-usage-state.yml) 的描述仍写 "in one line under the composer / 在输入框统计行下方"——那是 0.3.x 时代的位置，0.4.2 起状态行在输入框**上方**（修订 20）。市场要求描述与源码逐句相符。**更正 PR 已提**：[awesome-dsh-plugin#6622](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/6622)，等 CI（`check` 逐句核源码，较慢）与合并；合并后中国区市场要等次日 `dsh-plugin-catalog` 每日构建才可见（见 [`release.md`](release.md) 第 6 条）。
 
 ## 5. 明确不做（否决护栏）
 
