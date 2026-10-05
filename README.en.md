@@ -124,6 +124,17 @@ npm run build        # tsdown → lib/ (host index.js + typert.js, browser clien
 npm run watch        # rebuilds client.js only; client changes hot-reload, no page refresh
 ```
 
+**Local loop (no release needed)**: `scripts/dev-local.sh` creates a throwaway profile under `/tmp/dsh-dev` (override with `DSH_HOME`), installs this repository into it as a `link:` and boots a host on its own port with the Desktop app's bundled CLI. Your real profiles are never touched.
+
+```bash
+npm run build                 # lib/ must exist
+scripts/dev-local.sh          # creates/reuses the dev profile, prints the token URL
+# second terminal:
+npm run watch                 # rebuilds client.js on save
+```
+
+Because the profile links this working tree, a rebuild is picked up by the running host: client changes are hot-swapped by `dsh-client-hmr` (the host stat-polls every bundle at 500ms and tells the browser to reload the module over `/plugins/events`) — no restart, no release. Host-side changes (`src/host/**`, `src/index.ts`, `cordis.patch.yml`) need this script restarted. Bump the version and publish only after you have **seen** the change work.
+
 Host-side changes need a DSH restart; client-side changes do not. The `lib/` output is **committed on purpose**: `dsh plugin add github:...` installs straight from the repository with no build step, and `npm test` guards the bundle envelope, the require allow-list and the `exports` targets.
 
 ## Docs
