@@ -157,7 +157,18 @@ scripts/dev-local.sh          # 建/复用 dev profile + 起宿主，打印带 t
 npm run watch                 # 保存即重建 client.js
 ```
 
-客户端改动由 `dsh-client-hmr` 热替换（宿主每 500ms 轮询 bundle，经 `/plugins/events` 通知浏览器重载模块）——**不用重启、不用发版**；宿主改动（`src/host/**`、`src/index.ts`、`cordis.patch.yml`）需要重启该脚本。只有当你**亲眼确认**改动可用之后，才值得动版本号与 npm 发布。
+客户端改动由 `dsh-client-hmr` 热替换（宿主每 500ms 轮询 bundle，经 `/plugins/events` 通知浏览器重载模块）——**不用重启、不用发版**；宿主改动（`src/host/**`、`src/index.ts`、`cordis.patch.yml`）需要重启该脚本。
+
+⚠️ **这个 profile 没有凭据**：`$DSH_HOME/.credentials.yaml` 是 home 级的，全新 home 里没有 key，也没有你其它插件（**字体插件会改变排版所依赖的字形度量**）。所以它只适合**结构/宿主侧**核对。要看**实际观感**，把同一份构建装进已有 key 与插件的 profile，同样不用发版：
+
+```bash
+npm pack --pack-destination /tmp --cache /tmp/npm-cache
+dsh plugin --profile web add /tmp/dsh-usage-state-<version>.tgz   # file: 安装
+dsh plugin --profile web add "$PWD"                               # 想热迭代就用 link:
+dsh plugin --profile web add dsh-usage-state@<已发布版本>          # 回到线上版本
+```
+
+只有当你**亲眼确认**改动可用之后，才值得动版本号与 npm 发布。
 
 宿主机改动需要重启 DSH；客户端改动 `npm run watch` 即可。`lib/` 产物**必须提交进仓库**——`dsh plugin add github:...` 直接装仓库、没有构建步骤（`npm test` 里的构建守卫会检查信封、require 白名单与 `exports` 指向）。
 

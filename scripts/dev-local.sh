@@ -15,6 +15,20 @@
 # Your real profiles (`~/.dsh/profiles/{web,desktop}`) are never touched: everything
 # lives under `$DSH_HOME` (default `/tmp/dsh-dev`), which the OS may clear on reboot.
 #
+# **What this profile does not have**: credentials. `$DSH_HOME/.credentials.yaml` is
+# home-level, and a fresh home starts empty — so there are no API keys, no provider
+# rows and none of your other plugins (a font plugin changes the very metrics a
+# layout change depends on). This loop is therefore for **structural / host-side**
+# checks. To judge how something *looks*, install the same build into a profile that
+# already has your keys and plugins, without publishing:
+#
+#   npm pack --pack-destination /tmp --cache /tmp/npm-cache
+#   dsh plugin --profile web add /tmp/dsh-usage-state-<version>.tgz   # file: install
+#   # iterate with hot reload instead of one-shot installs:
+#   dsh plugin --profile web add "$PWD"                               # link: install
+#   # and to go back to the published build:
+#   dsh plugin --profile web add dsh-usage-state@<published>
+#
 # Usage:
 #   scripts/dev-local.sh                 # boot on 3099
 #   PORT=3100 scripts/dev-local.sh       # another port

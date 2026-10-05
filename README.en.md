@@ -133,7 +133,18 @@ scripts/dev-local.sh          # creates/reuses the dev profile, prints the token
 npm run watch                 # rebuilds client.js on save
 ```
 
-Because the profile links this working tree, a rebuild is picked up by the running host: client changes are hot-swapped by `dsh-client-hmr` (the host stat-polls every bundle at 500ms and tells the browser to reload the module over `/plugins/events`) — no restart, no release. Host-side changes (`src/host/**`, `src/index.ts`, `cordis.patch.yml`) need this script restarted. Bump the version and publish only after you have **seen** the change work.
+Because the profile links this working tree, a rebuild is picked up by the running host: client changes are hot-swapped by `dsh-client-hmr` (the host stat-polls every bundle at 500ms and tells the browser to reload the module over `/plugins/events`) — no restart, no release. Host-side changes (`src/host/**`, `src/index.ts`, `cordis.patch.yml`) need this script restarted.
+
+⚠️ **This profile has no credentials**: `$DSH_HOME/.credentials.yaml` is home-level, and a fresh home starts without keys and without your other plugins (a font plugin changes the very glyph metrics a layout depends on). It is for **structural / host-side** checks only. To judge how something *looks*, install the same build into a profile that already has your keys and plugins — still without publishing:
+
+```bash
+npm pack --pack-destination /tmp --cache /tmp/npm-cache
+dsh plugin --profile web add /tmp/dsh-usage-state-<version>.tgz   # file: install
+dsh plugin --profile web add "$PWD"                               # link: install, for hot reload
+dsh plugin --profile web add dsh-usage-state@<published>          # back to the published build
+```
+
+Bump the version and publish only after you have **seen** the change work.
 
 Host-side changes need a DSH restart; client-side changes do not. The `lib/` output is **committed on purpose**: `dsh plugin add github:...` installs straight from the repository with no build step, and `npm test` guards the bundle envelope, the require allow-list and the `exports` targets.
 
