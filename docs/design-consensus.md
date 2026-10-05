@@ -303,3 +303,17 @@ font-size: var(--dsh-content-font-size-secondary, 13px);
     - 回归测试：`render.test.ts` 断言进度条落在等宽 span 内、并断言"每个后续分组的开头都有 `·`、第一个分组没有"。
 
     **代价（需知悉）**：进度条比之前窄，视觉权重降低；若用户仍觉得它是噪声，设置页的 `display.progressBar` 可以直接关掉（默认开）。**通用教训**：字号/字体不确定时，不要用块状 Unicode 画条——要么指定字体，要么用 CSS 画。
+
+22. **排版要"照抄参照物的显式声明"，不能靠 `inherit`**（并入 0.4.3）
+    0.4.3 修好折行后，真机看到我们的行**比输入框下方那排统计明显大一号**（`DeepSeek · ¥235.04` vs `11 turns … · 182M tok …`）。原因不是我们写了什么，而是我们**没写**：
+
+    - 我们的元素挂在 `.composerStack` 下（`conversation.input.dock`），于是 `font: inherit` 继承到的是**输入卡片区的 `--dsh-content-font-size`（14px）**；
+    - 平台那排统计（`StatsPills.module.css` 的 `.root`）虽然让 `.pill` 用 `font: inherit`，但 `.root` **自己显式声明**了
+      `font-size: calc(var(--dsh-content-font-size-secondary, 13px) - 1px)` 与
+      `line-height: calc(20px + var(--dsh-content-font-delta-secondary, 0px))`。
+
+    也就是说：`inherit` 只有在**继承链相同**时才等价。`.dock` 在 `.root`（输入条容器）内部，而我们的槽位是输入条的**兄弟**——两条链的字体上下文不同，凭"看起来都在输入框附近"推断就会错。
+
+    现决策：**照抄平台那两行表达式**（连同 fallback 一起），而不是猜一个 px 值：无论 shell 的变量实际解析成多少，两侧都按定义相等；**不设置 `font-family`**，好让 UI 字体插件照常生效。新增测试断言这两条表达式存在、且**不出现** `font:inherit`。
+
+    **代价（需知悉）**：平台若调整它自己那排的字号，我们不会自动跟随（测试把这两个表达式钉成了契约，改平台时要同步改这里）；`severity` 变色（warn/critical）与进度条的等宽字体栈是为功能服务的**有意差异**，不追求与平台逐像素相同。

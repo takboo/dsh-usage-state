@@ -20,10 +20,21 @@ const BASE_STYLE = {
   alignItems: 'center',
   justifyContent: 'center',
   gap: '6px',
-  // `font: inherit` follows the platform's own composer chrome instead of guessing a
-  // size, and keeps this line the same weight as the statistics beside the input.
-  font: 'inherit',
-  lineHeight: 'inherit',
+  /**
+   * Exactly the typography the platform's own stats row uses under the card
+   * (`StatsPills.module.css`, `.root`), copied expression for expression:
+   *
+   *   font-size: calc(var(--dsh-content-font-size-secondary, 13px) - 1px)
+   *   line-height: calc(20px + var(--dsh-content-font-delta-secondary, 0px))
+   *
+   * `font: inherit` looked right in the dock row (the platform's pills inherit there)
+   * but not above the card: this element is a child of `.composerStack`, so it
+   * inherited the *input card's* `--dsh-content-font-size` (14px) and rendered a size
+   * larger than the row below it. Font family is deliberately left alone, so a
+   * UI-font plugin still applies.
+   */
+  fontSize: 'calc(var(--dsh-content-font-size-secondary, 13px) - 1px)',
+  lineHeight: 'calc(20px + var(--dsh-content-font-delta-secondary, 0px))',
   fontVariantNumeric: 'tabular-nums',
   // Segments stay whole: wrapping happens *between* them (see DOCK_STYLE).
   whiteSpace: 'nowrap' as const,

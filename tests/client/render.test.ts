@@ -515,6 +515,38 @@ test('the settings page reports an unavailable settings transport instead of ren
   assert.doesNotMatch(html, /API balance/)
 })
 
+test('the dock line matches the typography of the platform stats row', () => {
+  // Above the card this element is a child of `.composerStack`, so `font: inherit`
+  // picked up the *input card's* 14px and rendered a size larger than the platform's
+  // own stats row under the card. That row (`StatsPills.module.css`) declares its size
+  // explicitly, so the fix is to use the same expressions — identical by construction,
+  // whatever the shell's variables resolve to.
+  const html = renderToStaticMarkup(
+    h(StatusLine, {
+      t,
+      usageState: storeWith({
+        catalog: CATALOG,
+        snapshots: {
+          'zai:coding-plan': {
+            sourceId: 'zai',
+            mode: 'coding-plan',
+            balances: [],
+            windows: [{ id: '5h', usedPercent: 10, resetsAt: 0 }],
+            fetchedAt: 1_000,
+          },
+        },
+      }),
+      settings: settingsWith(configWith({ 'zai-coding-cn': { mode: 'coding-plan' } })),
+      useProjection: projectionOf({ provider: 'zai-coding-cn', model: 'glm-5.3' }),
+    }),
+  )
+
+  assert.match(html, /font-size:calc\(var\(--dsh-content-font-size-secondary, 13px\) - 1px\)/)
+  assert.match(html, /line-height:calc\(20px \+ var\(--dsh-content-font-delta-secondary, 0px\)\)/)
+  // Nothing may re-inherit the card's larger size.
+  assert.doesNotMatch(html, /font:inherit/)
+})
+
 test('the mini bar cannot blow the line up through font fallback', () => {
   // `█`/`░` are not covered by the shell's UI font; served by a fallback they advance
   // at roughly twice the width, which is how three bars wrapped a real window. The bar
