@@ -148,6 +148,17 @@ npm run build        # tsdown → lib/（宿主 index.js + typert.js，浏览器
 npm run watch        # 只重建 client.js；客户端会被 HMR 热替换，无需刷新页面
 ```
 
+**本地回路（不需要发版）**：`scripts/dev-local.sh` 会在 `/tmp/dsh-dev` 建一个**一次性 profile**，把本仓库以 `link:` 装进去并起一个独立端口的宿主；你的真实 profile 完全不受影响。
+
+```bash
+npm run build                 # 先有 lib/
+scripts/dev-local.sh          # 建/复用 dev profile + 起宿主，打印带 token 的 URL
+# 另一个终端：
+npm run watch                 # 保存即重建 client.js
+```
+
+客户端改动由 `dsh-client-hmr` 热替换（宿主每 500ms 轮询 bundle，经 `/plugins/events` 通知浏览器重载模块）——**不用重启、不用发版**；宿主改动（`src/host/**`、`src/index.ts`、`cordis.patch.yml`）需要重启该脚本。只有当你**亲眼确认**改动可用之后，才值得动版本号与 npm 发布。
+
 宿主机改动需要重启 DSH；客户端改动 `npm run watch` 即可。`lib/` 产物**必须提交进仓库**——`dsh plugin add github:...` 直接装仓库、没有构建步骤（`npm test` 里的构建守卫会检查信封、require 白名单与 `exports` 指向）。
 
 ```
