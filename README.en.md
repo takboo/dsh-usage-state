@@ -5,7 +5,7 @@ See your **account balance** or **coding-plan quota** at a glance in [DSH (DeepS
 > 中文说明见 [README.md](README.md)。
 
 ```
-its own line above the composer input:   z.ai / GLM · 5h 12% (4h0m) ▓▓▓░░░░░ · 7d 59% (3d17h) ▓▓▓▓▓░░░
+its own line above the composer input:   z.ai / GLM · ◔ 5h 12% (4h0m) · ◔ 7d 59% (3d17h)
                              DeepSeek · ¥58.13
 hover any segment:           Source DeepSeek · Mode API balance · Granted 0 · Topped up 58.13
 ```
@@ -23,7 +23,7 @@ hover any segment:           Source DeepSeek · Mode API balance · Granted 0 ·
 ## Install
 
 **Requirements**: DSH `0.2.0-rc.2` or a later 0.2 release, Node ≥ 20, installed into the `web` profile. The package **ships the prebuilt `lib/`**, so installation has no build step.
-**On the 0.1 line install `0.3.2` instead**: DSH 0.2 replaced the whole settings API (`settingsScope` / `settings.register` → `configForms` / the plugin's own `Config`), and the two share no surface, so `0.4.0` and up support the 0.2 line only (see revision 17 of [`docs/design-consensus.md`](docs/design-consensus.md)).
+**On the 0.1 line install `0.3.2` instead**: DSH 0.2 replaced the whole settings API (`settingsScope` / `settings.register` → `configForms` / the plugin's own `Config`), and the two share no surface, so `0.4.0` and up support the 0.2 line only (see revision 17 of [`docs/design-changelog.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/design-changelog.md)).
 
 ```bash
 # 1) install (npm package)
@@ -49,7 +49,7 @@ dsh plugin --profile web add /path/to/dsh-usage-state
 
 It is also listed in [dsh-market](https://github.com/dsh-market/dsh-market): search for `usage state` (or `takboo`) and install it in one click — the plugin is on the [awesome-dsh-plugin](https://awesome-dsh-plugin.com) curated list under Usage & Billing.
 
-Nothing showing up after installing? See the troubleshooting table at the end of [`docs/adapters.md`](docs/adapters.md).
+Nothing showing up after installing? See the troubleshooting table at the end of [`docs/adapters.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/adapters.md).
 
 ## Quick start
 
@@ -87,12 +87,14 @@ Expanding **Advanced** lets you override the source and endpoint, name a credent
 
 - **z.ai is regional**: a coding-plan key only works on its own region (`open.bigmodel.cn` for China, `api.z.ai` globally). China is the default; the other host is tried as a mirror, and you can pin an endpoint in the settings.
 - **OpenCode Zen Go** reads `rolling` / `weekly` / `monthly` from `opencode.ai/zen/go/v1/usage`. Both DSH routes into the same account (built-in `opencode-go` and the custom `opencode-go-deepseek`) produce one reading and one request. A missing subscription or a rejected key is reported as an auth failure, never as 0%.
-- Other vendors (Claude Pro/Max, MiniMax, OpenRouter, Codex, Antigravity, Volcengine Ark, …) are not implemented, but the adapter contract and a candidate list are ready: see [`docs/adapters.md`](docs/adapters.md).
+- Other vendors (Claude Pro/Max, MiniMax, OpenRouter, Codex, Antigravity, Volcengine Ark, …) are not implemented, but the adapter contract and a candidate list are ready: see [`docs/adapters.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/adapters.md).
 
 ## Display, refresh, credentials
 
-- **Placement**: directly below the composer's stats row, aligned with the native row's geometry. The line is always visible — it never depends on hover or a click.
-- **Elements**: provider label · balance + currency · each window (5h / 7d / 30d) used % · reset countdown · mini progress ring · threshold colours (defaults: amber ≥80%, red ≥95%).
+- **Placement**: its own full-width line **above** the composer input, as wide as the input card (the `conversation.input.dock` slot on DSH 0.2). The line is always visible — it never depends on hover or a click — and wraps between segments on narrow windows instead of clipping.
+- **Elements**: provider label · balance + currency · each window (5h / 7d / 30d): an SVG progress ring + used % + reset countdown · threshold colours (defaults: amber ≥80%, red ≥95%, configurable; the colour applies to the whole segment and carries into the ring).
+
+The ring copies the geometry of the platform's own context meter (a 14×14 circle whose arc starts at twelve o'clock), replacing the earlier `█`/`░` text bar — a vector shape has no glyph metrics, so it cannot be inflated by font fallback; it can be turned off in the settings.
 - **Semantics**: percentages are always *used*; balances only appear in API mode, and coding-plan mode shows the windows the source actually has (5h / 7d for z.ai and Sub2API, plus 30d for OpenCode Zen Go); a stale reading shows its age instead of hiding.
 - **Refresh**: 2s after a turn ends, plus a 5-minute idle fallback; at most one real request per source per 60s, in-flight calls are shared, failures are not throttled.
 - **Credentials**: override → the provider's declared `apiKeyEnv` → the source's built-in ref → DSH credential store. Keys are written to `~/.dsh/.credentials.yaml`; **this plugin never stores a plaintext key** and the browser never receives a key value.
@@ -101,18 +103,20 @@ Expanding **Advanced** lets you override the source and endpoint, name a credent
 
 - **0.2 line only**: `engines.dsh` = `>=0.2.0-rc.2 <0.3.0-0` (this is what dsh-market's badge and install gate read). On an earlier host, install `0.3.2`.
 - `peerDependencies` carry `@deepseek-ai/dsh-settings` (`^0.2.0-rc.2`) and `@deepseek-ai/schemastery` (`^3.18.2`). The first one is deliberate: the runtime install gate only reads `@deepseek-ai/dsh*` peers, so declaring it makes a 0.1.x host **refuse the install** instead of accepting it and then failing to boot. Both are platform-provided; pnpm may print a `missing peer` warning for them, which is expected.
+- Version `0.4.3` (unreleased): progress becomes the **platform-style SVG ring** (replacing the `█`/`░` text bar, with threshold colours carried onto the ring), typography copied from the platform stats row, and wraps no longer leave an orphaned `·` (revisions 21–23).
 - Version `0.4.2` moves the status line to `conversation.input.dock`, giving it **its own line above the composer input** — DSH 0.2 turned the old below-the-input position into a shared row of pills next to the platform's stats and context meter (revisions 19/20).
 - Version `0.4.1` fixes `0.4.0`'s missing readings: the browser half's RPC contribution lacked the `create()` factory 0.2 requires, so `remote.usageState` never mounted — the UI showed **no readings at all** and mislabelled the cause as `Mode not supported`. The same release stops swallowing a rejected mount, says "reading" while the catalog is absent, and adds **real 0.2 registry contract tests** (revision 18). **Use `0.4.1`, not `0.4.0`.**
-- Version `0.4.0` migrates to the 0.2 settings model (`Config` + `configForms`, with cross-entry config read through `configEditor`). Verification and results: [`docs/implementation.md`](docs/implementation.md) §10; rationale: [`docs/design-consensus.md`](docs/design-consensus.md) revision 17.
+- Version `0.4.0` migrates to the 0.2 settings model (`Config` + `configForms`, with cross-entry config read through `configEditor`). Changes: [CHANGELOG](CHANGELOG.md); verification: [`docs/release.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/release.md); rationale: [`docs/design-changelog.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/design-changelog.md) revision 17.
 - Version `0.3.2` (last of the 0.1 line) only widened `engines.dsh`; **its claimed 0.2 compatibility was wrong** — on `0.2.0-rc.2` it fails the entire web boot because `settingsScope` does not exist there.
 - Published to npm as [`dsh-usage-state`](https://www.npmjs.com/package/dsh-usage-state); GitHub installs work too.
 
 ## Limitations
 
 - **Kimi and Sub2API are not verified against live accounts yet** (no credentials on the author's machine); their `/v1/usage` style endpoints are undocumented and parsed defensively.
+- **The threshold colours (amber/red) have no real-machine sample yet**: implemented and pinned by tests, but live readings have stayed below the thresholds; set the amber threshold to 10 temporarily to see them.
 - **Clicking the line does not open settings** (the platform exposes no public "open settings panel" service); details are in the hover tooltip.
 - **Current reading only**: the line reports the account's latest value. The plugin keeps no per-turn and no per-time history, so scrolling back through old turns shows no "balance at that moment". Account history, if ever added, would be keyed by time rather than by turn — a separate decision.
-- Full list: [`docs/implementation.md`](docs/implementation.md) §6.
+- Full list: [`docs/backlog.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/backlog.md).
 
 ## Development
 
@@ -152,15 +156,20 @@ Host-side changes need a DSH restart; client-side changes do not. The `lib/` out
 
 | Document | Contents |
 |---|---|
-| [`docs/implementation.md`](docs/implementation.md) | Implementation and verification overview: code map, decision → code → test → verification traceability, open items |
-| [`docs/adapters.md`](docs/adapters.md) | Adding a data source: contract, workflow, pitfalls, candidate vendors, troubleshooting |
-| [`docs/design-consensus.md`](docs/design-consensus.md) | Design consensus and its revision log (Chinese) |
-| [`docs/research/README.md`](docs/research/README.md) | Read-only research index (vendor APIs, the replaced plugin, DSH RPC contract) |
+| [CHANGELOG](CHANGELOG.md) | Changes per version |
+| [`docs/architecture.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/architecture.md) | Code map, decision → code → test → verification traceability (Chinese) |
+| [`docs/adapters.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/adapters.md) | Adding a data source: contract, workflow, pitfalls, troubleshooting (Chinese) |
+| [`docs/design-consensus.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/design-consensus.md) | The design as it currently stands (Chinese) |
+| [`docs/design-changelog.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/design-changelog.md) | Design revision log: every decision change with its reasoning (Chinese) |
+| [`docs/release.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/release.md) | Release process, end-to-end verification, acceptance checklist, market listing (Chinese) |
+| [`docs/platform-notes.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/platform-notes.md) | Measured facts about DSH platform behaviour (Chinese) |
+| [`docs/backlog.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/backlog.md) | Backlog, candidate data sources, explicit non-goals (Chinese) |
+| [`docs/research/README.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/research/README.md) | Read-only research index (vendor APIs, the replaced plugin, DSH RPC contract) |
 
 ## Acknowledgements
 
 - **[`dsh-cost-meter`](https://github.com/Han-1413141/dsh-cost-meter)** by Han-1413141 (MIT): this plugin is a **simplified replacement** for it. It keeps the "show me my balance / coding-plan quota" need and drops everything else — cost accounting, pricing catalog, history, budgets, peak/off-peak alerts.
-  The data-source endpoints, the meaning of the response fields and several compatibility pitfalls (OpenCode Zen Go needs a browser UA, z.ai reports auth failure as HTTP 200 + `{success:false}`, the legacy `coding_plan/usage` fallback, sub2api's `rate_limits[]` shape, …) come from a **read-only analysis** of `dsh-cost-meter@1.7.28`, recorded in [`docs/research/dsh-cost-meter-analysis.md`](docs/research/dsh-cost-meter-analysis.md). The implementation here is independently written TypeScript rather than copied source, but those behaviours are upstream's work and credit belongs there.
+  The data-source endpoints, the meaning of the response fields and several compatibility pitfalls (OpenCode Zen Go needs a browser UA, z.ai reports auth failure as HTTP 200 + `{success:false}`, the legacy `coding_plan/usage` fallback, sub2api's `rate_limits[]` shape, …) come from a **read-only analysis** of `dsh-cost-meter@1.7.28`, recorded in [`docs/research/dsh-cost-meter-analysis.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/research/dsh-cost-meter-analysis.md). The implementation here is independently written TypeScript rather than copied source, but those behaviours are upstream's work and credit belongs there.
   If the upstream author wants a clearer attribution or a different arrangement, open an issue and it will be fixed.
 - **[DSH (DeepSeek Harness)](https://github.com/deepseek-ai)**: the host platform. The plugin relies on its settings namespace, credential store, Typert RPC, slot system and UI primitives (`@deepseek-ai/dsh-client-ui-primitives` and friends).
 

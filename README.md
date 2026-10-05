@@ -4,10 +4,10 @@
 
 在 [DSH（DeepSeek Harness）](https://github.com/deepseek-ai) 里一眼看到你的**账户余额**或**套餐额度**——就在输入框上方、与输入卡片同宽的一行（原生统计行与其弹窗原样保留、不做替换）。
 
-> A minimal DSH plugin that shows your account **balance** (API mode) or **coding-plan quota** (5h / 7d / 30d) for the model you are using, right under the composer.
+> A minimal DSH plugin that shows your account **balance** (API mode) or **coding-plan quota** (5h / 7d / 30d) for the model you are using, on its own line right above the composer input.
 
 ```
-输入框上方独立一行：      z.ai / GLM · 5h 12% (4h0m) ▓▓▓░░░░░ · 7d 59% (3d17h) ▓▓▓▓▓░░░
+输入框上方独立一行：      z.ai / GLM · ◔ 5h 12% (4h0m) · ◔ 7d 59% (3d17h)
                         DeepSeek · ¥58.13
 悬停任意一段：          Source DeepSeek · Mode API balance · Granted 0 · Topped up 58.13
 ```
@@ -25,7 +25,7 @@
 ## 安装
 
 **前置条件**：DSH `0.2.0-rc.2` 或更新的 0.2 线、Node ≥ 20，装进 `web` profile。包内**自带预构建的 `lib/`**，安装时没有构建步骤。
-**用 0.1 线请装 `0.3.2`**：DSH 0.2 换掉了整套设置 API（`settingsScope` / `settings.register` → `configForms` / 插件自带 `Config`），两套 API 没有重叠，所以 `0.4.0` 起只支持 0.2 线（原因见 [`docs/design-consensus.md`](docs/design-consensus.md) 修订 17）。
+**用 0.1 线请装 `0.3.2`**：DSH 0.2 换掉了整套设置 API（`settingsScope` / `settings.register` → `configForms` / 插件自带 `Config`），两套 API 没有重叠，所以 `0.4.0` 起只支持 0.2 线（原因见 [`docs/design-changelog.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/design-changelog.md) 修订 17）。
 
 ```bash
 # 1) 安装（npm 包）
@@ -51,7 +51,7 @@ dsh plugin --profile web add /path/to/dsh-usage-state
 
 也可以在 [dsh-market](https://github.com/dsh-market/dsh-market) 里搜索 `usage state`（或 `takboo`）一键安装——本插件已收录在精选列表 [awesome-dsh-plugin](https://awesome-dsh-plugin.com) 的「用量与计费」分类。
 
-装好后界面没有出现？见 [`docs/adapters.md`](docs/adapters.md) 末尾的排查表。
+装好后界面没有出现？见 [`docs/adapters.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/adapters.md) 末尾的排查表。
 
 ## 快速开始
 
@@ -89,13 +89,15 @@ dsh plugin --profile web add /path/to/dsh-usage-state
 
 - **z.ai 分区域**：coding plan 的 key 只在自己区域的站点有效（国内 `open.bigmodel.cn` / 国际 `api.z.ai`）。默认国内站，失败时自动镜像重试；也可在设置里钉死端点。
 - **OpenCode Zen Go**：读 `opencode.ai/zen/go/v1/usage` 的 `rolling` / `weekly` / `monthly`；通往同一账户的两条 DSH 路由（内置 `opencode-go` 与自定义 `opencode-go-deepseek`）只产生一个读数、只发一次请求。无订阅或密钥无效时报鉴权失败，而非 0%。
-- **其他厂商**（Claude Pro/Max、MiniMax、OpenRouter、Codex、Antigravity、Volcengine Ark…）未实现，但适配器契约与候选清单已备好，见 [`docs/adapters.md`](docs/adapters.md)。
+- **其他厂商**（Claude Pro/Max、MiniMax、OpenRouter、Codex、Antigravity、Volcengine Ark…）未实现，但适配器契约与候选清单已备好，见 [`docs/adapters.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/adapters.md)。
 
 ## 显示与交互
 
-**位置**：输入框统计行的正下方（与原生统计行的几何对齐，跟随 DSH 的会话内容宽度）。读数**始终可见**，不依赖悬停，也不需要点击。
+**位置**：输入框**上方**、与输入卡片同宽的独立一行（DSH 0.2 的 `conversation.input.dock` 槽位）。读数**始终可见**，不依赖悬停，也不需要点击；窗口过窄时在段与段之间折行，不会裁切。
 
-**元素**：供应商标签 · 余额金额 + 币种 · 各窗口（5h / 7d / 30d）已用百分比 · 重置倒计时 · 迷你进度环 · 阈值变色（默认 ≥80% 黄、≥95% 红，可在设置里改）。
+**元素**：供应商标签 · 余额金额 + 币种 · 各窗口（5h / 7d / 30d）：SVG 进度环 + 已用百分比 + 重置倒计时 · 阈值变色（默认 ≥80% 琥珀、≥95% 红，可在设置里改；颜色作用于整段并传导到圆环）。
+
+进度环取平台上下文计量器（`ContextMeter`）同款几何（14×14 圆环、弧从 12 点开始），替代早期的 `█`/`░` 文字条——矢量没有字形度量，不会因字体回落而撑爆排版；设置里可整体关闭。
 
 **口径**：百分比一律是**已用**（与 z.ai / Claude 官方一致）；API 模式显示余额，Coding Plan 模式显示该数据源实际提供的窗口（z.ai 与 Sub2API 是 5h / 7d，OpenCode Zen Go 多一个 30d）。
 
@@ -125,18 +127,20 @@ dsh plugin --profile web add /path/to/dsh-usage-state
 
 - **只支持 DSH 0.2 线**：`engines.dsh` = `>=0.2.0-rc.2 <0.3.0-0`（市场读它做徽标与"可安装"判定）。0.2 之前的宿主请装 `0.3.2`。
 - `peerDependencies` 里有 `@deepseek-ai/dsh-settings`（`^0.2.0-rc.2`）与 `@deepseek-ai/schemastery`（`^3.18.2`）：前者是**故意的**——平台的运行时安装闸门只读 `@deepseek-ai/dsh*` 的 peer，声明它可以让 0.1.x 宿主在**安装时**就拒绝，而不是装上之后把启动搞崩；两者都由平台提供，pnpm 可能为此打一行 `missing peer` 警告，属预期。
+- 版本 `0.4.3`（未发布）：进度显示改为**平台同款 SVG 圆环**（替代 `█`/`░` 文字条，阈值变色经颜色传导到环上）、排版照抄平台统计行字号、折行不再留下孤立的 `·`（修订 21–23）。
 - 版本 `0.4.2`：状态行迁到 `conversation.input.dock`，成为**输入框上方的独立一行**（0.1 时代它在输入框之下，而 0.2 把那个位置改成了与平台统计、上下文计量器共排的一排 pill——见修订 19/20）。
 - 版本 `0.4.1`：修 `0.4.0` 的读数缺失——客户端 RPC contribution 的参数 codec 少了 0.2 要求的 `create()`，`remote.usageState` 因此从未挂载，界面表现为**没有任何读数**并误报 `Mode not supported`。同一轮还让挂载失败不再被静默吞掉、catalog 未到时改说「读取中」，并把**真实 0.2 registry 契约测试**写进单测（修订 18）。**请用 `0.4.1`，不要用 `0.4.0`。**
-- 版本 `0.4.0`：迁到 0.2 原生设置模型（`Config` + `configForms`，宿主侧 `configEditor` 读跨条目配置）。验证方式与结论见 [`docs/implementation.md`](docs/implementation.md) §10、决策见 [`docs/design-consensus.md`](docs/design-consensus.md) 修订 17。
+- 版本 `0.4.0`：迁到 0.2 原生设置模型（`Config` + `configForms`，宿主侧 `configEditor` 读跨条目配置）。变更明细见 [CHANGELOG](CHANGELOG.md)，验证方式与结论见 [`docs/release.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/release.md)、决策见 [`docs/design-changelog.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/design-changelog.md) 修订 17。
 - 版本 `0.3.2`（0.1 线末版）：仅放宽 `engines.dsh`；**它声称的 0.2 兼容是错的**（0.3.2 在 0.2.0-rc.2 上会因 `settingsScope` 不存在而让整个 web 启动失败）。
 - 同名发布在 npm（[`dsh-usage-state`](https://www.npmjs.com/package/dsh-usage-state)），也可从 GitHub 直接安装。
 
 ## 已知限制
 
 - **Kimi、Sub2API 未经真机验证**（本机无凭据），代码与单测已就绪；Sub2API 的 `/v1/usage` 属未文档化接口，已按易错接口做容错。
+- **阈值变色（琥珀/红）尚无真机视觉样本**：代码已实现且被单测钉住，但真机读数长期低于阈值；把设置里黄色阈值临时改成 10 即可确认。
 - **点击状态行不会打开设置**（客户端没有公开的"打开设置面板"服务）；细节通过悬浮提示呈现。
 - **只在输入框上方展示，不覆盖历史**：状态行给出的是账户**当前**读数；插件不按回合、也不按时间保存历史读数，因此翻看旧回合时看不到"当时的余额"。若将来要做，会是以时间轴（而不是回合）为口径的单独决定。
-- 完整清单见 [`docs/implementation.md`](docs/implementation.md) §6。
+- 完整清单见 [`docs/backlog.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/backlog.md)。
 
 ## 开发
 
@@ -184,15 +188,20 @@ tests/           与 src 对应；tests/build 校验的是产物本身
 
 | 文档 | 内容 |
 |---|---|
-| [`docs/implementation.md`](docs/implementation.md) | 实现与验证总览：代码地图、决策→实现→测试→验证追溯、未验证清单、平台注意事项 |
-| [`docs/adapters.md`](docs/adapters.md) | 添加数据源：契约、四步流程、约定与坑、候选厂商、排查表 |
-| [`docs/design-consensus.md`](docs/design-consensus.md) | 设计共识与修订记录（每条决策的来龙去脉） |
-| [`docs/research/README.md`](docs/research/README.md) | 只读侦察报告索引（各厂商接口、被替代插件剖析、DSH RPC 契约） |
+| [CHANGELOG](CHANGELOG.md) | 按版本的变更记录 |
+| [`docs/architecture.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/architecture.md) | 代码地图、决策→实现→测试→验证追溯 |
+| [`docs/adapters.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/adapters.md) | 添加数据源：契约、四步流程、约定与坑、排查表 |
+| [`docs/design-consensus.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/design-consensus.md) | 当前有效的设计共识 |
+| [`docs/design-changelog.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/design-changelog.md) | 设计修订记录（每条决策变更的来龙去脉） |
+| [`docs/release.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/release.md) | 发布流程、端到端验证、人工验收清单、市场收录 |
+| [`docs/platform-notes.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/platform-notes.md) | DSH 平台行为的实测事实 |
+| [`docs/backlog.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/backlog.md) | 待办、候选数据源、明确不做的否决护栏 |
+| [`docs/research/README.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/research/README.md) | 只读侦察报告索引（各厂商接口、被替代插件剖析、DSH RPC 契约） |
 
 ## 致谢与参考
 
 - **[`dsh-cost-meter`](https://github.com/Han-1413141/dsh-cost-meter)**（作者 Han-1413141，MIT 许可）：本插件是它的**简化替代品**——只保留「看余额 / 看 Coding Plan 额度」这个展示需求，砍掉计费、价格目录、历史账单、预算与峰谷提醒等全部逻辑（见上面的「只做显示」）。
-  数据源端点、响应字段语义与若干兼容陷阱（OpenCode Zen Go 必须带浏览器 UA、z.ai 用 HTTP 200 + `{success:false}` 表达鉴权失败、旧 `coding_plan/usage` 兜底路径、sub2api 的 `rate_limits[]` 形态等）来自对 `dsh-cost-meter@1.7.28` 的**只读分析**，记录见 [`docs/research/dsh-cost-meter-analysis.md`](docs/research/dsh-cost-meter-analysis.md)。本仓库的实现是独立编写的 TypeScript，不是对其源码的照搬；但那些行为语义确实源自上述分析，应归功于上游。
+  数据源端点、响应字段语义与若干兼容陷阱（OpenCode Zen Go 必须带浏览器 UA、z.ai 用 HTTP 200 + `{success:false}` 表达鉴权失败、旧 `coding_plan/usage` 兜底路径、sub2api 的 `rate_limits[]` 形态等）来自对 `dsh-cost-meter@1.7.28` 的**只读分析**，记录见 [`docs/research/dsh-cost-meter-analysis.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/research/dsh-cost-meter-analysis.md)。本仓库的实现是独立编写的 TypeScript，不是对其源码的照搬；但那些行为语义确实源自上述分析，应归功于上游。
   若上游作者认为某处需要更明确的署名或授权，请提 issue，我会立刻调整。
 - **[DSH（DeepSeek Harness）](https://github.com/deepseek-ai)**：宿主平台。插件使用它的设置命名空间、凭据库、Typert RPC、插槽系统与 UI 原语（`@deepseek-ai/dsh-client-ui-primitives` 等）。
 
