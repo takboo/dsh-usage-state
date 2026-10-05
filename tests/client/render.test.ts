@@ -66,16 +66,19 @@ function storeWith(input: {
   credentials?: Record<string, CredentialDescription>
   models?: Array<{ provider: string; providerName: string; model: string; name: string }>
   registry?: { routable: readonly string[]; failed: readonly string[] }
+  /** Transport state, for the cases where the plugin's own RPC never answered. */
+  status?: 'idle' | 'loading' | 'ready' | 'error'
+  error?: string
 }) {
   const state = {
-    status: 'ready' as const,
+    status: input.status ?? ('ready' as const),
     catalog: input.catalog ?? [],
     snapshots: input.snapshots ?? {},
     credentials: input.credentials ?? {},
     checkedAt: 1_000,
     models: input.models ?? [],
     modelRegistry: input.registry,
-    error: undefined,
+    error: input.error,
     credentialsError: undefined,
     modelsError: undefined,
   }
@@ -169,6 +172,41 @@ test('a provider nobody can map says so instead of showing a number', () => {
   )
 
   assert.match(html, /Not configured/)
+})
+
+test('an unanswered RPC reads as loading rather than as an unsupported mode', () => {
+  // The catalog and the readings arrive in one answer, so a mapped provider with no
+  // catalog means "the plugin has not heard back", never "this source cannot serve
+  // that mode" — the latter is what 0.4.0 displayed for a contribution that never
+  // mounted, and it sent the reader looking for a configuration problem.
+  const html = renderToStaticMarkup(
+    h(StatusLine, {
+      t,
+      usageState: storeWith({ status: 'loading' }),
+      settings: settingsWith(configWith()),
+      useProjection: projectionOf({ provider: 'zai-coding-cn', model: 'glm-5.3' }),
+    }),
+  )
+
+  assert.match(html, /Reading/)
+  assert.doesNotMatch(html, /Mode not supported/)
+})
+
+test('a failed RPC states the failure instead of blaming the provider', () => {
+  // The line names the failure; the raw message rides the tooltip (and the settings
+  // page prints it inline), which is this plugin's convention for detail.
+  const html = renderToStaticMarkup(
+    h(StatusLine, {
+      t,
+      usageState: storeWith({ status: 'error', error: 'remote not mounted' }),
+      settings: settingsWith(configWith()),
+      useProjection: projectionOf({ provider: 'zai-coding-cn', model: 'glm-5.3' }),
+    }),
+  )
+
+  assert.match(html, /Unavailable/)
+  assert.doesNotMatch(html, /Mode not supported/)
+  assert.doesNotMatch(html, /Reading/)
 })
 
 test('a self-hosted provider without an endpoint asks for one', () => {

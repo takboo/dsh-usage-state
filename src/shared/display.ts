@@ -25,6 +25,13 @@ export type SourceCatalog = SourceCatalogEntry[]
  */
 export type ModelStatus =
   | { kind: 'hidden' }
+  /**
+   * The source catalog has not arrived (or the RPC that carries it failed), so no
+   * provider can be resolved yet. Distinct from `unsupported`: claiming a mode is
+   * unsupported when the plugin has simply heard nothing from its own host would be
+   * a lie the user cannot act on.
+   */
+  | { kind: 'loading' }
   | { kind: 'unconfigured' }
   | { kind: 'needs-endpoint' }
   | { kind: 'unsupported' }
@@ -116,6 +123,7 @@ export interface StatusInput {
 export function describeStatus(input: StatusInput): StatusSegment[] {
   const { status, snapshot, display, now } = input
   if (status.kind === 'hidden') return []
+  if (status.kind === 'loading') return [{ kind: 'state', state: 'loading' }]
   if (status.kind === 'unconfigured') return [{ kind: 'state', state: 'unconfigured' }]
   if (status.kind === 'needs-endpoint') return [{ kind: 'state', state: 'needs-endpoint' }]
   if (status.kind === 'unsupported') return [{ kind: 'state', state: 'unsupported' }]

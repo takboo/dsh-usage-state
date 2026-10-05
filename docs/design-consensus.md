@@ -217,3 +217,32 @@ font-size: var(--dsh-content-font-size-secondary, 13px);
     **未覆盖（需知悉）**：仍没有在真实浏览器里跑一遍 0.2 的渲染与 typert RPC 往返（本机沙箱起不了浏览器）。③④⑤ 证明的是"宿主激活 + 产物可加载 + 服务名齐全 + `apply` 可执行"，肉眼端到端留给下一次真机使用。
 
     **流程教训（已写进 `implementation.md` §10）**：平台兼容复核必须断言"入口**激活**"，不能只断言"入口在列"。宿主侧的判据是启动 stderr 没有 `did not activate` 告警；客户端侧至少要把**真实产物**放进假模块表跑一遍 `apply`。
+
+18. **0.4.0 的客户端 RPC 契约漏项：codec 必须带 `create()`**（0.4.1）
+    0.4.0 把设置 API 迁到 0.2 之后，真机现象是"界面能启动、但**读数全缺**，状态行显示 **Mode not supported**"。这条修订记录第二个偏离，以及为什么上一轮的验证还是没抓住它。
+
+    **根因**：客户端那份手写的 Typert contribution（`remote.$mount()` 交给平台的对象）里的参数 codec 只有 `mode`/`typeSymbol`/`schema`。DSH **0.1.5 只校验 `mode` 与 `typeSymbol`**，所以它在 0.1 线上一直工作；**0.2 的客户端 registry 新增了一条**：
+
+    ```js
+    // @deepseek-ai/dsh-typert-registry/lib/client.js
+    function validateCodec(codec, subject) {
+      if (codec.mode === "src-json") return;
+      validateNonempty(`${subject} type symbol`, codec.typeSymbol);
+      if (typeof codec.create !== "function") throw new Error(`typert: ${subject} strict codec has no create() factory`);
+    }
+    ```
+
+    于是 `DescriptorStore.validate` 抛错 → `RemoteStore.register` 抛错 → `$mount()` 的 promise 被拒 → `remote.usageState` 从未安装。宿主半边一直是好的（`src/host/typert.ts` 的 `strictCodec` 本来就带 `create: () => schema`，且 `codec.create().parse(value)` 正是协议规定的解码路径），所以"宿主启动零告警"这种判据天然看不见它。
+
+    **症状为什么会长成"Mode not supported"**：客户端 store 的 catalog 与读数在同一条 RPC 回答里，RPC 从未成功 ⇒ `state.catalog` 为空 ⇒ `resolveProvider` 返回 `unknown-source`（`sourceId` 非空，来自静态建议）⇒ [StatusLine 把 `unknown-source` 和 `unsupported` 归成一类](../src/client/StatusLine.tsx)，于是显示"模式不支持"。**这条映射本身也是缺陷**：把"我还没听到自己宿主的回答"说成"这个数据源不支持该模式"，正是在误导读者去查一个不存在的配置问题。而插件又把 `$mount` 的 rejection **静默吞掉**，所以浏览器控制台、宿主日志里都没有任何线索。
+
+    现决策（0.4.1）：
+    - `src/client/contribution.ts`（从 `index.tsx` 抽出的独立模块）给 strict codec 补上 `create(): { parse }`，浏览器产物依旧**不引入 zod**（`create` 返回手写校验器；宿主侧那份用 zod）。
+    - **不再静默**：mount 失败时 `console.error` 并把消息写进 store（`failRemote`），状态行与设置页因而能说出真正的原因。
+    - **改正误报**：`ModelStatus` 增加 `loading`；catalog 为空时不再声称 `unsupported`，而是"读取中"；若 store 处于 `error` 且 catalog 为空，状态行直接显示失败原因（`errorDetail` 进 tooltip，设置页正文打印）。`sourceId === null`（压根推断不出数据源）仍按"未配置"处理——那是用户真的要去配置的情形。
+    - **回归守护（两条，都是"跑真实契约"而不是"跑我们的理解"）**：`tests/client/contribution.test.ts` 把 contribution 注册进**真实 0.2 registry**（经 `window.__ModuleLoader__` 信封加载平台产物）并要求两个 endpoint 都能解析；`tests/build/bundle.test.ts` 对**构建产物 `lib/client.js`** 做同一件事。共享 harness 在 `tests/support/browser-face.mjs`。
+
+    **验证（2026-10-05，宿主 `0.2.0-rc.2`，全部实跑）**：① 对照实验——同一份 contribution，去掉 `create` 被真实 registry 拒绝（`typert: dsh-usage-state#usageState/getState parameter force strict codec has no create() factory`），补上后接受且 endpoint 可解析；② `tsc` 干净、278 条单测全绿（含上述两条真实契约测试）；③ 从**真机宿主**取回它实际发出的 `/plugins/??dsh-usage-state/client.js`，放进假模块表 + 真实 registry：`apply()` 完成 effect 注册、`configForms.get('usage-state')`、`mounted`，`usageState/getState` 可解析、无 `console.error`；④ `npm pack` 出的 0.4.1 tarball 装进全新 profile 启动**零激活告警**，`__DSH_BOOT__` 66 条入口含本插件。
+
+    **流程教训（已写进 `implementation.md` §10 第 7 步）**：迁平台契约时，"入口激活"只覆盖了 **cordis 服务注入**；**RPC contribution 的挂载**是另一条独立契约，必须拿**真实 registry** 校验，而且**任何被静默吞掉的 rejection 都是不可接受的**——它把一个确定性失败变成一次长时间的猜测。
+    **代价（需知悉）**：状态行多了一个 `loading` 态（文案复用既有的"读取中…/Reading…"）；catalog 为空时不再显示"模式不支持"，因此"真的不支持该模式"只会在客户端确实拿到了数据源目录时才出现。

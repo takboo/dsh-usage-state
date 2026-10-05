@@ -2,6 +2,7 @@ import { createElement } from 'react'
 
 import type { UsageStateConfig } from '../shared/config.ts'
 import type { CredentialReport, RemoteResult, UsageStateView } from '../shared/rpc.ts'
+import { CONTRIBUTION } from './contribution.ts'
 import { SettingsSection } from './SettingsSection.tsx'
 import { StatusLine } from './StatusLine.tsx'
 import { en, LOCALE_NS, zh } from './locales.ts'
@@ -19,40 +20,6 @@ export const inject = ['slots', 'locale', 'configForms', 'remote', 'remote.sessi
 
 const USAGE_STATE_NS = 'usage-state'
 const POLL_INTERVAL_MS = 30_000
-
-/** Hand-rolled codecs: the browser bundle must not carry zod. */
-const booleanOrUndefined = {
-  mode: 'strict' as const,
-  typeSymbol: 'dsh-usage-state#Force',
-  schema: { parse: (value: unknown) => (value === undefined ? undefined : value === true) },
-}
-
-const srcJson = { mode: 'src-json' as const }
-
-/** Must mirror `src/host/typert.ts`: the wire endpoint is `<namespace>/<method>`. */
-const CONTRIBUTION = {
-  package: 'dsh-usage-state',
-  descriptors: [
-    {
-      id: 'dsh-usage-state#usageState/getState',
-      service: 'usageState',
-      namespace: 'usageState',
-      method: 'getState',
-      invocation: { kind: 'direct' as const },
-      parameters: [{ name: 'force', wire: 'force', source: 'json' as const, acceptsUndefined: true, codec: booleanOrUndefined }],
-      result: srcJson,
-    },
-    {
-      id: 'dsh-usage-state#usageState/describeCredentials',
-      service: 'usageState',
-      namespace: 'usageState',
-      method: 'describeCredentials',
-      invocation: { kind: 'direct' as const },
-      parameters: [],
-      result: srcJson,
-    },
-  ],
-}
 
 export function apply(ctx: ClientContextLike): void {
   ctx.effect(() => ctx.locale.register(LOCALE_NS, { zh, en }), 'dsh-usage-state: dictionaries')
@@ -103,7 +70,14 @@ export function apply(ctx: ClientContextLike): void {
         void store.refreshModels()
         void store.refreshCredentials()
       },
-      () => undefined,
+      // A rejected mount is why the line has no readings at all, so it must never
+      // be swallowed: log it, and record it as the store's error so the settings
+      // page states the real cause instead of showing an empty page.
+      (error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error)
+        console.error('dsh-usage-state: remote contribution did not mount', error)
+        store.failRemote(message)
+      },
     )
     return () => {
       cancelled = true

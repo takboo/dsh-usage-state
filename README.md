@@ -125,6 +125,7 @@ dsh plugin --profile web add /path/to/dsh-usage-state
 
 - **只支持 DSH 0.2 线**：`engines.dsh` = `>=0.2.0-rc.2 <0.3.0-0`（市场读它做徽标与"可安装"判定）。0.2 之前的宿主请装 `0.3.2`。
 - `peerDependencies` 里有 `@deepseek-ai/dsh-settings`（`^0.2.0-rc.2`）与 `@deepseek-ai/schemastery`（`^3.18.2`）：前者是**故意的**——平台的运行时安装闸门只读 `@deepseek-ai/dsh*` 的 peer，声明它可以让 0.1.x 宿主在**安装时**就拒绝，而不是装上之后把启动搞崩；两者都由平台提供，pnpm 可能为此打一行 `missing peer` 警告，属预期。
+- 版本 `0.4.1`：修 `0.4.0` 的读数缺失——客户端 RPC contribution 的参数 codec 少了 0.2 要求的 `create()`，`remote.usageState` 因此从未挂载，界面表现为**没有任何读数**并误报 `Mode not supported`。同一轮还让挂载失败不再被静默吞掉、catalog 未到时改说「读取中」，并把**真实 0.2 registry 契约测试**写进单测（修订 18）。**请用 `0.4.1`，不要用 `0.4.0`。**
 - 版本 `0.4.0`：迁到 0.2 原生设置模型（`Config` + `configForms`，宿主侧 `configEditor` 读跨条目配置）。验证方式与结论见 [`docs/implementation.md`](docs/implementation.md) §10、决策见 [`docs/design-consensus.md`](docs/design-consensus.md) 修订 17。
 - 版本 `0.3.2`（0.1 线末版）：仅放宽 `engines.dsh`；**它声称的 0.2 兼容是错的**（0.3.2 在 0.2.0-rc.2 上会因 `settingsScope` 不存在而让整个 web 启动失败）。
 - 同名发布在 npm（[`dsh-usage-state`](https://www.npmjs.com/package/dsh-usage-state)），也可从 GitHub 直接安装。

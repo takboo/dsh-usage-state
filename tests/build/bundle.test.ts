@@ -3,6 +3,8 @@ import { existsSync, readFileSync } from 'node:fs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
+import { loadBrowserFace, realRegistry, shellModuleTable } from '../support/browser-face.mjs'
+
 /**
  * Guards the *shipped* artifacts. The bundles are committed because
  * `dsh plugin add github:...` installs straight from the repository with no build
@@ -62,8 +64,7 @@ test('the browser bundle requires nothing outside the shell module table', t => 
   assert.doesNotMatch(code, /from\s*"node:/, 'the browser bundle must not reference node builtins')
 })
 
-test('the host bundle is ESM exporting the cordis entry points', t => {
-  if (!built()) return t.skip('run `npm run build` first')
+test('the host bundle is ESM exporting the cordis entry points', t => {  if (!built()) return t.skip('run `npm run build` first')
   const code = readFileSync(HOST, 'utf8')
 
   // The loader reads `Config` off the module namespace and calls `apply(ctx, config)`.
@@ -154,4 +155,84 @@ test('the built host bundle wires up and reads a balance through a fake host', a
   assert.equal(builtBinding?.service, service, 'binding.service must be the service object itself')
   assert.equal(builtBinding?.serviceKey, 'usageState')
   assert.equal(builtBinding?.namespace, 'usageState')
+})
+
+/**
+ * The shipped browser bundle, mounted through the platform's real Typert registry.
+ *
+ * The source-level equivalent lives in `tests/client/contribution.test.ts`; this one
+ * exists because the contract that broke in 0.4.0 was carried by the *artifact* —
+ * whatever the bundler does to the contribution is what the browser actually mounts.
+ * A rejected mount leaves every reading missing while the entry still activates, so
+ * nothing else in this file would notice.
+ */
+test('the built browser bundle mounts its RPC contribution through the real 0.2 registry', async t => {
+  if (!built()) return t.skip('run `npm run build` first')
+
+  const client = loadBrowserFace(CLIENT.pathname, shellModuleTable()) as { apply(ctx: unknown): void; inject: string[] }
+  const registry = await realRegistry()
+  const events: string[] = []
+  const disposers: Array<() => void> = []
+  let mountError: unknown
+  const form = {
+    getSnapshot: () => ({ status: 'ready', value: {}, revision: 1, writable: true, mode: 'host' }),
+    subscribe: () => () => undefined,
+    set: async () => true,
+    unset: async () => true,
+    mutate: async () => true,
+  }
+  const ctx = {
+    effect: (callback: () => unknown) => {
+      const dispose = callback()
+      if (typeof dispose === 'function') {
+        events.push('effect')
+        // Disposed at the end: the poll loop is a real `setInterval`, and an
+        // undisposed one keeps `node:test` alive until its 30s tick.
+        disposers.push(dispose as () => void)
+      }
+    },
+    on: () => () => undefined,
+    get: () => undefined,
+    locale: { register: () => () => undefined, bind: () => (key: string) => key },
+    slots: { inject: () => () => undefined, register: () => () => undefined },
+    configForms: {
+      get: (namespace: string) => {
+        events.push(`configForms.get(${namespace})`)
+        return form
+      },
+    },
+    remote: {
+      // The platform's mount path: validate the contribution, then install the
+      // `remote.<namespace>` service. This is the step that threw on 0.2.
+      $mount: async (contribution: unknown) => {
+        try {
+          await registry.register(contribution)
+          events.push('mounted')
+        } catch (error) {
+          mountError = error
+          throw error
+        }
+        return () => undefined
+      },
+    },
+  }
+
+  const errors: string[] = []
+  const realError = console.error
+  console.error = (...args: unknown[]) => {
+    errors.push(args.map(String).join(' '))
+  }
+  try {
+    client.apply(ctx)
+    await new Promise(resolve => setImmediate(resolve))
+  } finally {
+    console.error = realError
+    for (const dispose of disposers.reverse()) dispose()
+  }
+
+  assert.equal(mountError, undefined, `the shipped contribution was rejected: ${String(mountError)}`)
+  assert.deepEqual(errors, [], 'a rejected mount must also be reported, not swallowed')
+  assert.notEqual(registry.lookup('usageState/getState'), undefined)
+  assert.notEqual(registry.lookup('usageState/describeCredentials'), undefined)
+  assert.deepEqual(events, ['effect', 'configForms.get(usage-state)', 'effect', 'effect', 'mounted'])
 })

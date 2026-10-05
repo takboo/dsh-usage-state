@@ -7,9 +7,15 @@ import type { UsageStateClientState } from './store.ts'
  * The slice of the client store the status line reads. Declared here so the
  * component does not depend on the store's full surface (and tests can pass a
  * literal).
+ *
+ * `status` and `error` belong to that slice because a failed RPC is a state the
+ * line has to be able to name: without them, "the plugin never heard back from its
+ * own host" is indistinguishable from "this source does not serve that mode".
  */
 export interface UsageStateSnapshotSource {
   getSnapshot(): {
+    status: 'idle' | 'loading' | 'ready' | 'error'
+    error: string | undefined
     catalog: SourceCatalog
     snapshots: Record<string, UsageSnapshot>
     credentials: Record<string, CredentialDescription>

@@ -171,6 +171,7 @@ npm publish --cache /tmp/npm-cache              # ~/.npm 不可写时必须带 -
 | 收录结果（本轮） | 条目 PR 已合并、条目已在 plugins.json；本条补记「站点 ≠ 市场」的目录双源事实与修正后的自检命令 |
 | 0.2 线兼容复核（0.3.2） | 放宽 `engines.dsh` 到 `>=0.1.5-rc.1 <0.3.0-0`（修订 16）；无代码改动——两版声明构建出的 `lib/` 逐字节相同 |
 | 0.2 设置模型迁移（0.4.0） | 0.2 删除了 `settingsScope`/`settings.register`，0.3.2 的兼容声明被真机推翻；改为 `Config`（volatile `any`）+ `configForms` + `configEditor` 跨条目读，`engines.dsh` 收成 `>=0.2.0-rc.2 <0.3.0-0`（修订 17） |
+| 客户端 RPC 契约补课（0.4.1） | 0.2 的客户端 registry 要求 strict codec 带 `create()`，0.4.0 因此从未挂载 `remote.usageState`（读数全缺 + 误报 Mode not supported）；补 `create()`、不再静默吞 mount rejection、catalog 为空时改说"读取中"，并把真实 registry 契约测试写进单测（修订 18） |
 
 ## 9. 从真机调试里学到的平台事实（下次直接复用）
 
@@ -178,12 +179,17 @@ npm publish --cache /tmp/npm-cache              # ~/.npm 不可写时必须带 -
 2. **宿主 codec 必须是 zod v4**（loader 检查 `'_zod' in schema`），因此 `zod` 是运行时依赖。
 3. **RPC 参数个数是精确匹配**：可选参数也必须显式传（配合 `acceptsUndefined: true`）。
 4. **`ctx.remote.<ns>` 属性访问需要 inject**；读自己贡献的命名空间必须用 `ctx.get('remote.<ns>')`（否则 `cannot get property … without inject`）。
-5. **link 装载的插件解析不到 `@deepseek-ai/*`**（只解析自己的 `node_modules`），宿主半边一律用结构化类型。
+5. **`@deepseek-ai/*` 能不能解析，取决于插件是「装进 profile」还是「link 挂载」**（2026-10-05 校准；原文只写了后半句）：
+   - **pnpm 装进 profile 的插件**（npm / 市场 / `dsh plugin add <tarball>`）：loader 给它们平台的模块回落，`import z from '@deepseek-ai/schemastery'` 正常工作——用探针插件在全新 `DSH_HOME` 上实测（`PROBE-RESULT: schemastery import OK`）。`dshmarket`、`@mzzsfy/dsh-turn-notify` 等第三方插件正是靠这条活着；我们的宿主半边从 0.4.0 起也依赖它。
+   - **`link:` 挂载在 profile 之外的插件**：**没有**这层回落，只按 Node 常规从自己所在目录向上找，所以 `@deepseek-ai/*` 报 `ERR_MODULE_NOT_FOUND`（同探针 link 挂载实测：`dsh: warning: 1 entry did not activate / probe-schemastery: failed to import`）。
+   - **这构成一个验证陷阱**：本仓库**自己有** `node_modules/@deepseek-ai/schemastery`，所以用 `dsh plugin add "$PWD"`（link）做冒烟会**假绿**——解析成功靠的是仓库的 devDependencies，不是平台回落。冒烟必须走 `npm pack` + 安装 tarball（§10 第 2 步已据此改写）。
+   - 其余宿主代码仍一律使用结构化类型：平台包只 import 这一处。
 6. **bundle patch（含插件自己的 `cordis.patch.yml`）只在启动时读取**；客户端 bundle 会被 `dsh-client-hmr` 热替换（`tsdown --watch` 足够，无需 `pnpm run dev:web`）。
 7. **Node 的类型剥离不支持 `.tsx`/构造器参数属性/枚举**：`src` 避开这些写法，`.tsx` 由测试钩子用项目自带 TypeScript 转译。
 8. **浏览器包不能在 Node 里 import**（CSS 模块 + 未声明的传递依赖）→ 渲染测试用模块钩子替换 primitives 桩件。
 9. **z.ai 用 HTTP 200 + `{success:false,code:1000,msg}` 表达鉴权失败**；区域站点互不认对方的 key。
-10. **外部插件事件在 0.1.5-rc.2 是"设计上可读、实际上不可写"**：会话日志的读取侧**支持**未知类型——只要事件带 `SessionEvent.ignorable: true` 就安全跳过（`KNOWN_SESSION_EVENT_TYPES` 的注释明确说仓库外插件事件"by construction"不在名单里，该标记就是兼容机制）。但**写侧没有任何入口能设置它**：`Session.append(type, data, opts)` 只透传 `sourceEventSeqs` / `surfaceOp`，构造出的信封只有 `type/seq/time/data`；`materializeAppendBatch()` 只做 JSON 快照与冻结；`SessionHandle.append()` 是持久化层直写（要求 seq 连续），绕过活动会话日志会让内存日志与存储日志错位，且读取侧照样拒绝。
+10. **客户端 Typert contribution 的 strict codec 必须带 `create()`（0.2 起）**：`@deepseek-ai/dsh-typert-registry/client` 的 `validateCodec` 对非 `src-json` 的 codec 要求 `typeof codec.create === 'function'`，而 0.1.5 只校验 `mode` 与 `typeSymbol`。缺了它 `remote.$mount()` 的 promise 直接被拒，`remote.<namespace>` 服务不会安装——**症状是读数全缺，而不是启动失败**（0.4.0 踩过，见修订 18）。协议里解码走 `codec.create().parse(value)`；宿主清单的同一要求由 `@deepseek-ai/dsh-typert-loader` 把关。
+11. **外部插件事件在 0.1.5-rc.2 是"设计上可读、实际上不可写"**：会话日志的读取侧**支持**未知类型——只要事件带 `SessionEvent.ignorable: true` 就安全跳过（`KNOWN_SESSION_EVENT_TYPES` 的注释明确说仓库外插件事件"by construction"不在名单里，该标记就是兼容机制）。但**写侧没有任何入口能设置它**：`Session.append(type, data, opts)` 只透传 `sourceEventSeqs` / `surfaceOp`，构造出的信封只有 `type/seq/time/data`；`materializeAppendBatch()` 只做 JSON 快照与冻结；`SessionHandle.append()` 是持久化层直写（要求 seq 连续），绕过活动会话日志会让内存日志与存储日志错位，且读取侧照样拒绝。
     **实测（离线，2026-09-21，`dsh-session` + `dsh-session-persistence` 均 `0.1.5-rc.2`）**：`Session.append('usage-state/turn-usage', …)` 写入成功但信封无 `ignorable` → `validateStoredEvents(meta, [event])` 抛 `SessionFormatUnsupportedError`（*"contains event type … unknown to this harness and not marked ignorable; refusing to interpret the log"*）；手工补 `ignorable: true` 后校验通过（证明标记有效、只缺写入口）；对照组 `command/run` 正常通过。
     **结论**：插件**不得**往会话日志追加自有类型事件——日志是 append-only，写进去无法撤销，且会让别人的读取器拒绝重建整个会话。任何"数据跟着会话生命周期走/随会话迁移"的需求，在当前平台版本都没有合法落点。平台也明确否决过"事件名注册"方案。**若将来版本给 `append` 加上该标记（或提供注册通道），这条才需要重写。**
     复现（用平台自己的包，无需启动 DSH；`@deepseek-ai/dsh-session` 与 `-persistence` 未列为本仓库依赖，需从 DSH 安装目录借 `node_modules`）：
@@ -197,7 +203,7 @@ npm publish --cache /tmp/npm-cache              # ~/.npm 不可写时必须带 -
     validateStoredEvents(session.header, [event])  // throws SessionFormatUnsupportedError
     validateStoredEvents(session.header, [{ ...event, ignorable: true }])  // 通过
     ```
-11. **回合级插槽都不适合承载常显的行**：`conversation.chat.turnTail` 是 chain（单赢家，`dsh-client-ui-deliverables` 与 `dsh-better-sidebar` 都注册在此），任何产出文件的回合都会把它们之一选为赢家，其他条目**不会被询问**，`select` 又被契约要求是纯函数、无法让路；`conversation.chat.assistant-actions` 是 list 槽（无抢占），但由平台渲染在**回合动作条**内，而该条在**非最新回合是 `opacity: 0` + `:hover` 才显示**（平台自己的每回合 token/耗时面板也在那里；`MessageIconActions.extraActions` 的位置由平台固定——类型注释原文 *"placed between the built-in copy and branch controls"*，且整条只有 28px 高）。
+12. **回合级插槽都不适合承载常显的行**：`conversation.chat.turnTail` 是 chain（单赢家，`dsh-client-ui-deliverables` 与 `dsh-better-sidebar` 都注册在此），任何产出文件的回合都会把它们之一选为赢家，其他条目**不会被询问**，`select` 又被契约要求是纯函数、无法让路；`conversation.chat.assistant-actions` 是 list 槽（无抢占），但由平台渲染在**回合动作条**内，而该条在**非最新回合是 `opacity: 0` + `:hover` 才显示**（平台自己的每回合 token/耗时面板也在那里；`MessageIconActions.extraActions` 的位置由平台固定——类型注释原文 *"placed between the built-in copy and branch controls"*，且整条只有 28px 高）。
     这条事实与"要不要在回合上展示账户读数"是两件事：后者已按 `design-consensus.md` 修订 13 **否决**（账户级读数不属于回合），因此本插件现在只挂 `conversation.composer.dock`；上面这些平台行为记录下来，是为了下次有人想在回合动作条里放东西时不必重新踩一遍。
 
 ## 10. 发布与收录（npm / dsh-market）
@@ -233,6 +239,7 @@ npm publish --cache /tmp/npm-cache              # ~/.npm 不可写时必须带 -
 **`0.3.2` 的结论被推翻（2026-10-05）**：`0.3.2` 声称 0.2 线可用，但真机在桌面壳 `0.2.0-rc.2` 上启动崩溃——`web boot: 1 entry did not activate / dsh-usage-state: pending (waiting for service: settingsScope)`，桌面壳据此弹"启动失败"对话框，用户选择"禁用第三方插件"后 profile 里 5 个第三方插件全被关掉。原因是 0.2 **删除了** `settingsScope`（客户端）与 `settings.register`（宿主），换成 `configForms` + 插件自带 `Config`（详见 `design-consensus.md` 修订 17）。上面那条"`__DSH_BOOT__` 里有这个入口就算通过"的验证方法**本身不成立**：pending 的入口照样在列表里、`client.js` 照样返回 200。**§10 的复核步骤已据此改写。**
 
 **`0.4.0`**（2026-10-05）迁到 0.2 原生设置模型，`engines.dsh` 收成 `>=0.2.0-rc.2 <0.3.0-0`，新增 `peerDependencies: @deepseek-ai/dsh-settings@^0.2.0-rc.2`（让 0.1.x 宿主的运行时安装闸门直接拒绝，而不是装上后崩）与 `@deepseek-ai/schemastery@^3.18.2`（loader 要用它校验导出的 `Config`）。代码面：`src/host/settings.ts` 重写（volatile `Config` + 根引用读取 + `configEditor` 跨条目读取）、`src/client/settings-form.ts` 新增（`configForms` → settings scope 适配器）、`src/client/{index.tsx,context.ts}` 换服务名、`cordis.patch.yml` 补 `config: {}`、客户端 `devDependencies` 上移到 `^0.2.0-rc.2`。发布记录与验证见 §10。
+**`0.4.1`**（2026-10-05）修 0.4.0 的读数缺失：客户端 contribution 的参数 codec 缺 `create()`，被 0.2 的**客户端** registry 拒绝（0.1.5 不要求），`remote.usageState` 从未挂载，于是 catalog 为空、状态行误报 `Mode not supported`。修法与守护见修订 18；发布产物仍是同一份 `engines.dsh`/peer 声明，因此 0.3.2↔0.4.x 的市场兼容判定不变。
 
 **端到端安装验证**（2026-09-22，把 `DSH_HOME` 指到 `/tmp/dsh-home-verify` 绕开宿主沙箱对 `~/.dsh` 的写限制，因此不需要动用户的真实 profile）：跑市场将来会执行的那条命令
 
@@ -261,7 +268,10 @@ cd <repo> && npm install --cache /tmp/npm-cache && npm run typecheck && npm test
 # 2) 真机装配 + 启动（DSH_HOME 指到 /tmp，不动用户 profile）
 #    第 1 条会建好 profile 并直接启动；确认建立后 Ctrl-C 即可
 DSH_HOME=/tmp/dsh-home-verify "$DSH" --profile p --from-default-profile web --dump-config
-DSH_HOME=/tmp/dsh-home-verify "$DSH" plugin --profile p add "$PWD"
+#    必须装 tarball，不能 add "$PWD"（link）：链接装的插件没有平台模块回落，
+#    而本仓库自带 node_modules/@deepseek-ai/schemastery，会让冒烟假绿（见 §9 第 5 条）。
+npm pack --pack-destination /tmp --cache /tmp/npm-cache
+DSH_HOME=/tmp/dsh-home-verify "$DSH" plugin --profile p add /tmp/dsh-usage-state-<version>.tgz
 DSH_HOME=/tmp/dsh-home-verify "$DSH" --profile p --dump-config   # 期望 - id: usage-state / config: {}
 
 # 3) ★ 宿主侧激活判据：启动 stderr 不允许出现任何激活告警
@@ -289,6 +299,16 @@ curl -s -L -c /tmp/c.txt -b /tmp/c.txt -o /tmp/served-client.js \
 # 6) 服务名双向核对：宿主/客户端确实提供了 inject 里的每个名字
 #    客户端侧：grep 'super(ctx, "configForms"' 等；宿主侧：auditStartupEntries 的告警为空（第 3 步）
 #    平台自己的同类插件是最快的参照：@deepseek-ai/dsh-client-locale 的 client inject 也写 configForms。
+# 7) ★ RPC contribution 契约：拿真实 registry 校验（0.4.0 就是在这里漏的）
+#    入口"激活"只证明 cordis 服务注入成功；remote.$mount() 是另一条契约。
+npm test                     # 内含两条：tests/client/contribution.test.ts（源码）
+                             # 与 tests/build/bundle.test.ts（构建产物 lib/client.js）
+                             # 都把 contribution 注册进真实的
+                             # @deepseek-ai/dsh-typert-registry/client 并要求 endpoint 可解析。
+#    真机再加一道：取宿主实际发出的产物，塞进假模块表 + 真实 registry 跑 apply()
+curl -s -L -b c.txt "http://127.0.0.1:<port>/plugins/??dsh-usage-state/client.js&rev=<boot里的rev>" -o served.js
+#    期望：apply() 走到 "mounted"，usageState/getState 可解析，且 console.error 为空。
+#    （harness 见 tests/support/browser-face.mjs：loadBrowserFace / realRegistry / shellModuleTable）
 ```
 
 其中 `$DSH` = `/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh`（CLI 不注册到 PATH）。第 2 步的 `--port` 是 app 参数，写在 `--profile` 之后；profile 名后**不要**再跟 `web`，否则报 `too many arguments`。`--profile desktop` 会被拒绝（`managed exclusively by the Electron application`），复核用自建 profile。

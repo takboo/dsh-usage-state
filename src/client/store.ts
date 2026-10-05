@@ -170,4 +170,15 @@ export class UsageStateClientStore {
       this.publish({ credentialsError: messageOf(error) })
     }
   }
+
+  /**
+   * Record that the RPC contribution never mounted.
+   *
+   * Without this the only symptom is an empty catalog, which every surface reads
+   * as "nothing configured yet" — the real cause has to be nameable, because it is
+   * a plugin/host contract failure, not something the user can configure away.
+   */
+  failRemote(message: string): void {
+    this.publish({ status: 'error', error: message, catalog: [], snapshots: {} })
+  }
 }

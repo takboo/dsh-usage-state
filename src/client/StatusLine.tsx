@@ -1,7 +1,7 @@
 import { Fragment } from 'react'
 import { Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
 
-import { describeStatus, type ModelStatus, type Severity } from '../shared/display.ts'
+import { describeStatus, type ModelStatus, type Severity, type StatusSegment } from '../shared/display.ts'
 import { resolveProvider } from '../shared/providers.ts'
 import type { UsageStateConfig } from '../shared/config.ts'
 import type { UsageStateSnapshotSource } from './status-source.ts'
@@ -99,7 +99,7 @@ function renderPart(part: StatusPart, t: Translate, key: number) {
 }
 
 /** Map a provider resolution onto what the line can say about it. */
-function statusOf(resolution: ReturnType<typeof resolveProvider>): ModelStatus {
+function statusOf(resolution: ReturnType<typeof resolveProvider>, catalogEmpty: boolean): ModelStatus {
   switch (resolution.reason) {
     case 'hidden':
       return { kind: 'hidden' }
@@ -107,7 +107,15 @@ function statusOf(resolution: ReturnType<typeof resolveProvider>): ModelStatus {
       return { kind: 'needs-endpoint' }
     case 'unknown-source':
     case 'unsupported':
-      return resolution.sourceId === null ? { kind: 'unconfigured' } : { kind: 'unsupported' }
+      // No source could be suggested at all, so this one is genuinely the user's to
+      // configure.
+      if (resolution.sourceId === null) return { kind: 'unconfigured' }
+      // A suggested source the client cannot see yet is an unanswered RPC, not a
+      // mode conflict: the catalog and the readings travel in the same answer, so
+      // claiming "unsupported" here sends the user hunting for a configuration
+      // problem that does not exist.
+      if (catalogEmpty) return { kind: 'loading' }
+      return { kind: 'unsupported' }
     case 'auto':
     case 'configured': {
       if (resolution.key === undefined || resolution.sourceId === null || resolution.mode === null) {
@@ -137,15 +145,25 @@ export function StatusLine(props: StatusLineProps) {
   // No model in play yet (a brand-new session): say nothing rather than "not configured".
   if (config === undefined || current === null) return null
 
-  const status: ModelStatus = statusOf(resolveProvider({ provider: current.provider, config, catalog: state.catalog }))
+  const status: ModelStatus = statusOf(
+    resolveProvider({ provider: current.provider, config, catalog: state.catalog }),
+    state.catalog.length === 0,
+  )
   const snapshot = status.kind === 'ready' ? state.snapshots[status.key] : undefined
   const sourceLabel =
     status.kind === 'ready'
       ? (state.catalog.find(entry => entry.id === status.sourceId)?.displayName ?? status.sourceId)
       : ''
 
+  // A transport failure with no catalog is not a per-provider problem, so it never
+  // reaches `describeStatus`: the line states the RPC failure itself.
+  const segments: StatusSegment[] =
+    state.catalog.length === 0 && state.status === 'error' && state.error !== undefined
+      ? [{ kind: 'state', state: 'error', errorDetail: state.error }]
+      : describeStatus({ sourceLabel, status, snapshot, display: config.display, now })
+
   const fullParts = statusParts({
-    segments: describeStatus({ sourceLabel, status, snapshot, display: config.display, now }),
+    segments,
     t,
     now,
     ...(sourceLabel === '' ? {} : { sourceLabel }),
