@@ -264,3 +264,23 @@ font-size: var(--dsh-content-font-size-secondary, 13px);
     - 新增几何回归测试（`tests/client/render.test.ts`：断言无 `width:100%`/`margin:0 auto`、有 `max-width:100%`/`min-width:0`/`border-radius:999px`/`justify-content:flex-start`）。样式回归靠断言，不靠肉眼。
 
     **代价与边界（需知悉）**：**0.2 里已经没有"输入框下方独占一整行"的挂载点**——`conversation.composer.dock` 是唯一在输入框之下的槽位，且与平台统计、上下文计量器共排；`conversation.chat.*` 是回合级插槽（修订 13 已否决），`shell.overlay` 是浮层。因此本插件现在只能是这一排里的一个 pill；要恢复独立一行，只能请上游提供第二个槽位。行宽不足时，因为只有我们设了 `min-width:0`，被压缩的是我们这一项（尾部裁切、完整内容在 tooltip 与设置页里）——这是有意的取舍。
+
+20. **状态行迁到 `conversation.input.dock`：0.2 里唯一能"独占一行"的位置**（0.4.2）
+    修订 19 把状态行改成了与平台统计共排的 pill，但用户的诉求是"像原来那样单独一行"。于是把 0.2 的槽位与渲染位置完整侦察了一遍，结论如下（都已核对产物，不是猜的）：
+
+    **0.2 的组合器结构**（`dsh-client-ui-conversation/lib/client.js`）：
+    ```
+    .scrollBody > [ Views(会话内容), composerSeat(composer) ]        ← composer 是最后一个元素
+    composerSeat > .composerStack                                    ← column flex，gap 6px，无 align-items
+      .composerStack > [ hero…, renderSlot("conversation.input.dock", zone), inputBar ]
+      inputBar      > [ (notice), .card(输入卡片：.row…), .dock(composer.dock + ContextMeter) ]
+    ```
+    - `composer` 之后**没有任何槽位**——"输入框之下"要么是 `.dock`（修订 19：与平台 `StatsPills`、`ContextMeter` 共排的一行 pill，nowrap），要么不存在；
+    - `.dock` 是 `display:flex; justify-content:center; gap:12px` 且**没有 `flex-wrap`**，所以那一排里任何"自己一行"的尝试都只能靠挤压兄弟实现；
+    - `conversation.input.dock` 是 **`{kind:"list", scope:"session"}`** 正式声明的槽位（平台的排队消息 dock 就注册在 `id:"queue", order:20`），渲染在**输入卡片之上**，且 `.composerStack` 是 column flex → 贡献默认被 stretch 成**整行宽**；平台自己的 queue dock 用的就是 `width:100%; max-width:var(--dsh-composer-card-max-width)`。
+    - 同时确认的其它槽位（供后来者省一次侦察）：`conversation.composer.bar`（其 children 为 `input.{attachments,overlay,permission,left,plan,right,model,activity}` + `composer.dock`）、`conversation.{view,content,header,session,session.header,session.header.*}`、`conversation.chat.{node,turnTail,assistant-actions,commandview}`、`main.conversation`、`shell.{leading,overlay}`、`sidebar`、`rightbar`、`settings.general.item`。没有 `conversation.footer` / `composer.stats` 这类槽位。
+
+    现决策：状态行改挂 **`conversation.input.dock`**（`id: usage-state`, `order: 200`，排在排队消息之后），样式改成整行块：`width:100%` + `max-width:var(--dsh-composer-card-max-width)` + `margin:0 auto` + `padding:0 var(--dsh-composer-side-clearance)`，`justify-content:center`，并加 **`flex-wrap:wrap`**（窄窗口下在**段与段之间**换行，而不是裁切或挤压平台布局）。`font:inherit` 保留（与输入框区一致）。
+
+    **代价（需知悉）**：① **位置从"输入框之下"变成"输入框之上"**——0.2 里输入框之下不存在整行位置，这是"独占一行"的唯一代价；② 读数很长时（标签 + 三个窗口）会折成两行，这是有意的取舍（比裁切诚实）；③ 该槽位的 `zone` 门控是 `session && inputState`，正常会话里恒成立，但**全新空会话/hero 态**可能不渲染，此时不显示。
+    **验证**：`tests/client/slots.test.ts` 断言挂载点唯一且 `order > 20`；`tests/client/render.test.ts` 断言`width:100%` + 卡片宽度上限 + `margin:0 auto` + `flex-wrap:wrap`，且不再出现 pill 几何（`border-radius:999px`）与 `overflow:hidden`。

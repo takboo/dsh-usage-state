@@ -115,7 +115,7 @@ export function apply(ctx: ClientContextLike): void {
   const seat = () => ({ usageState: store, settings })
 
   // Mount points live as data (see slots.ts) so the choice stays testable: the
-  // line has one home, the composer dock. Turn-scoped slots are deliberately not
+  // line has one home, the composer's input dock. Turn-scoped slots are deliberately not
   // used — a turn is the wrong axis for an account-level reading.
   for (const slot of STATUS_LINE_SLOTS) {
     ctx.slots.inject(slot.name, () =>

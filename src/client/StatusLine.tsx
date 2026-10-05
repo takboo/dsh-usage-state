@@ -17,42 +17,40 @@ export interface StatusLineProps {
 }
 
 const BASE_STYLE = {
-  display: 'inline-flex',
+  display: 'flex',
   alignItems: 'center',
-  // Contents start at the leading edge: any clipping this row does must eat the
-  // tail, never the first segment (centered contents clip at both ends).
-  justifyContent: 'flex-start',
+  justifyContent: 'center',
   gap: '6px',
-  // `font: inherit` is the platform's own `.pill` convention: the dock row is shared
-  // with those pills, so inheriting its type keeps this line the same size as them
-  // instead of one step smaller.
+  // `font: inherit` follows the platform's own composer chrome instead of guessing a
+  // size, and keeps this line the same weight as the statistics beside the input.
   font: 'inherit',
   lineHeight: 'inherit',
   fontVariantNumeric: 'tabular-nums',
+  // Segments stay whole: wrapping happens *between* them (see DOCK_STYLE).
   whiteSpace: 'nowrap' as const,
-  // Shrinkable, but never wider than the dock: `minWidth: 0` is what allows a flex
-  // item to shrink below its content width instead of overflowing the row.
-  maxWidth: '100%',
-  minWidth: 0,
-  overflow: 'hidden',
 }
 
 /**
- * The composer mount point.
+ * The composer mount point: one full-width line in the composer stack, directly
+ * above the input card.
  *
- * DSH 0.2 renders `conversation.composer.dock` as a centered flex row that already
- * holds the platform's own stats pill (`id: "stats"`) and the context meter, so this
- * is **one item in that row**, not a row of its own. Claiming `width: 100%` here
- * squeezed every sibling down to its minimum width and, because this component also
- * centered its contents inside an `overflow: hidden` box, clipped its own first and
- * last segments at both ends. It now follows the platform's `.pill` convention:
- * content-sized, 999px radius, inherited typography.
+ * `conversation.input.dock` is a stretched column child (`.composerStack` is a column
+ * flex with no `align-items`), so the width comes from the card's own custom
+ * property, exactly like the platform's queued-message dock in that slot. It is
+ * **not** the row below the card: `conversation.composer.dock` there is one centered
+ * flex row shared with the platform's stats pill and the context meter, where a
+ * contribution can only ever be a pill beside them (revisions 19 and 20).
  */
 const DOCK_STYLE = {
   ...BASE_STYLE,
-  maxWidth: '100%',
-  padding: '1px 8px',
-  borderRadius: '999px',
+  // Wrapping is what keeps a long reading readable on a narrow window: without it the
+  // line would either clip or push the platform's layout around.
+  flexWrap: 'wrap' as const,
+  rowGap: '2px',
+  width: '100%',
+  maxWidth: 'var(--dsh-composer-card-max-width)',
+  margin: '0 auto',
+  padding: '0 var(--dsh-composer-side-clearance)',
 }
 
 const LABEL_STYLE = { color: 'var(--dsw-alias-label-tertiary)' }

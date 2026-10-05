@@ -2,12 +2,12 @@
 
 **中文** | [English](README.en.md)
 
-在 [DSH（DeepSeek Harness）](https://github.com/deepseek-ai) 里一眼看到你的**账户余额**或**套餐额度**——就在输入框下方那一行、与原生统计并排（0.2 起 dock 是同一排居中 pill）。
+在 [DSH（DeepSeek Harness）](https://github.com/deepseek-ai) 里一眼看到你的**账户余额**或**套餐额度**——就在输入框上方、与输入卡片同宽的一行（原生统计行与其弹窗原样保留、不做替换）。
 
 > A minimal DSH plugin that shows your account **balance** (API mode) or **coding-plan quota** (5h / 7d / 30d) for the model you are using, right under the composer.
 
 ```
-输入框统计行（同一排）：      z.ai / GLM · 5h 12% (4h0m) ▓▓▓░░░░░ · 7d 59% (3d17h) ▓▓▓▓▓░░░
+输入框上方独立一行：      z.ai / GLM · 5h 12% (4h0m) ▓▓▓░░░░░ · 7d 59% (3d17h) ▓▓▓▓▓░░░
                         DeepSeek · ¥58.13
 悬停任意一段：          Source DeepSeek · Mode API balance · Granted 0 · Topped up 58.13
 ```
@@ -16,7 +16,7 @@
 
 - **零配置可用**：按 provider 自动识别该用哪个数据源与模式，DSH 里配过的密钥会被自动复用，不填任何东西就能看到读数。
 - **账户级配置**：余额与额度是账户级的，所以每个供应商只配一次（`自动` / `API` / `Coding Plan` / `隐藏`），模型清单只作展示。
-- **始终可见一行**：固定在输入框下方的统计行里（0.2 的 `conversation.composer.dock` 是与原生统计 pill、上下文计量器**同一排**的居中横排；原生统计与其弹窗原样保留、不做替换），不需要悬停或点击。
+- **始终可见一行**：独占一行、位于输入框上方（DSH 0.2 把它挂在 `conversation.input.dock`，与输入卡片同宽居中；原生统计行与上下文计量器原样保留、不做替换），不需要悬停或点击。
 - **失败不撒谎**：请求失败时保留上次成功值并标明「多久之前 + ⚠」，**绝不显示 0 或伪造数据**；密钥无效、接口报错、网络不可达会分别给出可读原因。
 - **悬浮提示**：每段文字悬停显示一行放不下的信息——数据源与模式、窗口的绝对重置时刻、余额的赠送/充值构成、失败原因与原始消息。
 - **中英双语**：跟随 DSH 的语言设置（`locale.preference`），设置页与状态行都不含硬编码文案。
@@ -57,7 +57,7 @@ dsh plugin --profile web add /path/to/dsh-usage-state
 
 1. 打开 **设置 → 用量状态**：DSH 里配置的每个供应商一行。
 2. 保持默认的 **自动** 即可（它会识别数据源与主模式）；需要时改成 `API` / `Coding Plan` / `隐藏`，或用 ↑↓ 调整顺序。
-3. 该供应商的账户读数会出现在输入框下方统计行的末尾（原生统计 pill 之后）。
+3. 该供应商的账户读数会出现在输入框上方、与输入卡片同宽的一行。
 
 若某个数据源需要端点或密钥（例如自建的 Sub2API、或尚未配置的 z.ai），展开该行的 **高级**：可覆盖数据源、填接口地址、指定凭据名、粘贴密钥（写入 DSH 凭据库）。
 
@@ -65,7 +65,7 @@ dsh plugin --profile web add /path/to/dsh-usage-state
 
 ## 截图
 
-输入框下方统计行里的账户读数（图示为 OpenCode Zen Go 的三个窗口，悬停任意一段可看数据源、模式与绝对重置时刻）：
+输入框上方独占一行的账户读数（图示为 OpenCode Zen Go 的三个窗口，悬停任意一段可看数据源、模式与绝对重置时刻）：
 
 ![输入框下方的账户读数](https://raw.githubusercontent.com/takboo/dsh-usage-state/main/assets/screenshots/status-line.webp)
 
@@ -125,6 +125,7 @@ dsh plugin --profile web add /path/to/dsh-usage-state
 
 - **只支持 DSH 0.2 线**：`engines.dsh` = `>=0.2.0-rc.2 <0.3.0-0`（市场读它做徽标与"可安装"判定）。0.2 之前的宿主请装 `0.3.2`。
 - `peerDependencies` 里有 `@deepseek-ai/dsh-settings`（`^0.2.0-rc.2`）与 `@deepseek-ai/schemastery`（`^3.18.2`）：前者是**故意的**——平台的运行时安装闸门只读 `@deepseek-ai/dsh*` 的 peer，声明它可以让 0.1.x 宿主在**安装时**就拒绝，而不是装上之后把启动搞崩；两者都由平台提供，pnpm 可能为此打一行 `missing peer` 警告，属预期。
+- 版本 `0.4.2`：状态行迁到 `conversation.input.dock`，成为**输入框上方的独立一行**（0.1 时代它在输入框之下，而 0.2 把那个位置改成了与平台统计、上下文计量器共排的一排 pill——见修订 19/20）。
 - 版本 `0.4.1`：修 `0.4.0` 的读数缺失——客户端 RPC contribution 的参数 codec 少了 0.2 要求的 `create()`，`remote.usageState` 因此从未挂载，界面表现为**没有任何读数**并误报 `Mode not supported`。同一轮还让挂载失败不再被静默吞掉、catalog 未到时改说「读取中」，并把**真实 0.2 registry 契约测试**写进单测（修订 18）。**请用 `0.4.1`，不要用 `0.4.0`。**
 - 版本 `0.4.0`：迁到 0.2 原生设置模型（`Config` + `configForms`，宿主侧 `configEditor` 读跨条目配置）。验证方式与结论见 [`docs/implementation.md`](docs/implementation.md) §10、决策见 [`docs/design-consensus.md`](docs/design-consensus.md) 修订 17。
 - 版本 `0.3.2`（0.1 线末版）：仅放宽 `engines.dsh`；**它声称的 0.2 兼容是错的**（0.3.2 在 0.2.0-rc.2 上会因 `settingsScope` 不存在而让整个 web 启动失败）。

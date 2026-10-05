@@ -3,11 +3,16 @@ import assert from 'node:assert/strict'
 
 import { STATUS_LINE_SLOTS } from '../../src/client/slots.ts'
 
-test('the status line mounts in exactly one place: the composer dock', () => {
+test('the status line mounts in exactly one place: the input dock', () => {
+  // `conversation.input.dock` is the composer stack's full-width column slot above the
+  // input card — the only position in DSH 0.2 where a reading gets a line to itself.
+  // The row *below* the card (`conversation.composer.dock`) is shared with the
+  // platform's stats pill and the context meter, so a contribution there cannot be a
+  // line (revisions 19/20).
   assert.equal(STATUS_LINE_SLOTS.length, 1)
   assert.deepEqual(
     STATUS_LINE_SLOTS.map(slot => slot.name),
-    ['conversation.composer.dock'],
+    ['conversation.input.dock'],
   )
 })
 
@@ -33,5 +38,7 @@ test('the mount point carries a stable id, order and locale namespace', () => {
     assert.equal(slot.id, 'usage-state')
     assert.equal(slot.locale, 'usage-state')
     assert.equal(typeof slot.order, 'number')
+    // After the platform's queued-message dock (order 20) in the same slot.
+    assert.ok(slot.order > 20)
   }
 })

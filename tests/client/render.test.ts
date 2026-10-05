@@ -146,12 +146,11 @@ test('the status line renders a balance for the session model', () => {
   assert.match(html, /data-tooltip="Source DeepSeek · Mode API balance"/)
 })
 
-test('the dock line is an item in the platform row, not a row of its own', () => {
-  // DSH 0.2 renders `conversation.composer.dock` as a centered flex row that already
-  // holds the platform's stats pill and the context meter. Claiming `width: 100%`
-  // there shrank every sibling to its minimum and clipped this line at both ends
-  // (its own centering plus `overflow: hidden` ate the first and last segments), so
-  // the geometry is asserted here rather than left to the next style edit.
+test('the dock line is a full-width block of its own, aligned with the input card', () => {
+  // `conversation.input.dock` is a stretched column child of `.composerStack`, so the
+  // reading owns a line: it takes the card's width, centres itself in the stack, and
+  // wraps between segments instead of clipping when the window is narrow. It must not
+  // go back to being a pill in the row below the card (revisions 19/20).
   const html = renderToStaticMarkup(
     h(StatusLine, {
       t,
@@ -172,16 +171,14 @@ test('the dock line is an item in the platform row, not a row of its own', () =>
     }),
   )
 
-  // The platform's `.pill` convention: content-sized, rounded, shrinkable.
-  // (`width` unqualified — `max-width: 100%` is expected and correct.)
-  assert.doesNotMatch(html, /(?<![-a-z])width:100%/)
-  assert.doesNotMatch(html, /margin:0 auto/)
-  assert.match(html, /max-width:100%/)
-  assert.match(html, /min-width:0/)
-  assert.match(html, /border-radius:999px/)
-  assert.match(html, /padding:1px 8px/)
-  // Contents align to the leading edge, so overflow can only clip the tail.
-  assert.match(html, /justify-content:flex-start/)
+  // Full width, capped and centred like the composer card it sits above.
+  assert.match(html, /width:100%/)
+  assert.match(html, /max-width:var\(--dsh-composer-card-max-width\)/)
+  assert.match(html, /margin:0 auto/)
+  // Segments stay whole and wrap between each other rather than being clipped.
+  assert.match(html, /flex-wrap:wrap/)
+  assert.doesNotMatch(html, /overflow:hidden/)
+  assert.doesNotMatch(html, /border-radius:999px/)
 })
 
 test('a hidden or unselected model renders nothing at all', () => {

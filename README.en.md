@@ -1,11 +1,11 @@
 # dsh-usage-state
 
-See your **account balance** or **coding-plan quota** at a glance in [DSH (DeepSeek Harness)](https://github.com/deepseek-ai) — in the composer's stats row itself (since DSH 0.2 that slot is one centered row of pills).
+See your **account balance** or **coding-plan quota** at a glance in [DSH (DeepSeek Harness)](https://github.com/deepseek-ai) — on its own line above the composer input, as wide as the input card.
 
 > 中文说明见 [README.md](README.md)。
 
 ```
-in the composer stats row:   z.ai / GLM · 5h 12% (4h0m) ▓▓▓░░░░░ · 7d 59% (3d17h) ▓▓▓▓▓░░░
+its own line above the composer input:   z.ai / GLM · 5h 12% (4h0m) ▓▓▓░░░░░ · 7d 59% (3d17h) ▓▓▓▓▓░░░
                              DeepSeek · ¥58.13
 hover any segment:           Source DeepSeek · Mode API balance · Granted 0 · Topped up 58.13
 ```
@@ -14,7 +14,7 @@ hover any segment:           Source DeepSeek · Mode API balance · Granted 0 ·
 
 - **Works with zero configuration**: the plugin figures out which data source and mode a provider needs, and reuses the API key DSH already has.
 - **Configured per provider, not per model** — readings are account-level, so each provider gets one setting: `Auto` / `API` / `Coding Plan` / `Hidden`. The model list is informational.
-- **One line, always visible**: in the row under the composer (DSH 0.2 renders `conversation.composer.dock` as one centered row holding the native stats pill and the context meter; both are left untouched, not replaced) — no hover, no click.
+- **One line, always visible**: its own line above the composer input (DSH 0.2 mounts it at `conversation.input.dock`, width-matched to the input card; the native stats row and context meter are left untouched, not replaced) — no hover, no click.
 - **Never invents data**: a failed refresh keeps the last good value and marks it stale (`12m ago ⚠`); rejected keys, endpoint errors and network problems each get a readable reason.
 - **Hover details**: source and mode, the window's absolute reset time, the granted/topped-up split of a balance, the failure reason with the provider's own message.
 - **Bilingual** (zh / en), following the DSH locale setting.
@@ -55,7 +55,7 @@ Nothing showing up after installing? See the troubleshooting table at the end of
 
 1. Open **Settings → Usage state**: one row per provider configured in DSH.
 2. Leave it on **Auto** (it detects the data source and its primary mode), or pick `API` / `Coding Plan` / `Hidden`; use ↑↓ to reorder.
-3. The reading appears in the composer's stats row, after the native stats pill.
+3. The reading appears on its own line above the composer input, as wide as the input card.
 
 If a source needs an endpoint or a key (a self-hosted Sub2API, or a provider without a credential yet), expand that row's **Advanced** block to override the source, set the endpoint, name the credential, or paste a key (written to the DSH credential store).
 
@@ -101,6 +101,7 @@ Expanding **Advanced** lets you override the source and endpoint, name a credent
 
 - **0.2 line only**: `engines.dsh` = `>=0.2.0-rc.2 <0.3.0-0` (this is what dsh-market's badge and install gate read). On an earlier host, install `0.3.2`.
 - `peerDependencies` carry `@deepseek-ai/dsh-settings` (`^0.2.0-rc.2`) and `@deepseek-ai/schemastery` (`^3.18.2`). The first one is deliberate: the runtime install gate only reads `@deepseek-ai/dsh*` peers, so declaring it makes a 0.1.x host **refuse the install** instead of accepting it and then failing to boot. Both are platform-provided; pnpm may print a `missing peer` warning for them, which is expected.
+- Version `0.4.2` moves the status line to `conversation.input.dock`, giving it **its own line above the composer input** — DSH 0.2 turned the old below-the-input position into a shared row of pills next to the platform's stats and context meter (revisions 19/20).
 - Version `0.4.1` fixes `0.4.0`'s missing readings: the browser half's RPC contribution lacked the `create()` factory 0.2 requires, so `remote.usageState` never mounted — the UI showed **no readings at all** and mislabelled the cause as `Mode not supported`. The same release stops swallowing a rejected mount, says "reading" while the catalog is absent, and adds **real 0.2 registry contract tests** (revision 18). **Use `0.4.1`, not `0.4.0`.**
 - Version `0.4.0` migrates to the 0.2 settings model (`Config` + `configForms`, with cross-entry config read through `configEditor`). Verification and results: [`docs/implementation.md`](docs/implementation.md) §10; rationale: [`docs/design-consensus.md`](docs/design-consensus.md) revision 17.
 - Version `0.3.2` (last of the 0.1 line) only widened `engines.dsh`; **its claimed 0.2 compatibility was wrong** — on `0.2.0-rc.2` it fails the entire web boot because `settingsScope` does not exist there.
