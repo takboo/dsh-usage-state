@@ -34,7 +34,7 @@
 - **顺序用上/下按钮调整**（平台没有拖拽/排序原语，见 §13 修订 3）；`hidden` 的供应商不进任何状态行。
 - **配置只存"偏差"**：`auto` = 按 provider id 与端点推断数据源 + 取该源的主模式；自建源（需要端点）在没填端点前保持休眠并明确提示。
 - **端点优先级**：插件设置里显式填的端点（钉死，不试镜像）→ 供应商声明的 `baseURL`（取其 origin，仍试镜像）→ 适配器默认。
-- **配置存储**：DSH 设置命名空间 `usage-state`（平台原生 `ctx.settings.register` / 客户端 `ctx.settingsScope.bind`）。不使用插件自有配置文件，不重蹈 cost-meter 把配置塞进自有 ledger 的做法。旧的按模型条目会在归一化时自动迁移成供应商条目。
+- **配置存储**：DSH 设置命名空间 `usage-state` —— 0.2 起它是**插件自己的 profile 条目 id**：宿主导出 `Config = z.any().volatile()`，客户端用 `ctx.configForms.get('usage-state')` 读写，落盘由平台 settings 服务完成（修订 17）。不使用插件自有配置文件，不重蹈 cost-meter 把配置塞进自有 ledger 的做法。旧的按模型条目会在归一化时自动迁移成供应商条目。
 
 ## 4. 密钥
 
@@ -79,7 +79,7 @@ font-size: var(--dsh-content-font-size-secondary, 13px);
 
 ## 7. 数据通道
 
-- **配置**：设置命名空间 `usage-state`，客户端 `settingsScope` 原生读写，宿主 `ctx.settings.register` 读。
+- **配置**：设置命名空间 `usage-state`（= 条目 id），客户端 `ctx.configForms.get()` 原生读写，宿主 `apply(ctx, config)` 拿平台给的**易变根引用**读、`loader/volatile-update` 跟随（修订 17）。
 - **易变快照**：只读 RPC（`ctx.remote.$mount` + Typert 清单），方法面保持最小：**`getState(force)`** 与 **`describeCredentials()`**（force 用于设置页的「立即刷新」）。客户端必须用 `ctx.get('remote.usageState')` 读取（属性访问需要 inject，而该命名空间是本插件自己贡献的，见 §13 修订 7）。
 - 宿主只发**原始数据**（数字、id、时间戳），**文案全部由客户端词典本地化**（平台原生做法，避免 cost-meter 那种宿主/客户端两套字典）。
 
@@ -91,7 +91,7 @@ font-size: var(--dsh-content-font-size-secondary, 13px);
 
 - **TypeScript + `tsdown` 构建**，产出宿主 `lib/index.js`、`lib/typert.js` 与客户端 `lib/client.js`（不产出 `.d.ts`：运行时消费不需要）；解析器用 `node:test` 写单测（sub2api 字段漂移、z.ai 窗口语义推断最需要测）。
 - 包名 `dsh-usage-state`；插件/profile 条目 id 与设置命名空间 `usage-state`；`package.json` 的 `dsh` 字段声明 `bundle.patch` + `client.platform: "web"`；`cordis.patch.yml` 里 `insert` 一行。
-- **实测环境**：DSH `0.1.5-rc.2` 与 `0.2.0-rc.2` + Node ≥20（`engines.dsh = ">=0.1.5-rc.1 <0.3.0-0"`，见修订 16）。平台的 manifest schema **没有** `compatibility` 字段（它只认 `bundle` / `profile` / `client` / `configTrees` / `sessionFormatMigration` / `moduleFallback`），因此没有声明这一项；cost-meter 的 `dsh.compatibility` 与 `dshhub` 是市场元数据，未被平台读取。
+- **实测环境**：DSH `0.2.0-rc.2` + Node ≥20（`engines.dsh = ">=0.2.0-rc.2 <0.3.0-0"`，见修订 17；0.1 线停在 `0.3.2`）。平台的 manifest schema **没有** `compatibility` 字段（它只认 `bundle` / `profile` / `client` / `configTrees` / `sessionFormatMigration` / `moduleFallback`），因此没有声明这一项；cost-meter 的 `dsh.compatibility` 与 `dshhub` 是市场元数据，未被平台读取。
 - 文档：`README.md`（中文，公开仓库门面）+ `README.en.md`（英文）、`docs/implementation.md`（实现与验证总览）、`docs/adapters.md`（adapter 契约 + 已实现厂商字段路径与陷阱 + 未实现候选清单）、`src/host/sources/_template.ts`（新数据源骨架）。
 
 ## 10. 交付与验收
@@ -188,3 +188,32 @@ font-size: var(--dsh-content-font-size-secondary, 13px);
     **验证（2026-09-30，宿主 `0.2.0-rc.2`）**：① `tsc --noEmit` 通过；② 259 条单测全绿（在 0.2.0-rc.2 的 `@deepseek-ai/dsh-client-*` 类型下跑的独立副本，源码同一份）；③ **同一份源码分别对 0.1.5-rc.2 与 0.2.0-rc.2 的声明构建，`lib/{index,client,typert}.js` 逐字节相同**——这是"两条线共用一份代码"的硬证据；④ 真机启动 0.2.0-rc.2 宿主（临时 `DSH_HOME`、独立端口的 web profile）：插件出现在装配树里，出现在 `__DSH_BOOT__` 的 66 条客户端入口中（`inject` 四项原样带出），`plugins/??dsh-usage-state/client.js` 返回 200 且内容就是我们的产物；⑤ 产物只 `require` 三个外部模块（`react`、`react/jsx-runtime`、`@deepseek-ai/dsh-client-ui-primitives`），三者都在 0.2.0-rc.2 shell 的静态模块表 `rM()` 中，我们用到的五个导出（`Tooltip`/`Button`/`Input`/`Switch`/`Tag`）也都在；⑥ 两个挂载点的契约——`conversation.composer.dock` 与 `settings.section`——在两版之间逐字符相同。
     **未覆盖（需知悉）**：没有在真实浏览器里跑 0.2.0-rc.2 的渲染与 typert RPC 往返（本机沙箱里 Chrome 起不来，Electron 又没法规避用户正在用的 GUI 去挂 CDP）。④⑤⑥ 证明的是"能加载、依赖齐全、挂载点契约未变"，肉眼端到端确认留给下一次真机使用。
     **维护义务（沿用修订 14）**：0.3 发布线出现时必须再复核一次。`devDependencies` **刻意留在 `^0.1.5-rc.2`**（区间下界），这样类型检查始终对着最老的受支持宿主——宽区间因此是持续可验证的声明，而不是一次性的口头承诺。
+
+17. **迁到 DSH 0.2 的设置模型：`Config` + `configForms`**（0.4.0）
+    修订 16 的结论——"同一份源码对 0.1.5-rc.2 与 0.2.0-rc.2 两套声明构建出的 `lib/` 逐字节相同，所以两条线共用一份代码"——是**错的**，而且那次验证恰好漏掉了唯一会致命的一环。真机复现（2026-10-05，桌面壳 `0.2.0-rc.2`）：
+
+    ```
+    Error: web boot: 1 entry did not activate
+    dsh-usage-state: pending (waiting for service: settingsScope)
+    ```
+
+    桌面壳把渲染层的启动失败当致命错误：写崩溃报告、弹"启动失败"对话框。用户点了**禁用第三方插件**，`sanitizeProfile()` 把 profile patch 移成 `.bak-<epoch>`、把 `dsh.profile.bundles` 清回模板值——一次服务名失配连带关掉了 profile 里**全部 5 个**第三方插件。
+
+    **根因**：0.2 把客户端设置服务从 `settingsScope` 换成 `configForms`，宿主侧从 `ctx.settings.register(ns, schema)` 换成"插件在自己的 `Config` 里声明 `.volatile()` 字段，settings 服务按 **profile 条目 id** 投影表单、`settings.update/mutate` 落盘"。两套 API **没有一处重叠**。对 121 MB 的 0.2.0-rc.2 `app.asar` 做全量字节扫描：`settingsScope` **0 次**、`configForms` 84 次——不是"能兼容但没实测"，而是**这个服务根本不存在**。
+
+    **为什么修订 16 的验证没抓到**：第 ④ 步只验了"入口出现在 `__DSH_BOOT__` 里、`client.js` 取回 200、外部模块在静态模块表里"。**pending 的入口同样满足这三条**。真正的判定在渲染层：web shell 的启动审计对任何非 active 入口直接 `throw`（宿主 CLI 对非必需入口只 warn，桌面渲染层不是）。兼容复核必须落到"入口**真的激活**"。
+
+    现决策：**只支持 0.2 原生路径**，`engines.dsh` 收成 `>=0.2.0-rc.2 <0.3.0-0`，版本跳到 **0.4.0**（0.1 线留在 `0.3.2`）。
+
+    - **宿主**：`src/host/settings.ts` 导出 `Config = z.any().volatile()`；`apply(ctx, config)` 拿到 loader 给的**根引用**，`config.get()` 读出、`ctx.on('loader/volatile-update')` 跟随变更。原 `readNamespace()`（读别的条目，如 `llm-pi-ai` 的 `apiKeyEnv`/`baseURL`）改从 `configEditor.entries()` 取 `entry.fiber.config`，并按 `Symbol.for('cosmokit.volatile.write')` 递归脱引用。
+    - **客户端**：`inject` 换成 `configForms`，取 `ctx.configForms.get('usage-state')`；新增 `src/client/settings-form.ts` 适配器，把平台的 form 包成组件一直在用的 settings scope——`normalizeConfig` 在这里解码，快照按底层引用缓存（`useSettingsValue` 只靠引用变化重渲染）。
+    - **为什么 `Config` 用 `z.any().volatile()` 而不是逐字段对象**：settings 服务用 schema **投影**表单值，声明式对象 schema 会**静默丢掉**它没声明的每个字段。用真实 schema 实测过：`projectForm` 之后手工文档里的未知键消失，下一次写回就等于删除用户配置。`any` 让投影无损，校验仍由 `normalizeConfig` 一处负责，保持"脏文档也能加载"的原状。
+    - **为什么 `volatile` 加在根上**：loader 只在 `schema.meta.volatile` 时把配置变更判为"仅易变"，从而**原地提交**并发出 `loader/volatile-update`；否则每次设置写入都会**重挂载**插件。
+    - `cordis.patch.yml` 的插入行补 `config: {}`：否则新装实例没有任何配置节、投影出 `undefined`，状态行会一直沉默到用户第一次保存。
+
+    **代价（需知悉）**：① 0.1.x 用户停在 `0.3.2`，不再收到 0.4.x——市场的 `findCompatibleVersion()` 只挑判定兼容的版本，这正是修订 14 说的硬判定；② `peerDependencies` 新增 `@deepseek-ai/dsh-settings` 与 `@deepseek-ai/schemastery`：前者让**运行时安装闸门**（只读 `@deepseek-ai/dsh*` peer）在 0.1.x 宿主上直接拒绝安装，而不是装上后把人家的启动搞崩；pnpm 可能为缺失 peer 打一行警告，这是预期的；③ 客户端 `devDependencies` 随之上移到 `^0.2.0-rc.2`，类型检查从此对着**受支持的下界**而不是 0.1。
+
+    **验证（2026-10-05，宿主 `0.2.0-rc.2`）**：① `tsc --noEmit` 干净；② 272 条单测全绿，含新增的"平台契约"测试（`Config['~standard'].vendor`、根 volatile、引用协议、任意文档无损、`plainConfig` 脱引用、适配器快照引用稳定）；③ 隔离 `DSH_HOME=/tmp/dsh-verify` + 独立端口，用**打包版 CLI（0.2.0-rc.2）**装本地包并启动：宿主启动**零激活告警**（`auditStartupEntries` 会在任何条目失败或挂起时打 `warning: N entry did not activate`），`--dump-config` 装配树里是 `- id: usage-state / config: {}`；④ 带 token 取首页解析 `__DSH_BOOT__`：`dsh-usage-state` 在 66 条客户端入口中、模块表 `inject` 四项原样、`plugins/??dsh-usage-state/client.js` 返回 200；⑤ **把这份真实产物放进 Node 假模块表跑起来**：`exports.inject = ["slots","locale","configForms","remote","remote.session","remote.credentials"]`，`apply()` 依次注册 effect、`configForms.get('usage-state')`、`remote.$mount(contribution)`，无异常。
+    **未覆盖（需知悉）**：仍没有在真实浏览器里跑一遍 0.2 的渲染与 typert RPC 往返（本机沙箱起不了浏览器）。③④⑤ 证明的是"宿主激活 + 产物可加载 + 服务名齐全 + `apply` 可执行"，肉眼端到端留给下一次真机使用。
+
+    **流程教训（已写进 `implementation.md` §10）**：平台兼容复核必须断言"入口**激活**"，不能只断言"入口在列"。宿主侧的判据是启动 stderr 没有 `did not activate` 告警；客户端侧至少要把**真实产物**放进假模块表跑一遍 `apply`。

@@ -22,7 +22,8 @@ hover any segment:           Source DeepSeek · Mode API balance · Granted 0 ·
 
 ## Install
 
-**Requirements**: DSH `0.1.5-rc.2` through `0.2.x`, Node ≥ 20, installed into the `web` profile. The package **ships the prebuilt `lib/`**, so installation has no build step.
+**Requirements**: DSH `0.2.0-rc.2` or a later 0.2 release, Node ≥ 20, installed into the `web` profile. The package **ships the prebuilt `lib/`**, so installation has no build step.
+**On the 0.1 line install `0.3.2` instead**: DSH 0.2 replaced the whole settings API (`settingsScope` / `settings.register` → `configForms` / the plugin's own `Config`), and the two share no surface, so `0.4.0` and up support the 0.2 line only (see revision 17 of [`docs/design-consensus.md`](docs/design-consensus.md)).
 
 ```bash
 # 1) install (npm package)
@@ -98,9 +99,11 @@ Expanding **Advanced** lets you override the source and endpoint, name a credent
 
 ## Compatibility
 
-- Verified against DSH `0.1.5-rc.2` and `0.2.0-rc.2`, Node ≥ 20. The DSH requirement is declared as `>=0.1.5-rc.1 <0.3.0-0` through `engines.dsh` — the whole 0.1 line from 0.1.5 up, plus the 0.2 line (this is what dsh-market's compatibility badge and install gate read).
+- **0.2 line only**: `engines.dsh` = `>=0.2.0-rc.2 <0.3.0-0` (this is what dsh-market's badge and install gate read). On an earlier host, install `0.3.2`.
+- `peerDependencies` carry `@deepseek-ai/dsh-settings` (`^0.2.0-rc.2`) and `@deepseek-ai/schemastery` (`^3.18.2`). The first one is deliberate: the runtime install gate only reads `@deepseek-ai/dsh*` peers, so declaring it makes a 0.1.x host **refuse the install** instead of accepting it and then failing to boot. Both are platform-provided; pnpm may print a `missing peer` warning for them, which is expected.
+- Version `0.4.0` migrates to the 0.2 settings model (`Config` + `configForms`, with cross-entry config read through `configEditor`). Verification and results: [`docs/implementation.md`](docs/implementation.md) §10; rationale: [`docs/design-consensus.md`](docs/design-consensus.md) revision 17.
+- Version `0.3.2` (last of the 0.1 line) only widened `engines.dsh`; **its claimed 0.2 compatibility was wrong** — on `0.2.0-rc.2` it fails the entire web boot because `settingsScope` does not exist there.
 - Published to npm as [`dsh-usage-state`](https://www.npmjs.com/package/dsh-usage-state); GitHub installs work too.
-- Version `0.3.2`: 0.2-line compatibility review (no code change — only `engines.dsh` was widened); DeepSeek, z.ai and OpenCode Zen Go are verified against live accounts; see the limitations below.
 
 ## Limitations
 

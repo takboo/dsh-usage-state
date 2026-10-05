@@ -170,6 +170,7 @@ npm publish --cache /tmp/npm-cache              # ~/.npm 不可写时必须带 -
 | 截图与 0.3.1 | `4ff2c0f` `screenshots.json` + `assets/screenshots/*` + README 内嵌 · `9f8b863` 移除 `peerDependencies.react`、发 0.3.1（修订 15） |
 | 收录结果（本轮） | 条目 PR 已合并、条目已在 plugins.json；本条补记「站点 ≠ 市场」的目录双源事实与修正后的自检命令 |
 | 0.2 线兼容复核（0.3.2） | 放宽 `engines.dsh` 到 `>=0.1.5-rc.1 <0.3.0-0`（修订 16）；无代码改动——两版声明构建出的 `lib/` 逐字节相同 |
+| 0.2 设置模型迁移（0.4.0） | 0.2 删除了 `settingsScope`/`settings.register`，0.3.2 的兼容声明被真机推翻；改为 `Config`（volatile `any`）+ `configForms` + `configEditor` 跨条目读，`engines.dsh` 收成 `>=0.2.0-rc.2 <0.3.0-0`（修订 17） |
 
 ## 9. 从真机调试里学到的平台事实（下次直接复用）
 
@@ -229,6 +230,10 @@ npm publish --cache /tmp/npm-cache              # ~/.npm 不可写时必须带 -
 **`0.3.2` 的端到端安装验证**（全新 `DSH_HOME` + 全新 pnpm store，宿主 `0.2.0-rc.2`）：`dsh plugin --profile smoke add dsh-usage-state` **装到的是 0.3.1 而非 0.3.2**——这是 pnpm 对刚发布版本的 `minimumReleaseAge` 静置期，不是故障（见上一段的同类记录）；显式写 `dsh-usage-state@0.3.2` 后装到 **0.3.2**、profile 里写 `0.3.2`，pnpm 同时往 `pnpm-workspace.yaml` 补了 `minimumReleaseAgeExclude`。装完 `--dump-config` 的装配树出现 `# == dsh-usage-state / - id: usage-state`；把 0.3.2 装进 web profile 启动后，`__DSH_BOOT__` 的 66 条客户端入口里仍有 `dsh-usage-state`（`inject` 四项原样），harness 返回的 `plugins/??dsh-usage-state/client.js` 与发布产物的 `lib/client.js` **逐字符相同**（只多出 harness 自己追加的 `//# sourceMappingURL=…` 尾巴）。
 踩过的坑：第一次复用了同一个 pnpm store，metadata 缓存里还只有 0.3.0，于是装到 0.3.0 并照旧报 peer 警告——那是我自己的缓存假象，不是发布问题。另注意 pnpm 12 对**刚发布**的版本有内置静置期（`pnpm config get minimumReleaseAge` 为 `undefined`，说明是默认值而非显式配置），它会自动往 profile 的 `pnpm-workspace.yaml` 写 `minimumReleaseAgeExclude` 并在装好后打印提示；所以"刚发的版本要显式指定或等静置期过去"是**预期行为**，不是故障。发布后在 `/tmp` 做了一次产物级安装校验：安装树里 `package.json` 的 `dsh.bundle.patch`、`cordis.patch.yml`（`insert.name: dsh-usage-state`）、`lib/{index,client,typert}.js` 全部存在。
 
+**`0.3.2` 的结论被推翻（2026-10-05）**：`0.3.2` 声称 0.2 线可用，但真机在桌面壳 `0.2.0-rc.2` 上启动崩溃——`web boot: 1 entry did not activate / dsh-usage-state: pending (waiting for service: settingsScope)`，桌面壳据此弹"启动失败"对话框，用户选择"禁用第三方插件"后 profile 里 5 个第三方插件全被关掉。原因是 0.2 **删除了** `settingsScope`（客户端）与 `settings.register`（宿主），换成 `configForms` + 插件自带 `Config`（详见 `design-consensus.md` 修订 17）。上面那条"`__DSH_BOOT__` 里有这个入口就算通过"的验证方法**本身不成立**：pending 的入口照样在列表里、`client.js` 照样返回 200。**§10 的复核步骤已据此改写。**
+
+**`0.4.0`**（2026-10-05）迁到 0.2 原生设置模型，`engines.dsh` 收成 `>=0.2.0-rc.2 <0.3.0-0`，新增 `peerDependencies: @deepseek-ai/dsh-settings@^0.2.0-rc.2`（让 0.1.x 宿主的运行时安装闸门直接拒绝，而不是装上后崩）与 `@deepseek-ai/schemastery@^3.18.2`（loader 要用它校验导出的 `Config`）。代码面：`src/host/settings.ts` 重写（volatile `Config` + 根引用读取 + `configEditor` 跨条目读取）、`src/client/settings-form.ts` 新增（`configForms` → settings scope 适配器）、`src/client/{index.tsx,context.ts}` 换服务名、`cordis.patch.yml` 补 `config: {}`、客户端 `devDependencies` 上移到 `^0.2.0-rc.2`。发布记录与验证见 §10。
+
 **端到端安装验证**（2026-09-22，把 `DSH_HOME` 指到 `/tmp/dsh-home-verify` 绕开宿主沙箱对 `~/.dsh` 的写限制，因此不需要动用户的真实 profile）：跑市场将来会执行的那条命令
 
 ```bash
@@ -246,34 +251,49 @@ DSH_HOME=/tmp/dsh-home-verify dsh --profile smoke --dump-config
 
 即「npm 源 → profile 依赖 → patch 行 → 装配树」整条链路可用。**唯一的噪声是 pnpm 的 `✕ missing peer react`**：fresh profile 的依赖图里没有 react（浏览器半边的 react 是平台在运行时交给插件的，不走 node_modules），而我们 `peerDependencies` 里声明了 `react: ^18.2.0`。它只是警告（安装照常成功），且市场只对 `@deepseek-ai/dsh*` 的 peer 做兼容评估，所以不影响条目的兼容判定与徽标；是否移除这个 peer 仍在待定（见 §6 备忘）。
 
-**0.2 线复核步骤**（2026-09-30，宿主 `0.2.0-rc.2`；结论与理由见 `design-consensus.md` 修订 16）。这五步是可重跑的，宿主再跳版本时照做：
+**0.2 线复核步骤**（2026-10-05 改写；宿主 `0.2.0-rc.2`；结论与理由见 `design-consensus.md` 修订 17）。**旧版第 4 步只验"入口在 `__DSH_BOOT__` 列表里"，而 pending 的入口同样在列表里——那次 0.3.2 就是这样把"启动崩溃"验成了"通过"。下面这六步的判据是"入口激活"。**
 
 ```bash
-# 1) 类型与单测对上界：把 devDeps 的 @deepseek-ai/* 临时改成被测宿主的版本，
-#    在仓库副本里装一遍（本机 ~/.npm 不可写，必须带 --cache）
-rsync -a --exclude node_modules --exclude .git --exclude lib ./ /tmp/dsh-compat/
-cd /tmp/dsh-compat && npm install --cache /tmp/npm-cache && npm run typecheck && npm run build
+# 1) 类型与单测对上界：devDeps 的 @deepseek-ai/* 必须钉在受支持的下界
+#    （本机 ~/.npm 不可写，必须带 --cache）
+cd <repo> && npm install --cache /tmp/npm-cache && npm run typecheck && npm test && npm run build
 
-# 2) 产物是否随宿主版本变化：对着下界构建一次，逐字节比对
-cmp /tmp/dsh-compat/lib/client.js <repo>/lib/client.js   # 三份产物都应相同
-
-# 3) 真机装配 + 启动（DSH_HOME 指到 /tmp，不动用户 profile）
+# 2) 真机装配 + 启动（DSH_HOME 指到 /tmp，不动用户 profile）
 #    第 1 条会建好 profile 并直接启动；确认建立后 Ctrl-C 即可
-DSH_HOME=/tmp/dsh-home-verify "$DSH" <profile> --from-default-profile web
-DSH_HOME=/tmp/dsh-home-verify "$DSH" plugin --profile <profile> add "$PWD"
-DSH_HOME=/tmp/dsh-home-verify "$DSH" --profile <profile> --port 3081   # 3081 换成任一空闲端口
+DSH_HOME=/tmp/dsh-home-verify "$DSH" --profile p --from-default-profile web --dump-config
+DSH_HOME=/tmp/dsh-home-verify "$DSH" plugin --profile p add "$PWD"
+DSH_HOME=/tmp/dsh-home-verify "$DSH" --profile p --dump-config   # 期望 - id: usage-state / config: {}
 
-# 4) 客户端入口是否进图（带 token 取首页后解析 __DSH_BOOT__）
-#    期望：entries 里有 dsh-usage-state，url 形如 plugins/??dsh-usage-state/client.js&rev=…
-#    且 plugins/??dsh-usage-state/client.js 用 curl --path-as-is 取回 200
+# 3) ★ 宿主侧激活判据：启动 stderr 不允许出现任何激活告警
+DSH_HOME=/tmp/dsh-home-verify "$DSH" --profile p --port 3081 > /tmp/boot.log 2>&1 &
+grep -E "did not activate|startup failed" /tmp/boot.log   # 期望：无输出
+#    宿主的 auditStartupEntries 会在任何条目 pending/failed 时打
+#    "dsh: warning: N entry did not activate"，所以"无输出"就是宿主半边真的挂上了。
 
-# 5) 外部模块是否齐全：在 shell 产物里找 staticModules 表（`rM()`），
-#    确认 react / react/jsx-runtime / @deepseek-ai/dsh-client-ui-primitives 都在
+# 4) 客户端入口进图 + 产物可取回（带 token 取首页，解析 __DSH_BOOT__）
+TOKEN=$(grep -o 'token=[A-Za-z0-9_-]*' /tmp/boot.log | head -1 | cut -d= -f2)
+curl -s -L -c /tmp/c.txt -b /tmp/c.txt "http://127.0.0.1:3081/?token=$TOKEN" -o /tmp/page.html
+curl -s -L -c /tmp/c.txt -b /tmp/c.txt -o /tmp/served-client.js \
+  "http://127.0.0.1:3081/plugins/??dsh-usage-state/client.js&rev=<boot里的rev>"
+#    期望：page.html 的 __DSH_BOOT__.entries 含 dsh-usage-state（模块表 inject 四项原样），
+#    且 served-client.js 返回 200 —— 注意这两条**单独不足以**判定兼容。
+
+# 5) ★ 客户端侧激活判据：把真实产物放进假模块表跑一遍 apply
+#    运行 tests 之外的一次性 harness（本次用的那份见修订 17 的验证段）：
+#    window.__ModuleLoader__.load 捕获 factory → 用 react / react/jsx-runtime /
+#    @deepseek-ai/dsh-client-ui-primitives 三个 stub 调用 → 断言
+#    exports.inject 的**服务名**（不是包名）齐全，再拿假 ctx 调 apply() 不抛异常。
+#    期望：inject = ["slots","locale","configForms","remote","remote.session","remote.credentials"]，
+#    apply 依次注册 effect、configForms.get("usage-state")、remote.$mount(contribution)。
+
+# 6) 服务名双向核对：宿主/客户端确实提供了 inject 里的每个名字
+#    客户端侧：grep 'super(ctx, "configForms"' 等；宿主侧：auditStartupEntries 的告警为空（第 3 步）
+#    平台自己的同类插件是最快的参照：@deepseek-ai/dsh-client-locale 的 client inject 也写 configForms。
 ```
 
-其中 `$DSH` = `/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh`（CLI 不注册到 PATH）。第 3 步的 `--port` 是 app 参数，写在 `--profile` 之后；profile 名后**不要**再跟 `web`，否则报 `too many arguments`。
+其中 `$DSH` = `/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh`（CLI 不注册到 PATH）。第 2 步的 `--port` 是 app 参数，写在 `--profile` 之后；profile 名后**不要**再跟 `web`，否则报 `too many arguments`。`--profile desktop` 会被拒绝（`managed exclusively by the Electron application`），复核用自建 profile。
 
-**维护待办**：DSH 出现 0.3 发布线时复核 `engines.dsh` 区间（当前 `<0.3.0-0`，0.3 的一切预发布都会被判 incompatible，而市场对 `engines` 是硬判定：`findCompatibleVersion()` 只挑 `compatible` 的版本，update 路由还会在安装前拒绝声明不兼容的版本）；改描述只改自己那条 yml，换截图只改本仓库的 `screenshots.json`，都不要动对方 README。
+**维护待办**：DSH 出现 0.3 发布线时复核 `engines.dsh` 区间（当前 `>=0.2.0-rc.2 <0.3.0-0`，0.3 的一切预发布都会被判 incompatible，而市场对 `engines` 是硬判定：`findCompatibleVersion()` 只挑 `compatible` 的版本，update 路由还会在安装前拒绝声明不兼容的版本）；**平台改设置 API 这类破坏性变更已经发生过两次（0.1.7 去掉 `installSettingsSection`、0.2 去掉 `settingsScope`/`settings.register`），所以每次跳发布线都要跑上面六步，不能只看"入口在列"**；改描述只改自己那条 yml，换截图只改本仓库的 `screenshots.json`，都不要动对方 README。
 
 **收录自检**（合并后随时可跑）。**两个源都要查**：站点是合并后立刻重建的，而中国大陆区市场读的是每日构建的 npm 目录包——只查站点会把"站点已收录"误当成"市场能搜到"：
 
