@@ -63,9 +63,9 @@ A very long provider name never pushes the controls around: the card header stay
 
 ## Screenshots
 
-The reading directly below the composer's stats row (shown here with OpenCode Zen Go's three windows; hover any segment for source, mode and the absolute reset time):
+The reading on its own line above the composer (shown here with OpenCode Zen Go's three windows; the row under the card is DSH's own statistics, untouched by this plugin — hover any segment for source, mode and the absolute reset time):
 
-![The reading below the composer](https://raw.githubusercontent.com/takboo/dsh-usage-state/main/assets/screenshots/status-line.webp)
+![The reading on its own line above the composer](https://raw.githubusercontent.com/takboo/dsh-usage-state/main/assets/screenshots/status-line.webp)
 
 Settings: one row per provider; **Auto** detects the data source and its primary mode:
 

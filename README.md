@@ -65,9 +65,9 @@ dsh plugin --profile web add /path/to/dsh-usage-state
 
 ## 截图
 
-输入框上方独占一行的账户读数（图示为 OpenCode Zen Go 的三个窗口，悬停任意一段可看数据源、模式与绝对重置时刻）：
+输入框上方独占一行的账户读数（图示为 OpenCode Zen Go 的三个窗口；卡片下方那排是 DSH 原生统计，两者互不干扰。悬停任意一段可看数据源、模式与绝对重置时刻）：
 
-![输入框下方的账户读数](https://raw.githubusercontent.com/takboo/dsh-usage-state/main/assets/screenshots/status-line.webp)
+![输入框上方独占一行的账户读数](https://raw.githubusercontent.com/takboo/dsh-usage-state/main/assets/screenshots/status-line.webp)
 
 设置页：每个 provider 一行，默认「自动」会识别数据源与主模式：
 

@@ -63,7 +63,7 @@ export const zh = {
   intervalMinutes: '空闲刷新间隔（分钟）',
   thresholdWarn: '黄色阈值（已用 %）',
   thresholdCritical: '红色阈值（已用 %）',
-  progressBar: '显示进度条',
+  progressBar: '显示进度环',
   refreshFailed: '刷新失败：{message}',
 
   'state.loading': '读取中…',
@@ -149,7 +149,7 @@ export const en: Record<UsageStateKey, string> = {
   intervalMinutes: 'Idle refresh interval (minutes)',
   thresholdWarn: 'Amber threshold (used %)',
   thresholdCritical: 'Red threshold (used %)',
-  progressBar: 'Show progress bar',
+  progressBar: 'Show progress ring',
   refreshFailed: 'Refresh failed: {message}',
 
   'state.loading': 'Reading…',
