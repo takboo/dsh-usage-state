@@ -74,6 +74,7 @@
     "README.md",
     "README.en.md",
     "LICENSE",
+    "CHANGELOG.md",
     "docs/adapters.md"
   ],
   "keywords": [
