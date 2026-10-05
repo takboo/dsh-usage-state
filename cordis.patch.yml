@@ -1,7 +1,18 @@
 # Mount layer contributed by this plugin.
 #
 # `dsh plugin add` appends this package to the profile's `dsh.profile.bundles`,
-# which applies this patch on boot; the row id only has to be unique.
+# which applies this patch on boot.
+#
+# The row id **is the settings namespace** on DSH 0.2 (`configForms.get(id)` on the
+# client, `entry.options.id` on the host), so it has to keep matching
+# `USAGE_STATE_NS` in `src/host/settings.ts`.
+#
+# `config: {}` gives every install a section to resolve: without it the entry has
+# no config at all, the settings projection answers `undefined`, and the status
+# line stays silent until the user saves something. A user's own
+# `- id: usage-state, config: { … }` row still replaces this whole value, because
+# the profile patch layer applies after every bundle layer.
 - insert:
     - id: usage-state
       name: dsh-usage-state
+      config: {}

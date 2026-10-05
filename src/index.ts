@@ -6,17 +6,17 @@ import { providerCredentialRefs, providerEndpointHints } from './host/provider-r
 import { createTargetReader, type FetchLike } from './host/read.ts'
 import { UsageStateStore } from './host/refresh.ts'
 import { UsageStateService, USAGE_STATE_RPC_NAMESPACE, USAGE_STATE_SERVICE } from './host/service.ts'
-import { installUsageStateSettings, type SettingsServiceLike } from './host/settings.ts'
+import { installUsageStateSettings, type VolatileLike } from './host/settings.ts'
 import { ALL_SOURCES, findSource } from './host/sources/index.ts'
 import { resolveTargets, type UsageTarget } from './host/targets.ts'
 
 /**
- * The cordis members this plugin touches, typed structurally. The host half must
- * not import platform packages: a plugin mounted with `link:` resolves modules
- * from its own directory, where `@deepseek-ai/*` does not exist.
+ * The cordis members this plugin touches, typed structurally so the host half
+ * depends on no platform *types*. (`@deepseek-ai/schemastery` is the one platform
+ * package it imports at runtime, because the loader validates the exported
+ * `Config` through it.)
  */
 export interface PluginContextLike {
-  inject(names: readonly string[], callback: (ctx: { settings: SettingsServiceLike }) => void): void
   get(name: string): unknown
   on(event: string, handler: (...args: unknown[]) => void): () => void
   effect(callback: () => (() => void) | void, label?: string): void
@@ -35,11 +35,23 @@ export interface UsageStateDeps {
    * `false` so a unit test can never pick up the developer's real key.
    */
   credentialFallback?: FallbackDeps | false
+  /**
+   * The live config reference the loader passes `apply` as its second argument.
+   * Absent in tests that do not care about stored configuration.
+   */
+  config?: VolatileLike<unknown>
 }
 
 export const name = 'usage-state'
 /** `timer` is what provides `ctx.timeout` / `ctx.interval`. */
 export const inject = ['timer']
+/**
+ * The plugin's configuration schema. The loader resolves it from this module
+ * export (`entry.fiber.runtime.Config`) and validates the row's `config` through
+ * it, so it must be re-exported from the entry point — see `host/settings.ts` for
+ * why it is a volatile `any`.
+ */
+export { Config } from './host/settings.ts'
 
 interface LlmRuntimeLike {
   listProviders?(): ReadonlyArray<{ id?: unknown }>
@@ -50,11 +62,54 @@ interface CredentialsProviderLike {
   describe(ref: string): Promise<{ configured: boolean; source?: string; writable: boolean }>
 }
 
+/** One profile entry as the config editor addresses it. */
+interface ConfigEntryLike {
+  options?: { id?: string }
+  fiber?: { config?: unknown }
+}
+
+/** The shared volatile-reference protocol (`cosmokit.volatile.write`). */
+const VOLATILE_WRITE = Symbol.for('cosmokit.volatile.write')
+
+/** Whether a loader config value is a live volatile reference rather than data. */
+export function isVolatileRef(value: unknown): value is VolatileLike<unknown> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    VOLATILE_WRITE in value &&
+    typeof (value as { get?: unknown }).get === 'function'
+  )
+}
+
+/**
+ * Detach a loader config: volatile fields are live references, and a snapshot is
+ * only useful once they are read out. Mirrors the platform's own `plainConfig`,
+ * including its refusal to guard against cycles (config cannot contain one).
+ */
+export function plainConfig(value: unknown): unknown {
+  if (isVolatileRef(value)) return plainConfig(value.get())
+  if (Array.isArray(value)) return value.map(item => plainConfig(item))
+  if (value !== null && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, plainConfig(item)]))
+  }
+  return value
+}
+
+/**
+ * Another plugin's resolved config, by profile entry id.
+ *
+ * DSH 0.1 answered this from `settings.get(namespace)`; 0.2 derives every
+ * namespace from the entry that owns it, so the resolved value lives on that
+ * entry's fiber (the same place the platform's settings service reads it).
+ * A host without a config editor degrades to `undefined`, which is what this
+ * plugin's provider refinement has always done when a namespace was absent.
+ */
 function readNamespace(ctx: PluginContextLike, namespace: string): unknown {
-  const settings = ctx.get('settings') as { get?(ns: string): unknown } | undefined
-  if (settings?.get === undefined) return undefined
+  const editor = ctx.get('configEditor') as { entries?(): ReadonlyArray<ConfigEntryLike> } | undefined
+  if (typeof editor?.entries !== 'function') return undefined
   try {
-    return settings.get(namespace)
+    const entry = editor.entries().find(candidate => candidate.options?.id === namespace)
+    return entry?.fiber?.config === undefined ? undefined : plainConfig(entry.fiber.config)
   } catch {
     return undefined
   }
@@ -134,7 +189,7 @@ export function createUsageState(ctx: PluginContextLike, deps: UsageStateDeps = 
   const lookup = createCredentialLookup(ctx, deps.credentialFallback ?? {})
 
   let config: UsageStateConfig = DEFAULT_CONFIG
-  installUsageStateSettings(ctx, next => {
+  installUsageStateSettings(ctx, deps.config, next => {
     config = next
   })
 
@@ -220,6 +275,10 @@ export function createUsageState(ctx: PluginContextLike, deps: UsageStateDeps = 
   return provideUsageState(ctx, service)
 }
 
-export function apply(ctx: PluginContextLike): void {
-  createUsageState(ctx)
+/**
+ * Cordis entry point. The second argument is the loader's resolved config for this
+ * entry — a live reference, because the exported schema is a volatile root.
+ */
+export function apply(ctx: PluginContextLike, config?: VolatileLike<unknown>): void {
+  createUsageState(ctx, { config })
 }

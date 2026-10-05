@@ -66,9 +66,14 @@ test('the host bundle is ESM exporting the cordis entry points', t => {
   if (!built()) return t.skip('run `npm run build` first')
   const code = readFileSync(HOST, 'utf8')
 
-  assert.match(code, /export \{ apply, /)
+  // The loader reads `Config` off the module namespace and calls `apply(ctx, config)`.
+  assert.match(code, /export \{[^}]*\bConfig\b[^}]*\}/)
+  assert.match(code, /export \{[^}]*\bapply\b[^}]*\}/)
   assert.match(code, /inject/)
   assert.doesNotMatch(code, /require\(/, 'the host bundle should be ESM')
+  // The schema has to come from the platform's own schemastery: the loader validates
+  // through `Config['~standard']` and compares volatile roots by that vendor.
+  assert.match(code, /from "@deepseek-ai\/schemastery"/, 'schemastery must stay external')
 })
 
 test('the typert bundle exports the named manifest and keeps zod external', t => {
@@ -106,16 +111,11 @@ test('the built host bundle wires up and reads a balance through a fake host', a
   }
 
   const provided = new Map<string, unknown>()
-  const scope = {
-    get: () => ({
-      models: [{ provider: 'deepseek-official', model: 'deepseek-flash', sourceId: 'deepseek', mode: 'api' }],
-    }),
-    watch: () => () => undefined,
+  // What the loader passes `apply` for a volatile root: a live reference, not data.
+  const config = {
+    get: () => ({ models: [{ provider: 'deepseek-official', model: 'deepseek-flash', sourceId: 'deepseek', mode: 'api' }] }),
   }
   const ctx = {
-    inject: (names: readonly string[], callback: (ctx: unknown) => void) => {
-      if (names.includes('settings')) callback({ settings: { register: () => scope } })
-    },
     get: (name: string) =>
       name === 'credentials'
         ? {
@@ -132,6 +132,7 @@ test('the built host bundle wires up and reads a balance through a fake host', a
 
   const urls: string[] = []
   const service = mod.createUsageState(ctx, {
+    config,
     fetch: async (url: string) => {
       urls.push(url)
       return { ok: true, status: 200, json: async () => ({ balance_infos: [{ currency: 'CNY', total_balance: '66.28' }] }) }

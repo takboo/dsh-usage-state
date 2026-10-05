@@ -1,63 +1,66 @@
+import z from '@deepseek-ai/schemastery'
+
 import { normalizeConfig, type UsageStateConfig } from '../shared/config.ts'
 
-/** Settings namespace owned by this plugin; must match `/^[a-z][a-z0-9-]*$/`. */
+/**
+ * Settings namespace owned by this plugin.
+ *
+ * DSH 0.2 derives a settings namespace from the profile entry that owns it, so
+ * this has to equal the `id` of the row this plugin's bundle patch inserts, and
+ * it is the key the client's `configForms.get()` asks for.
+ */
 export const USAGE_STATE_NS = 'usage-state'
 
 /**
- * The settings service only requires a callable that returns the resolved section
- * plus a `toJSON()`, so this stays free of any import — the platform's own schema
- * package (`@deepseek-ai/schemastery`) is not resolvable from a plugin directory
- * mounted with `link:`, and a throwing schema would block plugin load when the
- * hand-editable settings document is dirty.
+ * The plugin's `Config`, which the 0.2 loader resolves from this module export
+ * (`entry.fiber.runtime.Config`), validates with `Config['~standard']`, and hands
+ * to `apply` as its second argument.
  *
- * `toJSON()` advertises no fields on purpose: this plugin ships its own settings
- * page and reads the value through its own decoder, so no schema-driven form is
- * ever rendered from it.
+ * Two deliberate choices, both about staying compatible with documents this
+ * plugin does not fully control:
+ *
+ * - **A volatile root.** The loader hands a volatile schema's value over as a live
+ *   reference, commits edits into it in place, and announces them as
+ *   `loader/volatile-update`. A non-volatile schema would instead find the config
+ *   "changed" on every settings write and remount the plugin.
+ * - **`any`, not a field-by-field object.** The settings service projects form
+ *   values *through* the schema, so a declared object schema silently drops every
+ *   field it does not declare — including keys a hand-edited document carries, and
+ *   including keys a future version adds. Validation stays where it has always
+ *   been: `normalizeConfig`, which is deliberately lenient, so a dirty document
+ *   still loads instead of failing the entry.
  */
-export interface SettingsSchemaLike {
-  (section: unknown): UsageStateConfig
-  toJSON(): unknown
+export const Config = z.any().volatile()
+
+/** The live config reference the loader supplies for a volatile root. */
+export interface VolatileLike<T> {
+  get(): T
 }
 
-export const usageStateSchema: SettingsSchemaLike = Object.assign(
-  (section: unknown): UsageStateConfig => normalizeConfig(section),
-  { toJSON: (): unknown => ({ uid: 1, refs: { 1: { type: 'object', meta: {}, dict: {} } } }) },
-)
-
-/** The slice of a settings scope this plugin uses. */
-export interface SettingsScopeLike {
-  get(): unknown
-  watch(callback: (next: unknown, prev: unknown) => void): () => void
-}
-
-export interface SettingsServiceLike {
-  register(
-    namespace: string,
-    schema: SettingsSchemaLike,
-    options?: { applies?: 'live' | 'restart' },
-  ): SettingsScopeLike
-}
-
-/**
- * The two cordis context members used here, typed structurally so the host half
- * needs no platform packages at runtime or compile time.
- */
+/** The cordis members used here, typed structurally. */
 export interface HostContextLike {
-  inject(names: readonly string[], callback: (ctx: { settings: SettingsServiceLike }) => void): void
+  on(event: string, handler: (...args: unknown[]) => void): () => void
 }
 
 /**
- * Register the namespace and keep a live in-process snapshot of it.
+ * Keep a live snapshot of the plugin's own config.
  *
- * `ctx.inject` is the graceful-degradation boundary: on a host without a settings
- * provider the callback never runs and the plugin's own defaults stand. `applies`
- * is metadata in this DSH version — what actually makes a change live is the
- * `watch` subscription below.
+ * `reference` is `apply`'s second argument. On a host that does not model volatile
+ * config (or when the entry carries no schema) the loader passes nothing, and the
+ * plugin keeps its own defaults — the same graceful degradation the 0.1 path got
+ * from `ctx.inject(['settings'], …)`, which 0.2 no longer offers.
  */
-export function installUsageStateSettings(ctx: HostContextLike, onConfig: (config: UsageStateConfig) => void): void {
-  ctx.inject(['settings'], settingsCtx => {
-    const scope = settingsCtx.settings.register(USAGE_STATE_NS, usageStateSchema, { applies: 'live' })
-    onConfig(normalizeConfig(scope.get()))
-    scope.watch(next => onConfig(normalizeConfig(next)))
+export function installUsageStateSettings(
+  ctx: HostContextLike,
+  reference: VolatileLike<unknown> | undefined,
+  onConfig: (config: UsageStateConfig) => void,
+): void {
+  if (reference === undefined) return
+  const publish = (): void => {
+    onConfig(normalizeConfig(reference.get()))
+  }
+  publish()
+  ctx.on('loader/volatile-update', () => {
+    publish()
   })
 }

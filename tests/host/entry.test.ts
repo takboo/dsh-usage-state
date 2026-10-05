@@ -1,9 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { apply, createUsageState, inject, name, type PluginContextLike } from '../../src/index.ts'
+import { apply, createUsageState, inject, name, type PluginContextLike, type UsageStateDeps } from '../../src/index.ts'
 import type { FetchLike } from '../../src/host/read.ts'
-import type { SettingsSchemaLike, SettingsScopeLike } from '../../src/host/settings.ts'
+import type { VolatileLike } from '../../src/host/settings.ts'
 
 const BALANCE_BODY = { is_available: true, balance_infos: [{ currency: 'CNY', total_balance: '66.28' }] }
 
@@ -21,17 +21,12 @@ function contextStub(options: { settings?: Record<string, unknown>; credentials?
   const timers: Timer[] = []
   let now = 0
 
-  const scope: SettingsScopeLike = {
-    get: () => options.settings?.['usage-state'] ?? {},
-    watch: () => () => undefined,
-  }
+  // The loader hands the plugin a live reference to its own entry config; other
+  // namespaces are read from the entry the config editor addresses.
+  const stored = options.settings?.['usage-state'] ?? {}
+  const config: VolatileLike<unknown> = { get: () => stored }
 
   const ctx = {
-    inject(names: readonly string[], callback: (ctx: { settings: { register: (ns: string, schema: SettingsSchemaLike) => SettingsScopeLike } }) => void) {
-      if (names.includes('settings')) {
-        callback({ settings: { register: () => scope } })
-      }
-    },
     get(name: string) {
       if (name === 'credentials') {
         return {
@@ -42,8 +37,14 @@ function contextStub(options: { settings?: Record<string, unknown>; credentials?
           describe: async (ref: string) => ({ configured: options.credentials?.[ref] !== undefined, writable: true }),
         }
       }
-      if (name === 'settings') {
-        return { get: (ns: string) => options.settings?.[ns] }
+      if (name === 'configEditor') {
+        return {
+          entries: () =>
+            Object.entries(options.settings ?? {}).map(([id, entryConfig]) => ({
+              options: { id },
+              fiber: { config: entryConfig },
+            })),
+        }
       }
       return undefined
     },
@@ -77,6 +78,8 @@ function contextStub(options: { settings?: Record<string, unknown>; credentials?
 
   return {
     ctx,
+    /** The reference the loader would pass `apply` as its second argument. */
+    config,
     provided,
     listeners,
     timers,
@@ -101,6 +104,14 @@ function contextStub(options: { settings?: Record<string, unknown>; credentials?
       now = target
     },
   }
+}
+
+/**
+ * The deps one test needs: the entry config the loader would pass `apply`, plus the
+ * seams (fetch, clock, credential fallback) it overrides.
+ */
+function deps(host: ReturnType<typeof contextStub>, extra: Partial<UsageStateDeps> = {}): UsageStateDeps {
+  return { config: host.config, now: host.time, credentialFallback: false, ...extra }
 }
 
 const CONFIGURED = {
@@ -129,7 +140,7 @@ test('applying the plugin provides the service under the name the gateway resolv
   const host = contextStub({ settings: CONFIGURED, credentials: { DEEPSEEK_API_KEY: 'sk-test' } })
   const { fetch } = fetchStub()
 
-  const service = createUsageState(host.ctx, { fetch, now: host.time, credentialFallback: false })
+  const service = createUsageState(host.ctx, deps(host, { fetch }))
 
   assert.equal(host.provided.get('usageState'), service)
 
@@ -147,7 +158,7 @@ test('getState reads the configured model and returns its balance', async () => 
   const host = contextStub({ settings: CONFIGURED, credentials: { DEEPSEEK_API_KEY: 'sk-test' } })
   const { fetch, urls } = fetchStub()
 
-  const service = createUsageState(host.ctx, { fetch, now: host.time, credentialFallback: false })
+  const service = createUsageState(host.ctx, deps(host, { fetch }))
   const state = await service.getState(false)
 
   assert.deepEqual(urls, ['https://api.deepseek.com/user/balance'])
@@ -174,7 +185,7 @@ test('both OpenCode Go routes share one target, one request and one 5h/7d/30d re
     return { ok: true, status: 200, json: async () => OPENCODE_BODY }
   }
 
-  const service = createUsageState(host.ctx, { fetch, now: host.time, credentialFallback: false })
+  const service = createUsageState(host.ctx, deps(host, { fetch }))
   const state = await service.getState(false)
 
   assert.deepEqual(urls, ['https://opencode.ai/zen/go/v1/usage'])
@@ -186,7 +197,7 @@ test('a model nobody configured produces no poll target at all', async () => {
   const host = contextStub({ settings: {}, credentials: { DEEPSEEK_API_KEY: 'sk-test' } })
   const { fetch, urls } = fetchStub()
 
-  const service = createUsageState(host.ctx, { fetch, now: host.time, credentialFallback: false })
+  const service = createUsageState(host.ctx, deps(host, { fetch }))
   const state = await service.getState(false)
 
   assert.deepEqual(urls, [])
@@ -197,7 +208,7 @@ test('a missing credential is reported as a configuration problem, not a fake ba
   const host = contextStub({ settings: CONFIGURED })
   const { fetch, urls } = fetchStub()
 
-  const service = createUsageState(host.ctx, { fetch, now: host.time, credentialFallback: false })
+  const service = createUsageState(host.ctx, deps(host, { fetch }))
   const state = await service.getState(false)
 
   assert.deepEqual(urls, [])
@@ -206,7 +217,7 @@ test('a missing credential is reported as a configuration problem, not a fake ba
 
 test('describeCredentials reports status for every configured target without a secret', async () => {
   const host = contextStub({ settings: CONFIGURED, credentials: { DEEPSEEK_API_KEY: 'sk-test' } })
-  const service = createUsageState(host.ctx, { fetch: fetchStub().fetch, now: host.time, credentialFallback: false })
+  const service = createUsageState(host.ctx, deps(host, { fetch: fetchStub().fetch }))
 
   const report = await service.describeCredentials()
 
@@ -222,7 +233,7 @@ test('the provider-configured apiKeyEnv is probed before the built-in ref', asyn
     settings: { ...CONFIGURED, 'llm-deepseek': { apiKeyEnv: 'TEAM_KEY' } },
     credentials: { TEAM_KEY: 'sk-team', DEEPSEEK_API_KEY: 'sk-personal' },
   })
-  const service = createUsageState(host.ctx, { fetch: fetchStub().fetch, now: host.time, credentialFallback: false })
+  const service = createUsageState(host.ctx, deps(host, { fetch: fetchStub().fetch }))
 
   const report = await service.describeCredentials()
 
@@ -233,7 +244,7 @@ test('a finished turn schedules a refresh, and the idle timer keeps polling', as
   const host = contextStub({ settings: CONFIGURED, credentials: { DEEPSEEK_API_KEY: 'sk-test' } })
   const { fetch, urls } = fetchStub()
 
-  createUsageState(host.ctx, { fetch, now: host.time, credentialFallback: false })
+  createUsageState(host.ctx, deps(host, { fetch }))
 
   host.emit('session/event', { id: 's1' }, { type: 'turn/end' })
   host.emit('session/event', { id: 's1' }, { type: 'tool/call' })
@@ -246,10 +257,12 @@ test('a finished turn schedules a refresh, and the idle timer keeps polling', as
   assert.equal(urls.length, 2, 'the idle timer keeps the reading fresh')
 })
 
-test('apply() wires the real host context without a fetch override', () => {
+test('apply() takes the loader config reference as its second argument', () => {
   const host = contextStub({ settings: CONFIGURED, credentials: { DEEPSEEK_API_KEY: 'sk-test' } })
 
-  assert.doesNotThrow(() => createUsageState(host.ctx, { credentialFallback: false }))
+  assert.doesNotThrow(() => {
+    apply(host.ctx, host.config)
+  })
   assert.ok(host.provided.get('usageState') !== undefined)
 })
 
@@ -280,7 +293,7 @@ test('a provider that declares a base URL is polled at that host', async () => {
     }
   }
 
-  const service = createUsageState(host.ctx, { fetch, now: host.time, credentialFallback: false })
+  const service = createUsageState(host.ctx, deps(host, { fetch }))
   const state = await service.getState(false)
 
   assert.deepEqual(urls, ['https://api.z.ai/api/monitor/usage/quota/limit'])

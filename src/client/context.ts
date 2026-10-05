@@ -58,8 +58,32 @@ export interface SettingsPathOp {
   value?: unknown
 }
 
-export interface SettingsScopeBinderLike {
-  bind<T>(spec: { namespace: string; decode?: (section: unknown) => T | undefined }): SettingsScopeLike<T>
+/**
+ * The platform's `configForms` service: one settings form per profile entry id,
+ * and the entry id is the namespace. This is what replaced 0.1's
+ * `settingsScope.bind()` — the two APIs share no surface, which is why one build
+ * cannot serve both host lines.
+ */
+export interface ConfigFormsLike {
+  get(namespace: string): ConfigFormLike<unknown>
+}
+
+/** The read/write surface `configForms.get()` returns for one namespace. */
+export interface ConfigFormLike<T> {
+  getSnapshot(): ConfigFormSnapshotLike<T>
+  subscribe(listener: () => void): () => void
+  set(field: string, value: unknown): Promise<unknown>
+  unset(field: string): Promise<unknown>
+  mutate(ops: readonly SettingsPathOp[], expectedRevision?: number): Promise<unknown>
+}
+
+/** One namespace's projection, with the platform's own status names. */
+export interface ConfigFormSnapshotLike<T> {
+  status: 'loading' | 'ready' | 'unavailable'
+  value: T | undefined
+  revision: number | undefined
+  writable: boolean
+  mode: 'host' | 'memory'
 }
 
 export interface RemoteServiceLike {
@@ -95,7 +119,7 @@ export interface ClientContextLike {
   get(name: string): unknown
   locale: LocaleRuntimeLike
   slots: SlotRegistryLike
-  settingsScope: SettingsScopeBinderLike
+  configForms: ConfigFormsLike
   remote: RemoteLike
   /** Present on a session-scoped slot; `modelSelection` lives here. */
   useProjection?<T>(key: string): T | undefined

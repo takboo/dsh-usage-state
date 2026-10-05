@@ -1,19 +1,21 @@
 import { createElement } from 'react'
 
-import { normalizeConfig, type UsageStateConfig } from '../shared/config.ts'
+import type { UsageStateConfig } from '../shared/config.ts'
 import type { CredentialReport, RemoteResult, UsageStateView } from '../shared/rpc.ts'
 import { SettingsSection } from './SettingsSection.tsx'
 import { StatusLine } from './StatusLine.tsx'
 import { en, LOCALE_NS, zh } from './locales.ts'
 import { remoteService } from './remote.ts'
+import { usageStateSettings } from './settings-form.ts'
 import { STATUS_LINE_SLOTS } from './slots.ts'
 import { UsageStateClientStore } from './store.ts'
 import type { ClientContextLike, CredentialsRemoteLike, ModelCatalogLike, RemoteServiceLike, SettingsScopeLike } from './context.ts'
 
-// `remote.session` carries the model catalog and `remote.credentials` the key
-// store; both are platform-provided service names that must be declared here or
-// `ctx.remote.<ns>` is undefined at call time.
-export const inject = ['slots', 'locale', 'settingsScope', 'remote', 'remote.session', 'remote.credentials']
+// `configForms` is the 0.2 settings transport (0.1's `settingsScope` no longer
+// exists); `remote.session` carries the model catalog and `remote.credentials` the
+// key store. All are platform-provided service names that must be declared here or
+// they are undefined at call time.
+export const inject = ['slots', 'locale', 'configForms', 'remote', 'remote.session', 'remote.credentials']
 
 const USAGE_STATE_NS = 'usage-state'
 const POLL_INTERVAL_MS = 30_000
@@ -56,12 +58,11 @@ export function apply(ctx: ClientContextLike): void {
   ctx.effect(() => ctx.locale.register(LOCALE_NS, { zh, en }), 'dsh-usage-state: dictionaries')
   const t = ctx.locale.bind(LOCALE_NS)
 
-  const settings: SettingsScopeLike<UsageStateConfig> = ctx.settingsScope.bind<UsageStateConfig>({
-    namespace: USAGE_STATE_NS,
-    // The host already resolved this section; normalizing again keeps a
-    // hand-edited document from reaching the components as a broken shape.
-    decode: section => normalizeConfig(section),
-  })
+  // `configForms` keys its forms by profile entry id, so USAGE_STATE_NS has to be
+  // the id of the row this plugin's bundle patch inserts. The platform form hands
+  // the stored section through undecoded (its schema declares no fields), so the
+  // adapter decodes with the same lenient normalizer as before.
+  const settings: SettingsScopeLike<UsageStateConfig> = usageStateSettings(ctx.configForms.get(USAGE_STATE_NS))
 
   // `remote.usageState` is contributed by this plugin, so it can never be declared
   // in `inject` (it appears only after $mount); `ctx.get` is the inject-free read.
