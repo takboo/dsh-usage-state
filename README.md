@@ -127,7 +127,8 @@ dsh plugin --profile web add /path/to/dsh-usage-state
 
 - **只支持 DSH 0.2 线**：`engines.dsh` = `>=0.2.0-rc.2 <0.3.0-0`（市场读它做徽标与"可安装"判定）。0.2 之前的宿主请装 `0.3.2`。
 - `peerDependencies` 里有 `@deepseek-ai/dsh-settings`（`^0.2.0-rc.2`）与 `@deepseek-ai/schemastery`（`^3.18.2`）：前者是**故意的**——平台的运行时安装闸门只读 `@deepseek-ai/dsh*` 的 peer，声明它可以让 0.1.x 宿主在**安装时**就拒绝，而不是装上之后把启动搞崩；两者都由平台提供，pnpm 可能为此打一行 `missing peer` 警告，属预期。
-- 版本 `0.4.3`（未发布）：进度显示改为**平台同款 SVG 圆环**（替代 `█`/`░` 文字条，阈值变色经颜色传导到环上）、排版照抄平台统计行字号、折行不再留下孤立的 `·`（修订 21–23）。
+- 版本 `0.4.4`：纯文档发布——README 与实际行为对齐、`CHANGELOG.md` 随包发布；`lib/` 与 `0.4.3` 逐字节相同。
+- 版本 `0.4.3`：进度显示改为**平台同款 SVG 圆环**（替代 `█`/`░` 文字条，阈值变色经颜色传导到环上）、排版照抄平台统计行字号、折行不再留下孤立的 `·`（修订 21–23）。
 - 版本 `0.4.2`：状态行迁到 `conversation.input.dock`，成为**输入框上方的独立一行**（0.1 时代它在输入框之下，而 0.2 把那个位置改成了与平台统计、上下文计量器共排的一排 pill——见修订 19/20）。
 - 版本 `0.4.1`：修 `0.4.0` 的读数缺失——客户端 RPC contribution 的参数 codec 少了 0.2 要求的 `create()`，`remote.usageState` 因此从未挂载，界面表现为**没有任何读数**并误报 `Mode not supported`。同一轮还让挂载失败不再被静默吞掉、catalog 未到时改说「读取中」，并把**真实 0.2 registry 契约测试**写进单测（修订 18）。**请用 `0.4.1`，不要用 `0.4.0`。**
 - 版本 `0.4.0`：迁到 0.2 原生设置模型（`Config` + `configForms`，宿主侧 `configEditor` 读跨条目配置）。变更明细见 [CHANGELOG](CHANGELOG.md)，验证方式与结论见 [`docs/release.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/release.md)、决策见 [`docs/design-changelog.md`](https://github.com/takboo/dsh-usage-state/blob/main/docs/design-changelog.md) 修订 17。

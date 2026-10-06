@@ -6,7 +6,11 @@
 
 ## [Unreleased]
 
-### 0.4.3（未发布）
+### 0.4.4（待发布）
+
+- **纯文档发布**：README 与实际行为对齐（SVG 进度环、输入框上方独立一行、版本清单补全），文档结构重组（架构 / 平台事实 / 发布 / 待办 / 设计修订各自成档）；`CHANGELOG.md` 自本版起随包发布。`lib/` 与 0.4.3 逐字节相同，无任何运行时变更。
+
+## [0.4.3] - 2026-10-05
 
 - **进度显示改为 SVG 圆环**：平台 `ContextMeter` 同款几何（14×14、r=5.5、2px 描边、12 点起弧），替代 `█`/`░` 文字条（其字形回落宽度不可控，见修订 21/23）。阈值变色经 `currentColor` 传导到环上；`display.progressBar` 配置键保留（关掉即隐藏环）。
 - **排版对齐平台统计行**：字号/行高照抄 `StatsPills` 的显式表达式（修订 22）。
@@ -66,7 +70,8 @@
 
 - 首版：数据源适配器框架 + DeepSeek / z.ai / Kimi / Sub2API 四家、composer 状态行（余额 / 5h·7d 已用百分比 + 倒计时 + 阈值变色）、设置页（provider 四态 + 排序 + 密钥写入）、凭据探测与直读兜底、Typert RPC 快照通道、中英双语、`node:test` 单测。
 
-[Unreleased]: https://github.com/takboo/dsh-usage-state/compare/0.4.2...HEAD
+[Unreleased]: https://github.com/takboo/dsh-usage-state/compare/0.4.3...HEAD
+[0.4.3]: https://github.com/takboo/dsh-usage-state/compare/0.4.2...0.4.3
 [0.4.2]: https://github.com/takboo/dsh-usage-state/compare/0.4.1...0.4.2
 [0.4.1]: https://github.com/takboo/dsh-usage-state/compare/0.4.0...0.4.1
 [0.4.0]: https://github.com/takboo/dsh-usage-state/compare/0.3.2...0.4.0
