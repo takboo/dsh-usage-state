@@ -1,35 +1,98 @@
-# 平台事实（从真机调试学到的，下次直接复用）
+# 平台说明与版本证据
 
-> 这些是**对 DSH 平台行为的实测结论**，不是本插件的设计决策。设计决策见 [`design-consensus.md`](design-consensus.md)，其演变史见 [`design-changelog.md`](design-changelog.md)。
-> 每条都有真机或产物级实验背书；引用前注意条目里标注的**平台版本**——平台升级后应复核仍在生效的条目。
+本文件记录DSH相关契约、历史实验和厂商兼容观察。每条只对注明的版本/来源成立；它们不是所有未来宿主的永久规则。当前设计见 [设计共识](design-consensus.md)，开发操作见 [开发指南](development.md)。
 
-1. **`typertRemote.service` 必须是服务对象本身**（`Reflect.get(value,'service') !== original` 会导致每次派发 `gateway/binding-invalid`）；`serviceKey` 才是名字。症状是"插件静默返回空"。
-2. **宿主 codec 必须是 zod v4**（loader 检查 `'_zod' in schema`），因此 `zod` 是运行时依赖。
-3. **RPC 参数个数是精确匹配**：可选参数也必须显式传（配合 `acceptsUndefined: true`）。
-4. **`ctx.remote.<ns>` 属性访问需要 inject**；读自己贡献的命名空间必须用 `ctx.get('remote.<ns>')`（否则 `cannot get property … without inject`）。
-5. **`@deepseek-ai/*` 能不能解析，取决于插件是「装进 profile」还是「link 挂载」**（2026-10-05 校准；原文只写了后半句）：
-   - **pnpm 装进 profile 的插件**（npm / 市场 / `dsh plugin add <tarball>`）：loader 给它们平台的模块回落，`import z from '@deepseek-ai/schemastery'` 正常工作——用探针插件在全新 `DSH_HOME` 上实测（`PROBE-RESULT: schemastery import OK`）。`dshmarket`、`@mzzsfy/dsh-turn-notify` 等第三方插件正是靠这条活着；我们的宿主半边从 0.4.0 起也依赖它。
-   - **`link:` 挂载在 profile 之外的插件**：**没有**这层回落，只按 Node 常规从自己所在目录向上找，所以 `@deepseek-ai/*` 报 `ERR_MODULE_NOT_FOUND`（同探针 link 挂载实测：`dsh: warning: 1 entry did not activate / probe-schemastery: failed to import`）。
-   - **这构成一个验证陷阱**：本仓库**自己有** `node_modules/@deepseek-ai/schemastery`，所以用 `dsh plugin add "$PWD"`（link）做冒烟会**假绿**——解析成功靠的是仓库的 devDependencies，不是平台回落。冒烟必须走 `npm pack` + 安装 tarball（[`release.md`](release.md) 第 2 步已据此改写）。
-   - 其余宿主代码仍一律使用结构化类型：平台包只 import 这一处。
-6. **bundle patch（含插件自己的 `cordis.patch.yml`）只在启动时读取**；客户端 bundle 会被 `dsh-client-hmr` 热替换（`tsdown --watch` 足够，无需 `pnpm run dev:web`）。
-7. **Node 的类型剥离不支持 `.tsx`/构造器参数属性/枚举**：`src` 避开这些写法，`.tsx` 由测试钩子用项目自带 TypeScript 转译。
-8. **浏览器包不能在 Node 里 import**（CSS 模块 + 未声明的传递依赖）→ 渲染测试用模块钩子替换 primitives 桩件。
-9. **z.ai 用 HTTP 200 + `{success:false,code:1000,msg}` 表达鉴权失败**；区域站点互不认对方的 key。
-10. **客户端 Typert contribution 的 strict codec 必须带 `create()`（0.2 起）**：`@deepseek-ai/dsh-typert-registry/client` 的 `validateCodec` 对非 `src-json` 的 codec 要求 `typeof codec.create === 'function'`，而 0.1.5 只校验 `mode` 与 `typeSymbol`。缺了它 `remote.$mount()` 的 promise 直接被拒，`remote.<namespace>` 服务不会安装——**症状是读数全缺，而不是启动失败**（0.4.0 踩过，见修订 18）。协议里解码走 `codec.create().parse(value)`；宿主清单的同一要求由 `@deepseek-ai/dsh-typert-loader` 把关。
-11. **外部插件事件在 0.1.5-rc.2 是"设计上可读、实际上不可写"**：会话日志的读取侧**支持**未知类型——只要事件带 `SessionEvent.ignorable: true` 就安全跳过（`KNOWN_SESSION_EVENT_TYPES` 的注释明确说仓库外插件事件"by construction"不在名单里，该标记就是兼容机制）。但**写侧没有任何入口能设置它**：`Session.append(type, data, opts)` 只透传 `sourceEventSeqs` / `surfaceOp`，构造出的信封只有 `type/seq/time/data`；`materializeAppendBatch()` 只做 JSON 快照与冻结；`SessionHandle.append()` 是持久化层直写（要求 seq 连续），绕过活动会话日志会让内存日志与存储日志错位，且读取侧照样拒绝。
-    **实测（离线，2026-09-21，`dsh-session` + `dsh-session-persistence` 均 `0.1.5-rc.2`）**：`Session.append('usage-state/turn-usage', …)` 写入成功但信封无 `ignorable` → `validateStoredEvents(meta, [event])` 抛 `SessionFormatUnsupportedError`（*"contains event type … unknown to this harness and not marked ignorable; refusing to interpret the log"*）；手工补 `ignorable: true` 后校验通过（证明标记有效、只缺写入口）；对照组 `command/run` 正常通过。
-    **结论**：插件**不得**往会话日志追加自有类型事件——日志是 append-only，写进去无法撤销，且会让别人的读取器拒绝重建整个会话。任何"数据跟着会话生命周期走/随会话迁移"的需求，在当前平台版本都没有合法落点。平台也明确否决过"事件名注册"方案。**若将来版本给 `append` 加上该标记（或提供注册通道），这条才需要重写。**
-    复现（用平台自己的包，无需启动 DSH；`@deepseek-ai/dsh-session` 与 `-persistence` 未列为本仓库依赖，需从 DSH 安装目录借 `node_modules`）：
+主要历史环境为DSH0.1.5-rc.2与0.2.0-rc.2；来源见 [Typert研究](research/typert-rpc-minimal-contract.md) 和 [修订17–23](design-changelog.md)。2026-10-08官方文档复核见 [规范研究补充](research/repository-release-standards-2026-10.md#documentation-recheck)。本轮没有重新启动这些历史宿主。
 
-    ```js
-    const { Session, SessionId } = await import('@deepseek-ai/dsh-session')
-    const { validateStoredEvents } = await import('@deepseek-ai/dsh-session-persistence')
-    const session = Session.create(SessionId('probe'), [], undefined, 0)
-    const event = session.append('usage-state/turn-usage', { probe: true })
-    Object.keys(event)                    // ['type','seq','time','data'] —— 没有 ignorable
-    validateStoredEvents(session.header, [event])  // throws SessionFormatUnsupportedError
-    validateStoredEvents(session.header, [{ ...event, ignorable: true }])  // 通过
-    ```
-12. **回合级插槽都不适合承载常显的行**：`conversation.chat.turnTail` 是 chain（单赢家，`dsh-client-ui-deliverables` 与 `dsh-better-sidebar` 都注册在此），任何产出文件的回合都会把它们之一选为赢家，其他条目**不会被询问**，`select` 又被契约要求是纯函数、无法让路；`conversation.chat.assistant-actions` 是 list 槽（无抢占），但由平台渲染在**回合动作条**内，而该条在**非最新回合是 `opacity: 0` + `:hover` 才显示**（平台自己的每回合 token/耗时面板也在那里；`MessageIconActions.extraActions` 的位置由平台固定——类型注释原文 *"placed between the built-in copy and branch controls"*，且整条只有 28px 高）。
-    这条事实与"要不要在回合上展示账户读数"是两件事：后者已按修订 13 **否决**（账户级读数不属于回合），因此本插件现在只挂 `conversation.input.dock`；上面这些平台行为记录下来，是为了下次有人想在回合动作条里放东西时不必重新踩一遍。
+## 1. 宿主RPC服务绑定
+
+历史调查及当前产物测试要求typertRemote.service指向服务对象本身，serviceKey是注册名，namespace匹配线上命名空间。把service写成字符串会导致gateway/binding-invalid。
+
+依据：[当前绑定](../src/index.ts)、[产物测试](../tests/build/bundle.test.ts)、Typert研究；契约在当前0.2依赖测试中验证。
+
+## 2. 宿主codec
+
+当前manifest使用zod v4，validator检查对应codec/schema形状，zod需为运行dependency。仅仅让对象长得像manifest不足以保证loader接受。
+
+依据：[宿主清单](../src/host/typert.ts)、[真实validator测试](../tests/host/typert.test.ts)。平台升级应重复该契约测试，不把某个内部字段视作永远不变。
+
+## 3. RPC参数个数
+
+历史Typert协议按参数个数匹配。可选force仍显式传值或undefined，并声明acceptsUndefined；省略与明确undefined不能未经验证等同。
+
+依据：[客户端贡献](../src/client/contribution.ts)、Typert研究。
+
+## 4. 读取自己贡献的命名空间
+
+历史Cordis环境下ctx.remote.<ns>属性访问要求inject；remote.usageState由本插件挂载后才出现，因此用ctx.get读取，避免依赖自己尚未贡献的服务。
+
+依据：[remote helper](../src/client/remote.ts)、[客户端测试](../tests/client/remote.test.ts)、修订7。挂载失败必须可见，见第10条。
+
+<a id="module-resolution"></a>
+
+## 5. profile安装与外部link的依赖解析
+
+**历史实测：2026-10-05、DSH0.2.0-rc.2。** 当时探针tarball装进profile可解析schemastery；profile外link探针未通过同一回落，报ERR_MODULE_NOT_FOUND。本仓库有开发schemastery，link冒烟因此可能假绿。
+
+**官方文档补充：2026-10-08固定commit核验。** [发布指南](https://github.com/deepseek-ai/deepseek-harness/blob/5badb15009ae1756c3afe0ae0cef1faafc290ccc/docs/user/develop/basic/publish.md)描述了peer查找与link所在目录的lookup规则，不能扩写成“所有link一律无平台回落”。需要共享平台实例的包用peer+dev，独立第三方及无状态utilities可放dependencies。
+
+当前验证要求：用tarball在独立home安装，避免工作树开发依赖掩盖真实分发问题。link用于迭代，不能替代该检查。历史观察保留，具体解析以本次被测宿主和安装位置为准。
+
+<a id="client-hmr"></a>
+
+## 6. patch、产物重建与HMR
+
+历史0.2环境的bundle patch在启动时读取，宿主加载的代码/清单变更需要重启。客户端热替换依赖活跃client-hmr传输、宿主实际读取的bundle被重建、浏览器SSE接收通道正常。
+
+官方依据：[client-hmr说明](https://github.com/deepseek-ai/deepseek-harness/blob/5badb15009ae1756c3afe0ae0cef1faafc290ccc/packages/client/hmr/README.md)。默认stat轮询500ms是该版本实现，不是跨版本保证。
+
+本插件 [tsdown配置](../tsdown.config.ts) 同时包含宿主和客户端；npm run watch不是只构建client。外部link可用自己的watcher重建已链接产物；DSH自身源码开发按它的dev:web/watchers流程重建对应内容。仅有HMR receiver不保证保存立即生效。热替换会重挂载插件，React本地状态可能丢失；shell改动不走第三方client工厂替换链。
+
+## 7. Node类型剥离和测试hook
+
+本仓库测试靠Node原生TS stripping运行TS，TSX由 [hook](../tests/support/client-render-hook.mjs) 调用TypeScript转译。strip-only不支持TSX、构造器参数属性及需要转换的enum，也不做类型检查；typecheck仍需独立执行。
+
+registerHooks在22.15/23.5引入，22线stripping在22.18默认启用；tsdown另要求^22.18或≥24.11。Node22.6无法启动当前hook，开发下限不能据最初stripping版本推断。详见 [官方版本研究](research/repository-release-standards-2026-10.md)。
+
+## 8. 浏览器UI包的Node测试
+
+浏览器primitives包含CSS等模块，其发布形态不适合直接作为普通Node模块运行。当前SSR测试通过hook替换本地桩件。
+
+依据：[render测试](../tests/client/render.test.ts)、[primitives桩件](../tests/support/primitives-stub.mjs)。该测试验证初始标记和文本，不运行浏览器布局、effect或用户点击。
+
+## 9. 厂商观察：z.ai错误信封与区域
+
+历史真实账户观察：z.ai可用HTTP200 + success:false/code1000/msg表达鉴权失败，国内open.bigmodel.cn和国际api.z.ai的key不能混用。该路径属于厂商兼容观察，不是DSH平台规则。
+
+依据：[z.ai实现](../src/host/sources/zai.ts)、[上游/真机研究](research/dsh-cost-meter-analysis.md)。pin装配缺陷仍是 [A03](backlog.md#a03)；不能因读取层支持pin就宣称高级区固定端点已完全生效。
+
+## 10. 客户端codec工厂和RPC挂载
+
+**DSH0.2契约。** 非src-json的codec需要create()工厂。0.4.0客户端漏此字段，宿主可激活却没有RPC读数；历史0.1.5校验面更小，不能据旧挂载成功推断0.2兼容。
+
+依据：[贡献测试](../tests/client/contribution.test.ts)、[产物测试](../tests/build/bundle.test.ts)、修订18。两条测试都用真实0.2 registry解析endpoint，且挂载rejection记录错误。完整浏览器RPC往返仍应在安装验收中观察。
+
+<a id="session-events"></a>
+
+## 11. 0.1.5外部会话事件的历史限制
+
+**历史实验：2026-09-21，dsh-session与persistence均0.1.5-rc.2。** 未知事件只有带ignorable:true才可安全读取，而当时Session.append未透传该标记：写入成功，后续validateStoredEvents却拒绝重建。手工补标记能通过，表明缺的是受支持写入口。
+
+历史复现摘录，需使用同版本平台包，不是当前项目的通用测试命令：
+
+```js
+const { Session, SessionId } = await import('@deepseek-ai/dsh-session')
+const { validateStoredEvents } = await import('@deepseek-ai/dsh-session-persistence')
+const session = Session.create(SessionId('probe'), [], undefined, 0)
+const event = session.append('usage-state/turn-usage', { probe: true })
+validateStoredEvents(session.header, [event]) // 当时拒绝未知、非ignorable事件
+validateStoredEvents(session.header, [{ ...event, ignorable: true }]) // 对照通过
+```
+
+依据：[修订8/13](design-changelog.md)。本项目不写会话日志的产品决定仍有效；不能把0.1实验直接说成所有0.2/未来版本都无法写事件。如未来讨论持久化，需要重新研究公开写侧能力及产品范围。
+
+## 12. 槽位及可见性
+
+历史观察：turnTail是单赢家chain，assistant-actions在回合动作条，旧回合动作条通常悬停才可见；它们不适合本项目常显的账户读数。0.2的composer.dock是原生统计/上下文计量器共排的一行pill，input.dock是输入卡片上方的list槽位。
+
+当前只注册input.dock、order=200，排在平台queue之后；无模型选择或槽位zone未开放时可能没有读数。依据：[slots定义](../src/client/slots.ts)、[槽位测试](../tests/client/slots.test.ts)、修订13/19/20。平台字号和槽位变化需人工/契约复核，固定CSS测试不会自动发现上游改变。

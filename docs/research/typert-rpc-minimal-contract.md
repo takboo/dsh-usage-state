@@ -1,5 +1,7 @@
 # Typert RPC: the minimal contract a third-party plugin needs to expose host methods to its own browser half
 
+> Historical snapshot verified against DSH 0.1.5-rc.2. Its client codec summary is incomplete for DSH 0.2: non-src-json codecs also require a create() factory. Current requirements and real-registry coverage are in the [platform notes](../platform-notes.md) and [architecture](../architecture.md). The original 0.1 evidence below is retained rather than rewritten as a 0.2 specification.
+
 Read-only research. Every claim below is traced to a file, line, and verbatim quote from the
 installed platform. Verified against:
 

@@ -1,22 +1,26 @@
-# 侦察文档（Research）
+# 研究索引
 
-本目录存放为 `dsh-usage-state` 做决策而进行的**只读**调查结果。这些是**事实材料，不是共识**——共识见 [`../design-consensus.md`](../design-consensus.md)，实现与验证状态见 [`../architecture.md`](../architecture.md)。
+这里保存调查与审计的事实快照，供当前设计和实现引用。当前文档从 [任务导航](../index.md) 进入；设计约定见 [设计共识](../design-consensus.md)，实际实现见 [架构](../architecture.md)，未完成状态只在 [Backlog](../backlog.md) 更新。
 
-侦察时间：**2026-09-20**。环境：DSH `0.1.5-rc.2`，插件 profile `web`（`~/.dsh/profiles/web`），home 为 `/Volumes/M2ExHome/rockman`（注意 `~` 不是 `/Users/rockman`）。
+## 报告
 
-## 索引
+| 文档 | 基线/时间 | 内容与可信度 |
+|---|---|---|
+| [接口调查](provider-balance-quota-apis.md) | 2026-09-20，DSH0.1.5环境 | 官方文档和社区实现的余额/额度矩阵；未文档化端点与授权结论需重新核验 |
+| [Sub2API调查](sub2api-gateway.md) | 2026-09-20，固定上游commit | 网关/同名fork辨析及key端点；字段漂移、活体502，没有证明所有实例相同 |
+| [上游插件分析](dsh-cost-meter-analysis.md) | dsh-cost-meter1.7.28，历史安装副本 | 包结构、来源端点和行为；是上游观察，不是本项目当前契约 |
+| [Typert最小契约](typert-rpc-minimal-contract.md) | DSH0.1.5-rc.2 | 当时host/client形状和陷阱；0.2新增工厂要求，见当前平台说明 |
+| [仓库审计](repository-audit-2026-10-08.md) | 2026-10-08，3ad9a71 / 0.4.4 | 17项发现、离线复现、安装/类型/测试/构建/打包证据；后续状态移交Backlog |
+| [发布与市场规范](repository-release-standards-2026-10.md) | 2026-10-08，官方文档/固定commit | GitHub免费CI、Node/npm/OIDC、DSH及市场规则；末节含文档重构补充与单位勘误 |
 
-| 文档 | 内容 | 方法 | 可信度 |
-|---|---|---|---|
-| [`provider-balance-quota-apis.md`](provider-balance-quota-apis.md) | 各厂商余额 / 额度接口矩阵：端点、鉴权、返回结构、是否提供 5h/7d 与 `resets_at`、限流；含本机配置现状 | web 检索 + 官方文档 + 第三方实现交叉印证 | 官方端点可信；标注 `unverified` 的为逆向/未验证接口 |
-| [`sub2api-gateway.md`](sub2api-gateway.md) | `Wei-Shaw/sub2api` 自建网关的定位、同名 fork 辨析，以及可用于查询余额/额度的接口（key 侧 `/v1/usage` 与需 JWT 的面板侧） | 固定 commit 源码逐行阅读 + 同名 npm 插件交叉印证 | 接口存在性可信；**字段名观测到前后端漂移，且实测环境 502 无法活体验证** |
-| [`dsh-cost-meter-analysis.md`](dsh-cost-meter-analysis.md) | 被替代插件 `dsh-cost-meter@1.7.28` 的完整剖析：包结构、设置体系、全部外部端点、UI 插槽用法、5h/7d 逻辑、依赖的 DSH API | 只读阅读已安装的 `lib/*.js` 与 `.d.ts` | 源码引用可信（含文件与行号）；客户端为压缩产物，只能从 bundle 反推 |
-| [`typert-rpc-minimal-contract.md`](typert-rpc-minimal-contract.md) | 宿主 `./typert` 导出与清单形状、zod v4 硬要求、客户端 `$mount` 描述符、以及三个坑（`typertRemote` 必须自引用服务对象、描述符必须声明 `result`、参数个数精确匹配） | 逐行阅读平台源码 + 反查压缩客户端 bundle + 平台校验器实测 | 高（实现后已用平台 `validateTypertManifest` 验证清单通过；见 [`../architecture.md`](../architecture.md) §3） |
+最初的本机home/profile路径仅是历史证据，不是本仓库当前工作环境或贡献者配置要求。审计时测试通过与真实账户/视觉覆盖不同；各报告自己的验证范围优先于索引摘要。
 
-## 使用注意
+## 如何引用
 
-1. **不要把这些文档当成约定**。其中部分接口（Anthropic OAuth usage、z.ai monitor、MiniMax、Kimi Code、CodeX `wham/usage`、Antigravity、sub2api `/v1/usage`）属于未文档化的内部接口，随时可能变更；实现时必须容错解析并配单测。
-2. 每份文档内部都标注了各自的 **unverified** 条目，引用前先看那一节。
-3. 文档中的本机配置结论有时效性（例如 `settings.yaml` 曾被实时重写，`llm-pi-ai.providers` 从有到无）。
-4. **凭据安全**：文档只记录键名与来源，不记录密钥值。但侦察过程中有一次命令输出曾**短暂回显过 `DEEPSEEK_API_KEY` 的值**——若在意，建议轮换该 key。
-5. **已经过真机验证的结论**（z.ai 用 HTTP 200 表达鉴权失败、coding plan 的 key 分区域、`typertRemote` 必须自引用等）已沉淀到 [`../platform-notes.md`](../platform-notes.md)，可优先信那一节。
+- 官方字段定义优先于社区启发式。Moonshot余额以人民币元计，早期“≥100视为分”的说法已由 [明确勘误](repository-release-standards-2026-10.md#documentation-recheck) 更正；代码仍待A02修复。
+- 历史0.1客户端codec形状不含0.2的create要求；link依赖回落、HMR和会话事件结论不能不带版本直接推广。
+- 未文档化API可能改变。引用前检查official/unverified标记、固定commit和日期，新增适配器按当前 [指南](../adapters.md) 写容错与真实语义测试。
+- 报告中的“当前”、本地路径和行号相对报告基线解释；文档重构后不默默改旧观察，新增纠错放醒目的说明或补充。
+- 研究材料只记录ref名、来源和脱敏样本。早期调查曾记录命令输出回显key的事件，该凭据是否已轮换需由持有人确认；这不是本轮重新发现或已执行的操作。
+
+新增研究应注明问题、方法、日期/版本、primary URL或固定commit、验证范围和不确定性，再加入本索引。报告不新增第二份长期待办。
