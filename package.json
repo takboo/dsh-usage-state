@@ -47,10 +47,10 @@
     "@types/node": "^24.0.0",
     "@types/react": "~18.3.1",
     "@types/react-dom": "~18.3.1",
-    "@types/react-test-renderer": "18.3.1",
+    "@types/react-test-renderer": "19.3.0",
     "react": "^18.3.1",
     "react-dom": "^18.2.0",
-    "react-test-renderer": "18.3.1",
+    "react-test-renderer": "19.3.0",
     "tsdown": "^0.22.14",
     "typescript": "^5.9.2",
     "unrun": "^0.2.39"
