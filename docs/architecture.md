@@ -92,7 +92,22 @@ flowchart LR
 | 构建与包 | [bundle](../tests/build/bundle.test.ts)、[artifacts](../scripts/verify-artifacts.mjs)、[package](../scripts/verify-package.mjs) | 缺文件硬失败；HEAD一致性及真实tarball白名单/入口/patch/离线链接；提交前产物漂移合理失败 |
 | Node运行边界 | [runtime smoke](../scripts/runtime-smoke.mjs) | 预构建JS/fake host；可独立安装tarball和真实schema指定版本，不注入volatile polyfill |
 
-本轮实现提交为 [984878e](https://github.com/takboo/dsh-usage-state/commit/984878ee0ddc8ce3e42bcbc69d7a5052c6cdcf10)。Node26.10.0、开发下界22.18.0与规范24.21.0完整319回归均通过，无失败或跳过；规范Node24产物已提交，HEAD三bundle一致性、元数据及工作流解析/权限依赖校验通过。真实tarball与Node20/peer下界隔离结果在本节后续验收记录补充。2026-10-08原审计281测试/10文件打包是历史基线，不是本轮运行证据。
+本轮实现提交为 [984878e](https://github.com/takboo/dsh-usage-state/commit/984878ee0ddc8ce3e42bcbc69d7a5052c6cdcf10)。Node26.10.0、开发下界22.18.0与规范24.21.0完整319回归均通过，无失败或跳过；规范Node24产物已提交，HEAD三bundle一致性、元数据及工作流解析/权限依赖校验通过。2026-10-08原审计281测试/10文件打包是历史基线，不是本轮运行证据。
+
+### 本轮本地验收（2026-10-08）
+
+| 检查 | 实际结果 |
+|---|---|
+| 完整回归 | Node26.10.0、22.18.0、24.21.0均319通过、0失败、0跳过 |
+| 提交与产物 | 实现984878e；三预构建文件对HEAD一致；缺入口检查硬失败 |
+| 工作流 | 4份YAML真实解析、32组shell语法、16处完整SHA；稳定发布依赖Node20，默认verify；npm/GitHub分权 |
+| 发布标签保护 | 临时克隆中验证合法稳定标签及拒绝重复已发布npm版本；真实仓库未创建标签 |
+| 最终包 | 文档提交6880bd411f8efa264edb1aa02267047602503585的干净检出产生10文件tarball；入口、patch、6个包内相对链接及报告/checksum复验通过 |
+| 运行边界 | 同一个tarball在Node20.20.2隔离安装真实schema3.18.4和声明下界3.18.3，各自宿主/RPC codec/fake fetch通过，无polyfill |
+
+包名为dsh-usage-state-0.4.4.tgz，本地未发布产物与registry已发布0.4.4不同。上述同一包的SHA-256为 `7c738d8fc6659abbd1182a022e548c28d27e32a1680209224a8aaa5ff31a459c`，报告workingTreeDirty=false。验收补充只修改未随包的架构/待办文档，不重新打包或改写这份已验证字节。
+
+这些都是本地验证：没有GitHub Actions云端执行、npm/GitHub发布、真实DSH profile安装、真实凭据写入或厂商账户/视觉验收。Node20加载/模拟RPC通过不等同于所有受支持DSH发行版均真机验证。
 
 历史真机证据（2026-10-05、DSH0.2.0-rc.2）覆盖DeepSeek、z.ai、OpenCode正常读数、设置页及槽位位置，来自修订17–23和截图。历史真实key直连是在线查询。Kimi Code/Sub2API真实账户、高阈值视觉、真实手写key生效和OpenCode非零仍未闭环。
 

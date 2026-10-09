@@ -76,7 +76,7 @@
 
 ### A12 · P2 · 产物一致性和缺失守卫
 
-**状态：本地实现及提交产物一致性完成，待发布。** 缺入口不再skip；metadata/artifacts/package门禁检查必要文件、额外/未跟踪产物、相对HEAD的漂移及真实tarball内容。规范Node24已统一重建并提交，三bundle对HEAD门禁通过；最终包结果见架构验收。证据：[bundle测试](../tests/build/bundle.test.ts)、[产物脚本](../scripts/verify-artifacts.mjs)、[包脚本](../scripts/verify-package.mjs)。
+**状态：本地实现及最终产物验收完成，待发布。** 缺入口不再skip；metadata/artifacts/package门禁检查必要文件、额外/未跟踪产物、相对HEAD的漂移及真实tarball内容。规范Node24已统一重建并提交，三bundle对HEAD门禁通过；最终10文件包的入口、patch、6个相对链接及同包Node20/peer下界隔离运行均通过，见 [验收记录](architecture.md#本轮本地验收2026-10-08)。证据：[bundle测试](../tests/build/bundle.test.ts)、[产物脚本](../scripts/verify-artifacts.mjs)、[包脚本](../scripts/verify-package.mjs)。
 
 <a id="a13"></a>
 
