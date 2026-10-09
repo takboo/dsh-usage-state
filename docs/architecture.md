@@ -18,7 +18,7 @@ flowchart LR
   Model[当前模型选择] --> UI
 ```
 
-数值和source元数据从宿主经RPC传到浏览器。浏览器另外读取模型目录和配置，并自行resolveProvider；当前RPC未传provider端点/有效目标映射，导致 [A08](backlog.md#a08)。SVG只在浏览器绘制，不是两端传输协议。
+数值、source元数据和origin-only endpointHints从宿主经RPC传到浏览器；设置页和状态行用该提示调用共享resolveProvider。提示不含userinfo/query或apiKey，[A08](backlog.md#a08) 的两端识别缺口已在当前Unreleased修复。SVG只在浏览器绘制，不是两端传输协议。本文的当前实现指工作树，已发布npm0.4.4仍是整改前版本。
 
 宿主产物是ESM，客户端是平台模块加载器接收的CJS工厂；三个预构建文件提交入库，供DSH直接GitHub安装。浏览器仅依赖shell模块表提供的运行模块；宿主运行依赖zod和共享schemastery。具体依赖与link解析必须按宿主版本验证。
 
@@ -30,14 +30,14 @@ flowchart LR
 |---|---|
 | [入口](../src/index.ts) | 装配配置、provider事实、凭据、读取、调度和RPC服务；监听turn/end |
 | [配置](../src/host/settings.ts) | volatile根Config、normalizeConfig、loader/volatile-update |
-| [目标](../src/host/targets.ts) | source+mode去重，先legacy models再provider目标，携带endpoint/pin |
-| [provider信息](../src/host/provider-refs.ts) | 从跨条目配置取apiKeyEnv和端点提示 |
+| [目标](../src/host/targets.ts) | normalize迁移后仅生成provider目标，携带endpoint/pin/ref；source+mode仍只选一个目标 |
+| [provider信息](../src/host/provider-refs.ts) | 跨条目apiKeyEnv候选与端点提示；preferredRefs随有效目标参与签名 |
 | [凭据](../src/host/credentials.ts) | 候选顺序、resolveApiKey、只含状态的describeCredentials |
 | [凭据兜底](../src/host/credential-fallback.ts) | 平台无结果时直读env/所用home的凭据文件并标来源 |
 | [目录](../src/host/catalog.ts) | 将Adapter元数据转为JSON SourceCatalog |
-| [HTTP读取](../src/host/read.ts) | 请求/镜像顺序、15s单次超时、失败分类、调用parse |
-| [缓存调度](../src/host/refresh.ts) | 成功最小间隔、在途去重、旧值陈旧标记、回合延迟和idle timer |
-| [RPC服务](../src/host/service.ts) | getState触发所有目标刷新后取快照；describeCredentials按目标输出状态 |
+| [HTTP读取](../src/host/read.ts) | 15s单次超时、镜像顺序，JSON语法错归parse、body中断归network |
+| [缓存调度](../src/host/refresh.ts) | 私有摘要/generation/签名隔离身份，在途去重、旧值/脱敏错误、live idle与stop收尾 |
+| [RPC服务](../src/host/service.ts) | 普通getState仅初始化缺失/变更身份并读镜像；force主动刷新，输出origin-only提示及凭据状态 |
 | [RPC清单](../src/host/typert.ts) | named TYPERT、zod v4 codec、参数/结果验证 |
 | [适配器类型](../src/host/sources/types.ts) / [工具](../src/host/sources/normalize.ts) | RequestInput、UsageSource、SourceError、数值/时间/地址归一化 |
 | [注册](../src/host/sources/index.ts) / [模板](../src/host/sources/_template.ts) | ALL_SOURCES、findSource、新源骨架 |
@@ -67,33 +67,35 @@ flowchart LR
 | [config](../src/shared/config.ts) | 默认值、宽松归一化、legacy迁移、source识别hints |
 | [providers](../src/shared/providers.ts) | provider解析、origin提取、有效顺序 |
 | [display](../src/shared/display.ts) | SourceCatalog类型、格式化、severity和显示段 |
-| [rpc](../src/shared/rpc.ts) | 两端线上类型；与host/service仍有重复定义 |
+| [rpc](../src/shared/rpc.ts) | 两端线上类型由host/service复用，含可选origin-only endpointHints |
 | [构建](../tsdown.config.ts) | 宿主index/Typert ESM、客户端单文件工厂；watch包含全部入口 |
 | [清单](../package.json) / [patch](../cordis.patch.yml) | exports/files/engines、client inject、usage-state条目与config:{} |
 
-## 重要Interface与已知缺口
+## 重要Interface与约束
 
-- **Adapter**：request纯构造，parse纯解析，FetchLike负责网络；已有五源，变化在该Seam集中。不要让浏览器import宿主Adapter。
-- **UsageStateStore**：时钟、policy、targets、凭据和read可注入，负责缓存/调度。当前身份只用source:mode，live policy不等于live timer，见A04/A06。
-- **目标解析**：目前apiKeyRef在目标转抄时丢失，pin在入口丢失，legacy优先又绕过provider选择，见A01/A03/A05。未来修复应集中有效目标解析，避免加更多平行推断。
-- **RPC**：getState不是纯快照getter，会真实查询；前端30s轮询改变有效请求频率。结果带source目录及快照，但不带provider映射。
-- **客户端镜像**：保留旧数字不等于正确标陈旧；全局RPC错误仅部分渲染路径可见，见A10。
-- **配置写入**：结构镜像和SSR测试没有验证实际异步mutate失败/只读行为，见A16。
+- **Adapter**：request纯构造，parse纯解析，FetchLike负责网络；已有五源，变化在该Seam集中。金额按字段契约，不按数值猜单位；非法读数不造0。浏览器不import宿主Adapter。
+- **UsageStateStore**：时钟、live policy、targets、凭据和read可注入。目标签名含endpoint/pin/ref/preferredRefs，私有SHA-256含本次有效凭据，generation隔离配置代次；摘要不进RPC。ABA/晚lookup/晚HTTP不能写回旧值，stop使后续refresh不再查网络，ctx.effect清理调度。
+- **目标解析**：共享resolveProvider集中provider→legacy→声明origin优先级；目标供请求与描述共用。旧models仅normalize迁移；权威空LLM目录与未知目录分别处理。仍是一source+mode一目标，不是多账户注册表。
+- **RPC**：getState(false)用onlyIfMissing初始化缺失/变更身份，其他普通poll读取镜像；周期/回合由宿主负责。结果带source目录、快照、origin-only endpointHints；host/shared复用线上类型。
+- **客户端镜像**：配置/凭据变更invalidate读数并增加generation，旧RPC不能复原旧身份。显式force遇普通在途RPC排一次后续，已有force则共享。源/RPC失败保留同身份数字且显示年龄/原因。
+- **配置写入**：ConfigForm是Promise<boolean>，false按拒绝反馈；凭据保存/清除有busy/pending、错误和独立writable控制。未编辑输入框失焦不提交陈旧草稿。React交互测试覆盖回调和effect，但不替代浏览器视觉/真实凭据服务。
 
 ## 测试与证据
 
-| 验证层 | 已有入口 | 能证明的范围与限制 |
+| 验证层 | 入口 | 当前范围与限制 |
 |---|---|---|
-| 字段/业务纯函数 | [共享测试示例](../tests/shared/providers.test.ts)、[源测试示例](../tests/sources/kimi.test.ts) | 输入输出；当前部分金额测试固定错误语义，需要更新 |
-| 宿主装配 | [entry测试](../tests/host/entry.test.ts) | fake ctx/fetch下的依赖接线；高级覆盖和配置代次仍缺用例 |
-| 调度 | [refresh测试](../tests/host/refresh.test.ts) | 注入时钟下固定policy；没有证明配置更新会重调timer |
-| 客户端逻辑/初始渲染 | [store测试](../tests/client/store.test.ts)、[render测试](../tests/client/render.test.ts) | SSR/桩件下初始输出；不覆盖真实点击、effect和所有视觉环境 |
-| 真实平台契约 | [宿主Typert](../tests/host/typert.test.ts)、[客户端贡献](../tests/client/contribution.test.ts) | 当前依赖版本validator/registry接受manifest；不替代完整安装 |
-| 已构建产物 | [bundle测试](../tests/build/bundle.test.ts)、[共享harness](../tests/support/browser-face.mjs) | 工厂/require/exports和fake宿主、真实registry；缺文件目前skip，且未强制源码一致 |
-| 干净安装与打包 | 2026-10-08审计快照 | npm ci/typecheck/281 tests/build与10文件pack通过；无本轮新真机安装 |
+| 纯字段/来源 | [providers](../tests/shared/providers.test.ts)、[Kimi](../tests/sources/kimi.test.ts)、[DeepSeek](../tests/sources/deepseek.test.ts) | 官方元单位、真实0/畸形字段及legacy/provider优先级；未调用真实账户 |
+| 宿主装配 | [entry](../tests/host/entry.test.ts) | fake ctx/fetch下的ref/pin、轮换、ABA、晚lookup/HTTP、目标移除、错误密钥回显脱敏 |
+| 调度 | [refresh](../tests/host/refresh.test.ts)、[service](../tests/host/service.test.ts) | 30s普通poll不改变idle、live重调、force、回合及stop序列 |
+| 客户端 | [store](../tests/client/store.test.ts)、[render](../tests/client/render.test.ts)、[interactions](../tests/client/interactions.test.ts) | 身份失效与force排序、两UI提示/失败显示、真实React回调/效果；不是浏览器布局或真实平台写入 |
+| 平台契约 | [host Typert](../tests/host/typert.test.ts)、[client contribution](../tests/client/contribution.test.ts) | 使用当前真实validator/registry；不替代完整DSH安装 |
+| 构建与包 | [bundle](../tests/build/bundle.test.ts)、[artifacts](../scripts/verify-artifacts.mjs)、[package](../scripts/verify-package.mjs) | 缺文件硬失败；HEAD一致性及真实tarball白名单/入口/patch/离线链接；提交前产物漂移合理失败 |
+| Node运行边界 | [runtime smoke](../scripts/runtime-smoke.mjs) | 预构建JS/fake host；可独立安装tarball和真实schema指定版本，不注入volatile polyfill |
 
-历史真机证据（2026-10-05、DSH0.2.0-rc.2）覆盖DeepSeek、z.ai、OpenCode正常读数、设置页与槽位位置；来源为修订17–23及仓库截图。历史记录中真实key直连是在线查询，不称“离线复现”。高阈值视觉、Kimi Code/Sub2API真实账户、手写key生效与OpenCode非零路径尚未闭环。
+本轮实现提交为 [984878e](https://github.com/takboo/dsh-usage-state/commit/984878ee0ddc8ce3e42bcbc69d7a5052c6cdcf10)。Node26.10.0、开发下界22.18.0与规范24.21.0完整319回归均通过，无失败或跳过；规范Node24产物已提交，HEAD三bundle一致性、元数据及工作流解析/权限依赖校验通过。真实tarball与Node20/peer下界隔离结果在本节后续验收记录补充。2026-10-08原审计281测试/10文件打包是历史基线，不是本轮运行证据。
 
-Node20.20.2加载宿主产物通过，不等于所有功能在最低版本完整通过。类型镜像避免合并冲突，但不静态验证其与平台声明一致。未来验证记录应注明插件commit、DSH、Node、安装形态、所用产物和是否实际跑了账户请求。
+历史真机证据（2026-10-05、DSH0.2.0-rc.2）覆盖DeepSeek、z.ai、OpenCode正常读数、设置页及槽位位置，来自修订17–23和截图。历史真实key直连是在线查询。Kimi Code/Sub2API真实账户、高阈值视觉、真实手写key生效和OpenCode非零仍未闭环。
 
-具体开发命令见 [开发指南](development.md)，发布门禁和tarball冒烟见 [发布流程](release.md)。当前没有GitHub CI；文档中的检查要求不意味着自动化已完成。
+规范工具链固定Node24.21.0/npm11.19.1；schema下界为3.18.3、锁3.18.4。运行Node≥20与DSH0.2声明未因开发工具扩张。结构类型镜像仍需平台/安装验证。
+
+具体命令见 [开发指南](development.md)，发布与tarball见 [发布流程](release.md)。CI、Dependabot和手动Release配置已在工作树；未推送实跑、未设远端保护/publisher或创建实际发布，状态见 [Backlog](backlog.md)。

@@ -203,6 +203,18 @@
 
 代价：已确认但未修的实现缺陷会在用户入口可见；正文更正不能消除这些缺陷。A01–A17后续进度维护在 [Backlog](backlog.md)，不把本次文档重构记成运行功能修复。此前修订中的六步流程、旧平台范围和已结案措辞仍按历史时点理解，当前操作以新发布/开发指南为准。
 
+## 修订25：有效目标、身份代次与受控交付（2026-10-08，Unreleased）
+
+修订24将文档与实际偏差分层后，本轮落实A01–A10/A16/A17及本地工程门禁。原装配逐次转抄provider字段，legacy又独立优先轮询，source:mode缓存被误当成完整账户身份；普通RPC还把浏览器轮询变成真实源刷新。单模块测试未覆盖这些跨Module行为。
+
+现决定：共享provider解析集中覆盖优先级，normalize只用于legacy迁移，有效目标同时承载ref、endpoint、pin和DSH preferredRefs。保留一source+mode一目标的范围，以私有凭据摘要、目标签名和generation隔离切换/ABA/晚lookup/HTTP；这些状态不通过RPC作为账户标识暴露。目标移除和ctx.effect收尾使旧请求不能继续复原有效值。
+
+普通getState只初始化缺失/变更身份，再返回镜像；周期、回合和live间隔由宿主调度，force保持显式刷新。RPC只新增origin-only端点提示给两UI。客户端独立invalidate/generation拒绝旧身份RPC，并对普通在途请求后的force排一次、已有force共享。配置布尔false、凭据失败/pending与只读分别反馈，React交互回归补足SSR不能证明的事件路径。
+
+交付侧增加固定Node24.21.0/npm11.19.1、metadata/HEAD产物/真实tarball/稳定tag门禁；缺bundle硬失败。手动Release从可信main派发，默认verify，规范Node和Node20复用同一tgz；npm OIDC与GitHub附档分离任务/权限，附档失败可在保留期内恢复且不再publish。schema真实下界更正为3.18.3，不用polyfill掩盖3.18.2缺volatile。
+
+代价与限制：普通poll不再每分钟主动重试已有失败值，应由显式刷新、回合或idle调度重试；变更身份会清旧数值而非保留成新账户读数。HEAD门禁意味着新源码和bundle应一起提交，提交前的漂移是合理失败。尚无独立多账户/OAuth/history，也未新增真机账户/视觉/真实凭据写入验收。包号仍0.4.4，修复是Unreleased，已发布npm0.4.4不会因此变化；远端Actions、main保护、publisher与真正发版仍待后续。实现与最终证据维护在 [Backlog](backlog.md)，不改写修订1–24或研究快照。
+
 ## 附录：初版实现顺序（历史，已全部执行完毕）
 
 > 2026-09-20 grilling 定下的顺序，留作"共识如何变成现实"的对照。实际执行中的偏差见上方修订。

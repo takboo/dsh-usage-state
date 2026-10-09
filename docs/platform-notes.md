@@ -58,13 +58,17 @@ registerHooks在22.15/23.5引入，22线stripping在22.18默认启用；tsdown�
 
 浏览器primitives包含CSS等模块，其发布形态不适合直接作为普通Node模块运行。当前SSR测试通过hook替换本地桩件。
 
-依据：[render测试](../tests/client/render.test.ts)、[primitives桩件](../tests/support/primitives-stub.mjs)。该测试验证初始标记和文本，不运行浏览器布局、effect或用户点击。
+依据：[render测试](../tests/client/render.test.ts)、[primitives桩件](../tests/support/primitives-stub.mjs)。SSR验证初始标记，不运行浏览器布局。新增 [React交互测试](../tests/client/interactions.test.ts) 覆盖真实hooks/effects下的按钮、只读、pending、失败和草稿事件；仍使用外部服务桩件，不等于真实浏览器或凭据落盘验收。
+
+当前ConfigForm写入返回Promise<boolean>，false是未接受写入而非成功；[表单适配器](../src/client/settings-form.ts) 把false转换为失败反馈。凭据与配置权限分别控制，不能把一个只读状态外推另一项。
+
+宿主Config的volatile要求对应schemastery真实下界3.18.3，peer/dev已更正，锁解析3.18.4。旧3.18.2不具备该能力；预构建冒烟安装真实schema，不注入polyfill来证明虚假的下界兼容。
 
 ## 9. 厂商观察：z.ai错误信封与区域
 
 历史真实账户观察：z.ai可用HTTP200 + success:false/code1000/msg表达鉴权失败，国内open.bigmodel.cn和国际api.z.ai的key不能混用。该路径属于厂商兼容观察，不是DSH平台规则。
 
-依据：[z.ai实现](../src/host/sources/zai.ts)、[上游/真机研究](research/dsh-cost-meter-analysis.md)。pin装配缺陷仍是 [A03](backlog.md#a03)；不能因读取层支持pin就宣称高级区固定端点已完全生效。
+依据：[z.ai实现](../src/host/sources/zai.ts)、[上游/真机研究](research/dsh-cost-meter-analysis.md)。Unreleased已由入口和读取层共同保留显式pin，[A03](backlog.md#a03) 的401不镜像回归通过；npm0.4.4仍是旧装配。历史厂商观察不等于本轮新增了真实账户验证。
 
 ## 10. 客户端codec工厂和RPC挂载
 

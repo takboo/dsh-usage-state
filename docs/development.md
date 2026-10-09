@@ -4,9 +4,9 @@
 
 ## 工具链
 
-运行预构建插件声明 Node ≥20；开发与构建要求更高：使用 Node 22.18+ 的22线，或Node 24.11+。建议日常使用满足要求的Node24。
+运行预构建插件仍声明Node≥20。开发兼容下界是Node22.18+的22线或Node24.11+；规范构建使用 [.node-version](../.node-version) 固定的 **24.21.0**，npm由 [packageManager](../package.json) 固定为 **11.19.1**。
 
-原因是当前 tsdown 0.22.14 的 engines 为 `^22.18.0 || >=24.11.0`，测试 hook 还依赖 `node:module.registerHooks`。Node22.6首次支持类型剥离，不代表能运行本仓库测试；原生类型剥离也不做类型检查或处理TSX。版本依据见 [官方规范研究](research/repository-release-standards-2026-10.md)。
+当前tsdown要求 `^22.18.0 || >=24.11.0`，测试hook依赖registerHooks；Node22.6的最初类型剥离不能运行本项目。schema peer/dev下界已更正为3.18.3，锁文件解析3.18.4；3.18.2缺少Config所需volatile，不能靠polyfill冒烟掩盖。版本背景见 [规范研究](research/repository-release-standards-2026-10.md)，当前声明以包清单/锁文件为准。
 
 ```bash
 node --version
@@ -27,19 +27,26 @@ npm test
 | npm run build | 清理lib并重建宿主index、Typert清单及浏览器client |
 | npm run watch | watch同一份tsdown配置，包含宿主和客户端两组入口 |
 | npm run test:watch | 监听测试变化；不替代构建watcher |
+| npm run verify:metadata | 校对package/lock、固定npm和开发Node要求 |
+| npm run verify:artifacts | 检查必要产物、额外文件及相对HEAD漂移 |
+| npm run verify:package | 生成或校验实际tarball、入口/patch/离线链接，并记录checksum/report |
+| npm run verify:release | 校验已有稳定tag、可信main祖先与发布元数据 |
+| npm run smoke:runtime | 运行预构建JS，支持独立tarball安装及指定真实schema版本 |
+| npm run verify | metadata→typecheck→build→test→artifacts→package |
 
-改实现后的完整检查顺序：
+改实现后、提交前先执行：
 
 ```bash
+npm run verify:metadata
 npm run typecheck
 npm run build
 npm test
-npm pack --dry-run --json
+npm run verify:package
 ```
 
-构建后再跑测试，才能验证这次实际产物。三个预构建文件需要提交，以支持DSH通过GitHub安装本仓库。源码和已提交产物之间已有两处词典文案漂移，跟踪 [A12](backlog.md#a12)；在其修复前，完整重建可能显示已有差异，不能把它当成本轮变更偷偷吞掉。
+必要产物缺失现在是测试硬失败。三个bundle与源码需要一起审阅、提交；随后执行 `npm run verify`。verify:artifacts比较 **HEAD**，故已重建但未提交的产物修改会合理失败，暂存也不会消除该失败。不要跳过门禁或用旧产物替代新代码；在规范Node24.21.0上完成构建后，提交再复核一致性。
 
-正式交付还需检查缺失/未跟踪产物。当前产物测试在必要文件缺失时会skip，不能仅凭 `npm test` 成功证明发布内容完整；具体要求见发布文档。
+源码、构建产物和真实包入口由现有门禁分别检查，具体发布/tarball及Node20冒烟见 [发布流程](release.md)。本轮包号仍0.4.4，所有整改属于Unreleased；不能把生成本地0.4.4.tgz当成已发布npm0.4.4同一内容。
 
 ## 本地宿主回路
 
@@ -85,4 +92,5 @@ DSH_HOME=/tmp/dsh-usage-state-verify dsh plugin --profile p add "/tmp/dsh-usage-
 - 增加数据源按 [适配器指南](adapters.md) 更新注册、自动识别和必要词典，维护中英README关键事实。
 - 可见行为改变后更新用户说明、Backlog状态与Unreleased；实际发布日期以registry记录为准。
 - 新设计取舍追加 [设计修订](design-changelog.md)。历史研究的错误用勘误或补充记录，不覆盖原始证据。
-- 当前尚无GitHub CI，自动门禁与工具链固定由 [A11](backlog.md#a11)、[A14](backlog.md#a14) 跟踪；文档描述的是应执行的检查，不表示已配置工作流。
+- 本地已配置 [CI](../.github/workflows/ci.yml)、[Dependabot](../.github/dependabot.yml) 和默认verify的 [手动Release](../.github/workflows/release.yml)，自动化状态见A11/A14。工作流尚未推送实跑，main保护与npm publisher仍需维护者配置。
+- 所有本轮修复记录为Unreleased，npm0.4.4仍是旧实现；产物和源码统一提交后再完成HEAD一致性门禁，实际tag/Release/npm发布是后续操作。

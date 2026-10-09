@@ -6,12 +6,27 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- provider级凭据覆盖贯通读取、描述和保存；显式provider端点/ref优先于legacy source默认，固定端点不尝试镜像。
+- Moonshot余额按官方人民币元解析；DeepSeek跳过非法金额，无有效读数时报parse并保留同身份旧成功值；响应体超时/中断归network。
+- 宿主按有效目标签名、私有凭据摘要和generation隔离缓存/在途；拒绝配置切换、ABA、晚lookup和晚HTTP的旧结果，目标移除及stop不再触发后续查询。已解析密钥的原文回显在快照错误边界精确替换。
+- legacy models仅通过normalize迁移，权威空provider目录停止轮询；普通getState只初始化缺失/变更身份，浏览器30s轮询不缩短5min宿主idle，间隔修改会重调timer。
+- origin-only endpointHints传到设置页和状态行；默认provider按可见顺序排序；旧值tooltip含原因，RPC断线标年龄/陈旧。客户端配置身份失效后拒绝旧RPC，普通请求中的显式刷新排一次，已有force则共享。
+- 配置写入false/rejection、凭据保存/清除失败与pending均有反馈；配置只读和凭据权限分开，未编辑输入框失焦不写回旧草稿。
+
+### Engineering
+
+- 新增标准Ubuntu CI、Dependabot和默认verify的手动Release；action固定完整SHA，npm OIDC与GitHub附档分离权限，复用同一已验证tarball和checksum。
+- 新增metadata、已提交产物、实际tarball、稳定发布tag和预构建runtime门禁；必要产物缺失改为硬失败，不再skip。规范工具链固定Node24.21.0/npm11.19.1，锁文件根版本同步0.4.4。
+- schemastery peer/dev下界更正为3.18.3（3.18.2缺少volatile能力），锁定解析版本3.18.4；没有扩大DSH发布线范围。
+- 本轮包号仍0.4.4，整改尚未npm发布；远端main保护、trusted publisher、Actions实跑和新tag/Release仍需后续配置/验收。
+
 ### Documentation
 
-- 精简中英README，增加任务导航、领域术语、开发指南和用户排查，明确现有功能与关键缺陷。
-- 重写设计、架构、适配器、平台及发布说明，区分约定、实际实现、验证范围和历史证据；更正开发Node下限、HMR条件、刷新行为、Moonshot单位与市场兼容规则。
-- 将A01–A17审计整改纳入唯一Backlog，保留代码待修状态；修正0.4.4已发布记录和不存在的标签链接。
-- 本轮未修改运行实现或预构建产物，未新增CI或发布版本。
+- 精简中英README，增加任务导航、领域术语、开发指南和用户排查；区分当前Unreleased与已发布npm0.4.4。
+- 设计、架构、适配器、平台和发布文档同步本地实现及验证边界；A01–A17状态归入唯一Backlog，历史研究与修订1–24保留。
+- 0.4.4发布日期和历史提交引用已校正；真实账户、视觉及实际凭据写入验证仍未新增。
 
 ## [0.4.4] - 2026-10-06
 

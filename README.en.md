@@ -2,6 +2,8 @@
 
 [中文](README.md) | **English**
 
+> **Release status:** the corrected behavior below describes the current **Unreleased** working tree. The package version is still 0.4.4, but npm's release of 2026-10-06 does not contain this remediation. Installing that npm version retains the older issues listed below. Record the npm version or local commit/artifacts separately; these fixes have not been published.
+
 Show the current model provider's **account balance** or **coding-plan quota** above the composer input in [DSH (DeepSeek Harness)](https://github.com/deepseek-ai/deepseek-harness). The line matches the input card's width and preserves the native statistics and context meter.
 
 ```text
@@ -13,7 +15,7 @@ DeepSeek · ¥58.13
 
 - Recognized providers default to Auto and reuse existing DSH credentials. Configuration is per provider; the model list is informational.
 - Balances, used percentages, reset countdowns and SVG rings, with configurable amber/red thresholds (80%/95% by default) and an option to hide rings.
-- A failed source request keeps the last successful reading and marks it stale. Parsing and failure-display exceptions remain; see the limitations below.
+- A failed source request keeps the last successful reading for the same effective account identity, with its age and reason. An RPC failure also marks retained values as stale.
 - Hover details include source, mode, reset time and balance components. The UI follows DSH's Chinese/English language setting.
 - Current account readings only: no cost attribution, price catalog, budgets or historical bills.
 
@@ -45,7 +47,7 @@ Use historical version 0.3.2 on DSH 0.1; it does not work on 0.2. Version 0.4.0 
 3. Set your instance URL for a self-hosted Sub2API source. The current model's reading appears above the input.
 4. Use Refresh now for an explicit query. Check the settings error and the [troubleshooting guide (Chinese)](https://github.com/takboo/dsh-usage-state/blob/main/docs/troubleshooting.md) if it fails.
 
-Advanced controls offer source, endpoint, credential name and key writes. **The provider-level credential-name override currently does not reach the request path**; changing it does not establish that the account has changed. Default-provider ordering and endpoint pinning also have known defects.
+Advanced controls offer source, endpoint, credential name and key writes. Explicit provider overrides take precedence over legacy source defaults. Descriptions and requests share the candidate order; saves prioritize the explicit ref. Pinned endpoints do not try mirrors, and account configuration/key changes discard previous-identity readings. Configuration and credential write permissions are separate; saves/clears report failure and prevent repeated in-flight operations.
 
 ## Sources
 
@@ -53,7 +55,7 @@ Advanced controls offer source, endpoint, credential name and key writes. **The 
 |---|---|---|---|
 | DeepSeek official | CNY/USD balance | — | DEEPSEEK_API_KEY |
 | z.ai / Zhipu GLM | — | 5h / 7d used % | ZAI_API_KEY and related refs |
-| Kimi / Moonshot | CNY balance, with a known unit bug | Kimi Code subscription windows | MOONSHOT_API_KEY / KIMI_CODING_API_KEY |
+| Kimi / Moonshot | CNY balance | Kimi Code subscription windows | MOONSHOT_API_KEY / KIMI_CODING_API_KEY |
 | OpenCode Zen Go | — | 5h / 7d / 30d used % | OPENCODE_GO_API_KEY / OPENCODE_API_KEY |
 | Sub2API | Balance or key allowance | Depends on the instance, e.g. 5h / 1d / 7d / 30d | SUB2API_API_KEY and instance URL |
 
@@ -73,23 +75,22 @@ Provider settings and advanced controls:
 
 ## Refresh and credentials
 
-The host defaults to a refresh 2 seconds after a turn ends and a 5-minute fallback timer. The browser polls RPC every 30 seconds, and that RPC also triggers source refreshes. With the default 60-second minimum after success, idle queries are typically about once a minute while the browser is open. Explicit refresh can bypass the interval; failures can retry immediately. Editing the idle interval does not currently reschedule the timer.
+The host schedules refreshes 2 seconds after a turn ends and has a 5-minute fallback timer. The browser reads the RPC mirror every 30 seconds. Ordinary polling initializes a missing or changed account identity, otherwise it does not shorten idle queries to once a minute. Successful requests have a default 60-second minimum; explicit refresh can bypass it, and active retries after failure are not throttled by that successful-request interval. Editing the idle interval reschedules the timer.
 
 The plugin queries balances/quotas and reads the selected model and provider catalog. It writes no session logs and reports no readings to third parties. The host does not return stored key values to the browser; a key the user actively pastes is sent through DSH's credential service to the credential file in the selected home. Environment values take precedence and usually cannot be edited in settings.
 
 ## Known limitations
 
-These describe the current implementation. The documentation refactor does not fix the code. Full status and acceptance criteria live in the [Backlog (Chinese)](https://github.com/takboo/dsh-usage-state/blob/main/docs/backlog.md).
+See the [Backlog (Chinese)](https://github.com/takboo/dsh-usage-state/blob/main/docs/backlog.md) for remediation status and verification scope.
 
-- **Credentials/endpoints:** the advanced credential-name override is ignored; a pinned z.ai endpoint may still try a mirror; changing an endpoint/key may retain a previous account's cached reading. A custom provider recognized only from its endpoint may appear unconfigured in the browser.
-- **Amounts:** Moonshot balances ≥100 yuan are incorrectly divided by 100; use the [official balance API](https://platform.kimi.com/docs/api/balance.md) as the reference. Missing/invalid DeepSeek amounts may become zero, so such a zero is not reliable evidence that the account is exhausted.
-- **Interaction/failures:** ↑↓ may do nothing for default providers; stale-value tooltips may omit the specific failure; an RPC disconnect may leave old values unmarked; legacy model entries may keep polling after the provider is hidden.
-- **Live verification:** Kimi Code/Sub2API accounts, high-threshold colors, pasted-key activation and nonzero OpenCode readings still lack live coverage.
+- **Published npm 0.4.4:** still has credential override, pin/cache identity, legacy hiding, default ordering and failure-display defects. It still divides Moonshot balances ≥100 yuan by 100 and may turn invalid DeepSeek amounts into zero. These are fixed in the current Unreleased tree, not yet delivered through npm. Cross-check old-version amounts against the [official API](https://platform.kimi.com/docs/api/balance.md).
+- **Account scope:** one target is still selected per source and mode. Identity isolation does not add independent multi-account support.
+- **Live verification:** Kimi Code/Sub2API accounts, high-threshold colors, real credential writes and nonzero OpenCode readings still lack live coverage. Local interaction tests do not replace that acceptance.
 - **Scope:** the line can be absent without a selected model or when hidden; clicking it does not open settings; readings are not saved as history.
 
 ## Development and docs
 
-Development requires Node 22.18+ on the 22 line or Node 24.11+, higher than the declared runtime floor. Basic checks:
+Development supports Node 22.18+ on the 22 line or Node 24.11+. Canonical builds pin **Node 24.21.0** ([.node-version](https://github.com/takboo/dsh-usage-state/blob/main/.node-version)) and **npm 11.19.1** (packageManager), above the runtime floor. Basic checks:
 
 ```bash
 npm ci

@@ -1,6 +1,6 @@
 # 发布与验收
 
-本文件是维护流程。已发布的事实放 [更新日志](../CHANGELOG.md)，未完成自动化见 [Backlog](backlog.md#a11)，外部要求与固定源码依据见 [规范研究](research/repository-release-standards-2026-10.md)。当前没有CI/OIDC发布工作流；下文要求由发布者执行，不表示已自动配置。
+本文件是维护流程。已发布事实放 [更新日志](../CHANGELOG.md)，状态见 [Backlog](backlog.md#a11)，外部规则见 [规范研究](research/repository-release-standards-2026-10.md)。当前工作树已有CI、Dependabot与默认verify的手动Release，但尚未推送实跑或配置main保护/npm trusted publisher；没有实际新tag、GitHub Release或npm发布。
 
 ## 1. 版本和支持范围
 
@@ -10,37 +10,36 @@
 - 平台依赖的锁定基线与所声明下界必须实际复验；结构类型镜像/编译相同不能证明最低宿主兼容。新DSH发布线先验再扩大范围。
 - 维护者应给今后版本创建一致的tag（例如v<version>）及GitHub Release；历史没有tag时，Changelog使用有依据的commit，不补造发布点。
 
-目前锁文件仍有0.4.1根版本，client产物与源码有已知文案差异，跟踪A12/A13。本轮文档整理没有修复它们；正式发版门禁可能因此失败，应在对应提交中处理而不是绕过检查。
+锁文件根版本已同步0.4.4，本轮产物已重建；所有修复仍在Unreleased。npm0.4.4已经占用，本地同号tarball内容与该发布不同，不能再次发布该号。源码和bundle应一起提交；verify:artifacts对HEAD检查，提交前的新产物diff是合理失败，不可隐藏。新版本需先同步package/lock、带日期Changelog和稳定tag。
 
 ## 2. 构建、最终产物与打包
 
-在仓库根目录、正确开发Node版本执行：
+在固定开发工具链上，提交前执行本地回归：
 
 ```bash
 npm ci
+npm run verify:metadata
 npm run typecheck
 npm run build
 npm test
-
-git diff --exit-code -- lib
-test -z "$(git ls-files --others --exclude-standard -- lib)"
-npm pack --dry-run --json
+npm run verify:package
 ```
 
-`npm test`当前缺必要产物时会skip，所以还需确认index/client/Typert、所有exports和patch确实存在，且测试无skip。构建先于产物测试；源码测试通过不能证明已提交产物一致。缺入口和额外未跟踪生成文件都应失败。
+必要bundle缺失现在是测试硬失败。审阅并一起提交源码、bundle和元数据后执行 `npm run verify`；它按metadata→typecheck→build→test→artifacts→package验证。verify:artifacts检查相对HEAD的diff以及额外/未跟踪生成文件，暂存不会消除差异；提交前失败不能当成门禁错误。规范产物使用Node24.21.0/npm11.19.1。
 
-发布白名单以 [package清单](../package.json) 为准，现有10文件为：三个预构建入口、patch、两个README、许可、Changelog、适配器指南和package清单本身。检查包内不含源码、测试、凭据、临时日志；未随包文档通过GitHub链接导航。
+发布白名单以 [package清单](../package.json) 为准，仍为10文件：三个入口、patch、双语README、许可、Changelog、适配器指南和package清单。verify:package读取真实tarball，校验入口/patch/离线链接和白名单，不以dry-run代替正式产物；未随包文档用GitHub链接。
 
-生成正式tarball，在同一终端保留路径变量：
+在干净、已提交检出中打包一次，并保留报告/checksum和路径：
 
 ```bash
 release_dir=$(mktemp -d "${TMPDIR:-/tmp}/dsh-usage-state-release.XXXXXX")
 package_version=$(node -p "JSON.parse(require('node:fs').readFileSync('package.json','utf8')).version")
-npm pack --pack-destination "$release_dir"
+npm run verify:package -- --out-dir "$release_dir"
 tarball="$release_dir/dsh-usage-state-$package_version.tgz"
-test -f "$tarball"
-tar -tf "$tarball"
+npm run smoke:runtime -- --tarball "$tarball"
 ```
+
+验证已有tarball时用 `--tarball`，不要重pack或覆盖同名文件。报告记录sourceCommit、workingTreeDirty及SHA-256；正式发布要求报告来自干净检出，并匹配可信tag和同一字节。Node20只运行这份预构建JS的独立安装冒烟，不在20上跑TS/TSX或构建；可通过 `--schema-version` 复验真实schema下界，不注入polyfill。
 
 只有改变依赖时用npm install，复现验证用npm ci。缓存目录不可写可加自选cache路径，不把作者本机权限workaround变成通用步骤。
 
@@ -70,7 +69,7 @@ DSH_HOME="$verify_home" "$dsh_bin" --profile smoke --port 3081 --no-open
 | RPC | 贡献已挂载，usageState/getState与describeCredentials可解析；返回source目录/缺key状态，不需要虚构0读数 |
 | 产物契约 | [源码贡献](../tests/client/contribution.test.ts)及 [bundle测试](../tests/build/bundle.test.ts) 都使用真实registry；必要时用 [browser-face helper](../tests/support/browser-face.mjs) 对宿主实际提供的client产物做同一验证 |
 
-在声明的最低DSH和当前受支持DSH上复验。真实宿主启动、客户端挂载和RPC往返是不同证据，任一失败都不能记“兼容通过”。本轮文档重构未执行此真机冒烟。
+在声明的最低DSH和当前受支持DSH上复验。真实宿主启动、客户端挂载和RPC往返是不同证据，任一失败都不能记兼容通过。本轮本地整改未新增完整真机DSH安装/浏览器往返证据，Node预构建冒烟不替代此验收。
 
 ## 4. 功能及人工验收
 
@@ -87,30 +86,32 @@ DSH_HOME="$verify_home" "$dsh_bin" --profile smoke --port 3081 --no-open
 | 异步写key和只读状态 | 保存/清除结果有反馈，无环境遮蔽时写入后确实生效 |
 | 视觉 | 长名、窄屏、中文/英文、正常/warn/critical与所用字体 |
 
-这些包含当前已知失败项，具体状态见A01–A10/A16。若本次只发布文档，注明未修项；若声称修复某项，应完成其验收而不是只改说明。
+本轮本地fake账户/时钟/React交互回归已覆盖过去的失败路径，最终跨Node/tarball证据在交付时同步。真实DSH凭据落盘、完整浏览器RPC、厂商账户和视觉仍需单独验收；不把本地测试或历史截图记成这些真实操作已完成。
 
 ## 5. 发布并核对版本
 
-发布已验证的tarball，不在发布阶段另打一个可能不同的包。
+[手动Release](../.github/workflows/release.yml) 只支持稳定 **vM.m.p**，从可信main派发，默认 **verify**，不会自动发布或由tag push触发。先验证tag是origin/main祖先、package/lock一致且有带日期版本章节，再checkout不可变commit。规范Node24验证/打包一次；同tarball继续做Node20预构建独立安装。
 
-推荐后续采用npm trusted publishing，绑定owner/repository/workflow filename，按所选direct/staged策略配置allowed actions。GitHub-hosted runner、npm≥11.5.1、Node≥22.14及job的id-token:write为该方式要求；公开repo+公开包路径自动provenance。配置来源见 [官方npm文档](https://docs.npmjs.com/trusted-publishers/)；此方式尚未在本仓库落地。
+选择publish才执行npm job，前提是维护者已配置对应owner/repository/release.yml的trusted publisher并允许direct publish。该job仅contents:read/id-token:write，校验未占用版本、报告commit和checksum，发布同一tgz并ignore-scripts。固定Node24.21.0/npm11.19.1满足OIDC最低要求；公开repo+包的自动provenance依据见 [官方npm文档](https://docs.npmjs.com/trusted-publishers/)。本轮未配置publisher或执行发布。
 
-当前人工方式依npm包的权限和2FA策略完成认证：
+GitHub Release附档由独立contents:write job执行，再核对同一报告/tgz，附相同tarball和checksum。npm已成功而附档失败时，在7天artifact保留期内单独重跑失败附档job；它不要求npm版本仍未使用，不再次publish或重pack。Actions artifact不是永久分发渠道。
+
+人工方式同样在干净的可信tag检出使用门禁；先同步新版本/Changelog/tag，已发布0.4.4不可重用。认证按npm当次权限/2FA处理：
 
 ```bash
-npm publish "$tarball"
+npm run verify:release -- --tag "v$package_version" --artifact-report "$release_dir/verification.json" --require-unpublished &&
+npm run verify:package -- --tarball "$tarball" --expected-version "$package_version" --require-report &&
+npm publish "$tarball" --tag latest --ignore-scripts &&
 npm view "dsh-usage-state@$package_version" version engines repository gitHead dist --json
 ```
 
-认证、OTP或网页确认按npm当次返回处理，不把某次EOTP步骤写成所有环境共同流程。核对registry目标版本而不只查询latest；刚发布版本是否可装还受所用pnpm年龄策略、镜像和缓存影响，明确版本后仍需读取结果判断，不能承诺指定版本一定绕过所有年龄限制。
+只发布上一步验证的同一tarball。明确版本仍受pnpm年龄策略/镜像/cache影响，安装结果需实查。历史没有tag/Release时按确认gitHead追溯，不补造发布点。
 
-提交与tag指向已验证发布点；把同一tarball及校验值附到GitHub Release，检查GitHub固定引用和npm安装。没有tag/release的历史版本以已确认gitHead追溯；本次不代替维护者创建远端版本。
+## 6. GitHub本地配置与外部验收
 
-## 6. GitHub自动化建议
+[CI](../.github/workflows/ci.yml) 在PR/main/manual触发，开发下界Node22.18执行类型/构建/测试；规范Node24.21另做HEAD一致性和实际pack，Node20job只消费该artifact。标准Ubuntu公开runner，普通job为contents:read；checkout不保留凭据，action完整SHA、有限timeout/concurrency和7天artifact保留已配置。
 
-标准公开GitHub-hosted runner运行免费；larger runner另计费。PR/main应跑锁文件安装、类型、build后test、一致性、包检查及必要安装冒烟；稳定job再设required check。普通验证contents:read，发布job才给OIDC/Release权限，不执行带发布权限的不可信PR代码。
-
-第三方action固定完整SHA，Dependabot维护；concurrency取消被替代任务，设置timeout及短artifact保留期。Actions artifacts会到期，正式分发用npm/GitHub Release。建议的矩阵与来源见规范研究；当前实施状态见A11。
+[Dependabot](../.github/dependabot.yml) 每周分组检查action和npm升级。Release的npm OIDC与GitHub写入权限分别属于独立job。当前是本地配置与脚本，尚未推送Actions实跑、未设置required checks/main保护；先验证稳定job再由维护者设置远端规则，状态见A11。
 
 ## 7. dshmarket维护
 
