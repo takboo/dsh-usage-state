@@ -56,8 +56,8 @@ export function providerCredentialRefs(input: ProviderCredentialRefsInput): stri
 
 /**
  * The endpoint each configured DSH provider declares (`llm-pi-ai` profiles carry a
- * `baseURL`). Used only to sharpen the data-source suggestion for providers whose
- * id says nothing — e.g. a relay pointed at `open.bigmodel.cn` is a z.ai account.
+ * `baseURL`). Its origin also supplies the account request endpoint, and a
+ * sanitized origin is shared with the browser for consistent resolution.
  */
 export function providerEndpointHints(piAiSettings: unknown): Record<string, string> {
   const providers = asRecord(asRecord(piAiSettings)?.providers)

@@ -1,0 +1,31 @@
+name: Setup pinned Node and npm
+description: Use the repository Node baseline and an isolated pinned npm CLI.
+inputs:
+  node-version:
+    description: Optional runtime override; the canonical job uses .node-version.
+    required: false
+    default: ''
+  cache:
+    description: npm for validation, empty for publish/runtime jobs.
+    required: false
+    default: npm
+runs:
+  using: composite
+  steps:
+    # Official refs API: actions/setup-node v7.1.0, verified 2026-10-08.
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version: ${{ inputs.node-version }}
+        node-version-file: .node-version
+        cache: ${{ inputs.cache }}
+        package-manager-cache: false
+    - name: Install repository npm CLI without global configuration
+      shell: bash
+      run: |
+        npm_spec=$(node -e 'const p=JSON.parse(require("node:fs").readFileSync("package.json","utf8"));if(!/^npm@\d+\.\d+\.\d+$/.test(p.packageManager))throw Error("packageManager must pin npm");process.stdout.write(p.packageManager)')
+        npm install --prefix "$RUNNER_TEMP/dsh-npm-cli" --ignore-scripts --no-package-lock --no-audit --no-fund "$npm_spec"
+        echo "$RUNNER_TEMP/dsh-npm-cli/node_modules/.bin" >> "$GITHUB_PATH"
+    - shell: bash
+      run: |
+        node --version
+        npm --version

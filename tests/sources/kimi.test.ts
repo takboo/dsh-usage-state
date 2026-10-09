@@ -70,11 +70,33 @@ test('kimi ignores limit rows without a usable detail window', () => {
   assert.deepEqual(reading.windows, [{ id: '7d', usedPercent: 25 }])
 })
 
-test('kimi reads the Moonshot balance, treating cent amounts as cents and small amounts as yuan', () => {
-  assert.deepEqual(kimi.parse({ available_balance: 6628 }, 'api').balances, [{ amount: 66.28, currency: 'CNY' }])
-  assert.deepEqual(kimi.parse({ available_balance: 66.28 }, 'api').balances, [{ amount: 66.28, currency: 'CNY' }])
-  assert.deepEqual(kimi.parse({ data: { available_balance: 1200 } }, 'api').balances, [{ amount: 12, currency: 'CNY' }])
-  assert.deepEqual(kimi.parse({ balance: 350 }, 'api').balances, [{ amount: 3.5, currency: 'CNY' }])
+test('kimi reads the official Moonshot balance in yuan at every amount', () => {
+  // The official /v1/users/me/balance contract defines available_balance in yuan.
+  for (const [amount, expected] of [
+    [99.99, 99.99],
+    [100, 100],
+    [100.01, 100.01],
+    [6628, 6628],
+    [0, 0],
+  ] as const) {
+    const reading = kimi.parse(
+      { code: 0, data: { available_balance: amount, voucher_balance: 0, cash_balance: amount }, scode: '0x0', status: true },
+      'api',
+    )
+
+    assert.deepEqual(reading.balances, [{ amount: expected, currency: 'CNY' }])
+  }
+})
+
+test('kimi accepts legacy Moonshot balance fields without changing the yuan unit', () => {
+  for (const [payload, expected] of [
+    [{ available_balance: 6628 }, 6628],
+    [{ available_balance: 66.28 }, 66.28],
+    [{ data: { available_balance: '1200' } }, 1200],
+    [{ balance: 350 }, 350],
+  ] as const) {
+    assert.deepEqual(kimi.parse(payload, 'api').balances, [{ amount: expected, currency: 'CNY' }])
+  }
 })
 
 test('kimi rejects payloads it cannot read in either mode', () => {
@@ -85,7 +107,18 @@ test('kimi rejects payloads it cannot read in either mode', () => {
       `expected a coding-plan parse failure for ${JSON.stringify(payload)}`,
     )
   }
-  for (const payload of [{}, { available_balance: 'nope' }, { available_balance: -1 }, null]) {
+  for (const payload of [
+    {},
+    { available_balance: 'nope' },
+    { available_balance: -1 },
+    null,
+    ...[undefined, null, '', ' ', 'nope', Number.NaN, Number.POSITIVE_INFINITY, true, {}].map(value => ({
+      code: 0,
+      data: { available_balance: value, voucher_balance: 0, cash_balance: 0 },
+      scode: '0x0',
+      status: true,
+    })),
+  ]) {
     assert.throws(
       () => kimi.parse(payload, 'api'),
       (error: unknown) => error instanceof SourceError && error.kind === 'parse',

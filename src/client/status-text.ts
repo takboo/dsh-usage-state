@@ -64,6 +64,11 @@ function tooltipOf(pieces: readonly (string | undefined)[]): string | undefined 
   return present.length === 0 ? undefined : present.join(' · ')
 }
 
+function failureReason(kind: string | undefined, detail: string | undefined, t: Translate): string | undefined {
+  if (kind === undefined) return detail
+  return detail === undefined ? t(`error.${kind}`) : `${t(`error.${kind}`)}: ${detail}`
+}
+
 function localTime(epochMs: number): string {
   return new Date(epochMs).toLocaleTimeString()
 }
@@ -91,13 +96,13 @@ export function statusParts(input: StatusPartsInput): StatusPart[] {
           segment.staleSince === undefined
             ? undefined
             : t('tipUpdated', { age: formatAge(segment.staleSince, now) })
+        const reason = failureReason(segment.errorKind, segment.errorDetail, t)
+        const tooltip = tooltipOf([staleHint, refreshHint, reason, context])
         parts.push({
           kind: 'label',
           text: segment.text,
           stale: segment.stale === true,
-          ...(tooltipOf([staleHint, refreshHint, context]) === undefined
-            ? {}
-            : { tooltip: tooltipOf([staleHint, refreshHint, context]) as string }),
+          ...(tooltip === undefined ? {} : { tooltip }),
         })
         if (segment.staleSince !== undefined) {
           parts.push({
@@ -140,12 +145,7 @@ export function statusParts(input: StatusPartsInput): StatusPart[] {
         break
       }
       case 'state': {
-        const reason =
-          segment.errorKind === undefined
-            ? undefined
-            : segment.errorDetail === undefined
-              ? t(`error.${segment.errorKind}`)
-              : `${t(`error.${segment.errorKind}`)}: ${segment.errorDetail}`
+        const reason = failureReason(segment.errorKind, segment.errorDetail, t)
         parts.push({
           kind: 'state',
           state: segment.state,

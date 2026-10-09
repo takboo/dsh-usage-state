@@ -84,10 +84,29 @@ test('deepseek falls back to the first entry when CNY is absent', () => {
   assert.deepEqual(reading.balances, [{ amount: 3, currency: 'USD' }])
 })
 
-test('deepseek treats a missing or empty amount as zero rather than failing', () => {
-  const reading = deepseek.parse({ balance_infos: [{ currency: 'CNY' }, { currency: 'USD' }] }, 'api')
+test('deepseek rejects balance rows without a finite total instead of inventing zero', () => {
+  for (const total of [undefined, null, '', ' ', 'bad', Number.NaN, Number.POSITIVE_INFINITY, false, {}]) {
+    assert.throws(
+      () => deepseek.parse({ balance_infos: [{ currency: 'CNY', total_balance: total }, { currency: 'USD' }] }, 'api'),
+      (error: unknown) => error instanceof SourceError && error.kind === 'parse',
+      `expected a parse failure for invalid total_balance ${String(total)}`,
+    )
+  }
+})
 
-  assert.deepEqual(reading.balances, [{ amount: 0, currency: 'CNY' }])
+test('deepseek skips invalid rows while preserving a valid zero balance', () => {
+  const reading = deepseek.parse(
+    {
+      balance_infos: [
+        { currency: 'CNY', total_balance: 'bad' },
+        { currency: 'CNY' },
+        { currency: 'USD', total_balance: 0 },
+      ],
+    },
+    'api',
+  )
+
+  assert.deepEqual(reading.balances, [{ amount: 0, currency: 'USD' }])
 })
 
 test('deepseek rejects payloads without usable balance_infos', () => {

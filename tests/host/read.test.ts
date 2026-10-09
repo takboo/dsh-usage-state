@@ -118,6 +118,28 @@ test('readUsage reports a non-JSON body as a parse failure', async () => {
   )
 })
 
+test('readUsage reports interrupted body reads as network failures after the headers succeed', async () => {
+  for (const bodyError of [
+    new DOMException('The operation was aborted', 'AbortError'),
+    new DOMException('The operation timed out', 'TimeoutError'),
+    new TypeError('terminated'),
+  ]) {
+    const fetch: FetchLike = async () => ({
+      ok: true,
+      status: 200,
+      json: async () => {
+        throw bodyError
+      },
+    })
+
+    await assert.rejects(
+      () => readUsage({ source: deepseek, mode: 'api', apiKey: 'k' }, { fetch }),
+      (error: unknown) => error instanceof SourceError && error.kind === 'network' && error.message === bodyError.message,
+      `expected a body ${bodyError.name} to become a network failure`,
+    )
+  }
+})
+
 test('readUsage lets the adapter reject a payload it cannot read', async () => {
   const { fetch } = fetchStub(() => ({ ok: true, status: 200, body: { unexpected: true } }))
 

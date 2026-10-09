@@ -12,7 +12,7 @@ export const LOCALE_NS = 'usage-state'
 export const zh = {
   nav: '用量状态',
   title: '用量状态',
-  intro: '为每个模型选择显示账户余额（API 模式）或套餐额度（Coding Plan 模式）。数据由宿主定时刷新，密钥存放在 DSH 凭据库中，本插件不保存明文。',
+  intro: '为每个供应商选择显示账户余额（API 模式）或套餐额度（Coding Plan 模式）。数据由宿主定时刷新，密钥交给 DSH 凭据库保存，本插件不另存明文。',
   refreshNow: '立即刷新',
   refreshing: '刷新中…',
   lastChecked: '更新于 {time}',
@@ -52,7 +52,7 @@ export const zh = {
   credential: '密钥',
   credentialConfigured: '已配置（来源：{source}）',
   credentialMissing: '未配置',
-  credentialLocked: '由环境变量提供，无法在此修改',
+  credentialLocked: '当前凭据来源无法在此修改',
   credentialPlaceholder: '粘贴密钥…',
   credentialSave: '保存',
   credentialClear: '清除',
@@ -64,6 +64,7 @@ export const zh = {
   thresholdWarn: '黄色阈值（已用 %）',
   thresholdCritical: '红色阈值（已用 %）',
   progressBar: '显示进度环',
+  settingsFailed: '无法保存设置：{message}',
   refreshFailed: '刷新失败：{message}',
 
   'state.loading': '读取中…',
@@ -97,7 +98,7 @@ export const en: Record<UsageStateKey, string> = {
   nav: 'Usage state',
   title: 'Usage state',
   intro:
-    'Choose what to show for each model: account balance (API mode) or coding-plan quota (Coding Plan mode). The host refreshes on a timer, and keys live in the DSH credential store — this plugin never keeps a plaintext copy.',
+    'Choose what to show for each provider: account balance (API mode) or coding-plan quota (Coding Plan mode). The host owns refresh timing, and DSH stores credentials — this plugin keeps no separate plaintext copy.',
   refreshNow: 'Refresh now',
   refreshing: 'Refreshing…',
   lastChecked: 'Updated {time}',
@@ -138,7 +139,7 @@ export const en: Record<UsageStateKey, string> = {
   credential: 'API key',
   credentialConfigured: 'Configured ({source})',
   credentialMissing: 'Not configured',
-  credentialLocked: 'Provided by an environment variable; not editable here',
+  credentialLocked: 'This credential source cannot be edited here',
   credentialPlaceholder: 'Paste the key…',
   credentialSave: 'Save',
   credentialClear: 'Clear',
@@ -150,6 +151,7 @@ export const en: Record<UsageStateKey, string> = {
   thresholdWarn: 'Amber threshold (used %)',
   thresholdCritical: 'Red threshold (used %)',
   progressBar: 'Show progress ring',
+  settingsFailed: 'Could not save settings: {message}',
   refreshFailed: 'Refresh failed: {message}',
 
   'state.loading': 'Reading…',

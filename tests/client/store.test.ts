@@ -74,6 +74,71 @@ function harness(options: HarnessOptions = {}) {
   return { store, calls, release: () => resolveGate?.() }
 }
 
+test('a successful RPC carries provider hints into the client snapshot', async () => {
+  const { store } = harness({ view: { ok: true, value: {
+    ...VIEW, endpointHints: { 'custom-account': 'https://api.deepseek.com' },
+  } } })
+
+  await store.refresh(false)
+
+  assert.deepEqual(store.getSnapshot().endpointHints, { 'custom-account': 'https://api.deepseek.com' })
+})
+
+test('an explicit refresh during an ordinary poll runs after that poll instead of being lost', async () => {
+  const calls: boolean[] = []
+  let release: (() => void) | undefined
+  const gate = new Promise<void>(resolve => { release = resolve })
+  const store = new UsageStateClientStore({
+    getState: async force => {
+      calls.push(force)
+      if (!force) await gate
+      return { ok: true, value: VIEW }
+    },
+    describeCredentials: async () => ({ ok: true, value: REPORT }),
+  })
+
+  const ordinary = store.refresh(false)
+  const explicit = store.refresh(true)
+  release?.()
+  await Promise.all([ordinary, explicit])
+
+  assert.deepEqual(calls, [false, true])
+})
+
+test('invalidating readings prevents a superseded RPC from restoring the previous account', async () => {
+  let release: (() => void) | undefined
+  const gate = new Promise<void>(resolve => { release = resolve })
+  let calls = 0
+  const store = new UsageStateClientStore({
+    getState: async () => {
+      calls++
+      if (calls === 1) { await gate; return { ok: true, value: VIEW } }
+      return { ok: true, value: { ...VIEW, snapshots: { 'deepseek:api': {
+        ...VIEW.snapshots['deepseek:api']!, balances: [{ amount: 22, currency: 'CNY' }],
+      } } } }
+    },
+    describeCredentials: async () => ({ ok: true, value: REPORT }),
+  })
+
+  const previous = store.refresh(false)
+  store.invalidate()
+  const current = store.refresh(false)
+  release?.()
+  await Promise.all([previous, current])
+
+  assert.deepEqual(store.getSnapshot().snapshots['deepseek:api']?.balances, [{ amount: 22, currency: 'CNY' }])
+})
+
+test('concurrent explicit refreshes share the already forced request', async () => {
+  const { store, calls, release } = harness({ gate: true })
+  const first = store.refresh(true)
+  const second = store.refresh(true)
+  release()
+  await Promise.all([first, second])
+
+  assert.deepEqual(calls, [true])
+})
+
 test('a fresh store is idle and empty', () => {
   const { store } = harness()
 

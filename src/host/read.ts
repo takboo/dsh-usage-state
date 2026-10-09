@@ -103,7 +103,10 @@ async function fetchPayload(request: { url: string; headers: Record<string, stri
   try {
     return await response.json()
   } catch (error) {
-    throw new SourceError('parse', `invalid JSON: ${messageOf(error)}`)
+    if (error instanceof SyntaxError) {
+      throw new SourceError('parse', `invalid JSON: ${messageOf(error)}`)
+    }
+    throw new SourceError('network', messageOf(error))
   }
 }
 

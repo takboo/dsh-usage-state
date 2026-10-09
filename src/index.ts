@@ -1,4 +1,5 @@
 import { DEFAULT_CONFIG, type UsageStateConfig } from './shared/config.ts'
+import { originOf } from './shared/providers.ts'
 import { toSourceCatalog } from './host/catalog.ts'
 import { withCredentialFallback, type FallbackDeps } from './host/credential-fallback.ts'
 import { describeCredentials, resolveApiKey, type CredentialLookup } from './host/credentials.ts'
@@ -189,8 +190,10 @@ export function createUsageState(ctx: PluginContextLike, deps: UsageStateDeps = 
   const lookup = createCredentialLookup(ctx, deps.credentialFallback ?? {})
 
   let config: UsageStateConfig = DEFAULT_CONFIG
+  let reconfigure = (): void => {}
   installUsageStateSettings(ctx, deps.config, next => {
     config = next
+    reconfigure()
   })
 
   /**
@@ -198,14 +201,18 @@ export function createUsageState(ctx: PluginContextLike, deps: UsageStateDeps = 
    * ask the host's LLM runtime. This is what makes zero configuration work: a
    * provider nobody configured still resolves to its suggested source.
    */
-  const providerFacts = (): { ids: string[]; hints: Record<string, string> } => {
-    const llm = ctx.get('llm') as LlmRuntimeLike | undefined
-    const ids: string[] = []
+  const providerFacts = (): { ids: string[] | undefined; hints: Record<string, string> } => {
+    let ids: string[] | undefined
     try {
-      for (const provider of llm?.listProviders?.() ?? []) {
-        if (typeof provider?.id === 'string' && provider.id !== '') ids.push(provider.id)
+      const llm = ctx.get('llm') as LlmRuntimeLike | undefined
+      if (typeof llm?.listProviders === 'function') {
+        ids = []
+        for (const provider of llm.listProviders()) {
+          if (typeof provider?.id === 'string' && provider.id !== '') ids.push(provider.id)
+        }
       }
     } catch {
+      ids = undefined
       // The LLM runtime may not be ready on the first ticks; the next one retries.
     }
     return { ids, hints: providerEndpointHints(readNamespace(ctx, 'llm-pi-ai')) }
@@ -213,17 +220,20 @@ export function createUsageState(ctx: PluginContextLike, deps: UsageStateDeps = 
 
   const targets = (): UsageTarget[] => {
     const { ids, hints } = providerFacts()
-    return resolveTargets(config, { providers: ids, endpointHints: hints })
-  }
-  const optionsFor = (target: UsageTarget) => {
-    const overrideRef = config.sources[target.sourceId]?.apiKeyRef
-    return {
-      ...(overrideRef === undefined ? {} : { overrideRef }),
+    return resolveTargets(config, { providers: ids, endpointHints: hints }).map(target => ({
+      ...target,
       preferredRefs: providerCredentialRefs({
         sourceId: target.sourceId,
         deepseekSettings: readNamespace(ctx, 'llm-deepseek'),
         piAiSettings: readNamespace(ctx, 'llm-pi-ai'),
       }),
+    }))
+  }
+  const optionsFor = (target: UsageTarget) => {
+    const overrideRef = target.apiKeyRef
+    return {
+      ...(overrideRef === undefined ? {} : { overrideRef }),
+      preferredRefs: target.preferredRefs ?? [],
     }
   }
 
@@ -242,21 +252,29 @@ export function createUsageState(ctx: PluginContextLike, deps: UsageStateDeps = 
         if (source === undefined) return undefined
         const resolved = await resolveApiKey(source, target.mode, optionsFor(target), lookup)
         if (resolved === undefined) return undefined
-        // Precedence: this plugin's own setting, then the endpoint the DSH provider
-        // profile declares, then whatever the adapter defaults to.
-        const pinnedBaseUrl = config.sources[target.sourceId]?.baseUrl
-        const baseUrl = pinnedBaseUrl ?? target.baseUrl
-        if (baseUrl === undefined) return resolved
-        return { ...resolved, baseUrl, ...(pinnedBaseUrl === undefined ? {} : { baseUrlPinned: true }) }
+        if (target.baseUrl === undefined) return resolved
+        return {
+          ...resolved,
+          baseUrl: target.baseUrl,
+          ...(target.baseUrlPinned === true ? { baseUrlPinned: true } : {}),
+        }
       },
     },
     read: createTargetReader({ fetch: fetchImpl }),
   })
 
+  reconfigure = () => store.reconfigure()
+
   const service = new UsageStateService({
     store,
     targets,
     catalog: () => catalog,
+    endpointHints: () => Object.fromEntries(
+      Object.entries(providerFacts().hints).flatMap(([provider, endpoint]) => {
+        const origin = originOf(endpoint)
+        return origin === undefined ? [] : [[provider, origin]]
+      }),
+    ),
     describe: async target => {
       const source = findSource(target.sourceId)
       if (source === undefined) return { candidates: [], configured: false }
@@ -270,7 +288,7 @@ export function createUsageState(ctx: PluginContextLike, deps: UsageStateDeps = 
   ctx.on('session/event', (...args) => {
     if (isTurnEnd(args[1])) store.onTurnEnd()
   })
-  store.start()
+  ctx.effect(() => store.start(), 'dsh-usage-state: refresh scheduling')
 
   return provideUsageState(ctx, service)
 }

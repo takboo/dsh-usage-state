@@ -93,6 +93,11 @@ export function apply(ctx: ClientContextLike): void {
       if (store.getSnapshot().models.length === 0) void store.refreshModels()
     }, POLL_INTERVAL_MS)
 
+    const configurationIdentity = () => {
+      const config = settings.getSnapshot().value
+      return config === undefined ? undefined : JSON.stringify([config.order, config.providers, config.sources])
+    }
+    let configuredIdentity = configurationIdentity()
     const disposers = [
       // A finished turn is the moment the host refreshes, so pick it up at once.
       ctx.on('api-session/status', (...args) => {
@@ -102,7 +107,13 @@ export function apply(ctx: ClientContextLike): void {
         void store.refresh(true)
       }),
       settings.subscribe(() => {
+        const nextIdentity = configurationIdentity()
+        if (nextIdentity !== configuredIdentity) {
+          configuredIdentity = nextIdentity
+          store.invalidate()
+        }
         void store.refresh(false)
+        void store.refreshCredentials()
       }),
     ]
 

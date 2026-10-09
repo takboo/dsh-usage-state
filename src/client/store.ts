@@ -8,6 +8,7 @@ import type { UsageSnapshot } from '../shared/types.ts'
 export interface UsageStateClientState {
   status: 'idle' | 'loading' | 'ready' | 'error'
   catalog: SourceCatalog
+  endpointHints?: Record<string, string>
   snapshots: Record<string, UsageSnapshot>
   credentials: Record<string, CredentialDescription>
   checkedAt: number | undefined
@@ -86,7 +87,11 @@ export class UsageStateClientStore {
     modelsError: undefined,
   }
 
+  private generation = 0
+  private inflightGeneration = 0
+  private inflightForce = false
   private inflight: Promise<void> | undefined
+  private forcedAfterInflight: Promise<void> | undefined
 
   constructor(deps: UsageStateClientDeps) {
     this.deps = deps
@@ -108,13 +113,36 @@ export class UsageStateClientStore {
     for (const listener of [...this.listeners]) listener()
   }
 
+  /** A provider/credential identity changed: its previous RPC cannot restore old values. */
+  invalidate(): void {
+    this.generation++
+    this.forcedAfterInflight = undefined
+    this.publish({
+      status: 'loading', snapshots: {}, credentials: {}, checkedAt: undefined,
+      error: undefined, credentialsError: undefined,
+    })
+  }
+
   refresh(force = false): Promise<void> {
-    if (this.inflight !== undefined) return this.inflight
+    const generation = this.generation
+    if (this.inflight !== undefined && this.inflightGeneration === generation) {
+      if (!force || this.inflightForce) return this.inflight
+      if (this.forcedAfterInflight === undefined) {
+        const queued = this.inflight.then(() => {
+          if (this.generation === generation) return this.refresh(true)
+        }).finally(() => {
+          if (this.forcedAfterInflight === queued) this.forcedAfterInflight = undefined
+        })
+        this.forcedAfterInflight = queued
+      }
+      return this.forcedAfterInflight
+    }
 
     this.publish({ status: 'loading' })
     const run = (async () => {
       try {
         const result = await this.deps.getState(force)
+        if (generation !== this.generation) return
         if (!result.ok) {
           this.publish({ status: 'error', error: result.error.message })
           return
@@ -122,17 +150,20 @@ export class UsageStateClientStore {
         this.publish({
           status: 'ready',
           catalog: result.value.sources,
+          endpointHints: result.value.endpointHints ?? {},
           snapshots: result.value.snapshots,
           checkedAt: result.value.checkedAt,
           error: undefined,
         })
       } catch (error) {
-        this.publish({ status: 'error', error: messageOf(error) })
+        if (generation === this.generation) this.publish({ status: 'error', error: messageOf(error) })
       }
     })().finally(() => {
-      this.inflight = undefined
+      if (this.inflight === run) this.inflight = undefined
     })
 
+    this.inflightGeneration = generation
+    this.inflightForce = force
     this.inflight = run
     return run
   }
@@ -159,15 +190,17 @@ export class UsageStateClientStore {
   }
 
   async refreshCredentials(): Promise<void> {
+    const generation = this.generation
     try {
       const result = await this.deps.describeCredentials()
+      if (generation !== this.generation) return
       if (!result.ok) {
         this.publish({ credentialsError: result.error.message })
         return
       }
       this.publish({ credentials: result.value.credentials, credentialsError: undefined })
     } catch (error) {
-      this.publish({ credentialsError: messageOf(error) })
+      if (generation === this.generation) this.publish({ credentialsError: messageOf(error) })
     }
   }
 

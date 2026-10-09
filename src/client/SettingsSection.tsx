@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button, Input, Switch, Tag } from '@deepseek-ai/dsh-client-ui-primitives'
 
 import { buildProviderRows, reorderProviders, setProviderMode, type ProviderRow } from './provider-rows.ts'
@@ -92,6 +92,7 @@ function DraftInput(props: {
   const shown = editing ? draft : props.value
 
   const commit = () => {
+    if (!editing || props.disabled) return
     setEditing(false)
     const next = draft.trim()
     if (next !== props.value.trim()) props.onCommit(next)
@@ -124,6 +125,7 @@ function DraftInput(props: {
 function CredentialPanel(props: {
   t: Translate
   refs: readonly string[]
+  refOverride?: string
   description: CredentialDescription | undefined
   credentials: CredentialsRemoteLike | undefined
   onChanged: () => void
@@ -131,31 +133,56 @@ function CredentialPanel(props: {
   const { t } = props
   const [draft, setDraft] = useState('')
   const [note, setNote] = useState<string | undefined>(undefined)
+  const [pending, setPending] = useState(false)
+  const busy = useRef(false)
   const candidates = props.description?.candidates ?? []
-  const configuredRef = props.description?.ref ?? candidates.find(candidate => candidate.configured)?.ref ?? props.refs[0]
-  const writable = props.description?.writable !== false
+  const configuredRef = props.refOverride ?? props.description?.ref ?? candidates.find(candidate => candidate.configured)?.ref ?? props.refs[0]
+  const candidate = candidates.find(value => value.ref === configuredRef)
+  const sameDescription = props.description?.ref === configuredRef
+  const writable = (candidate?.writable ?? (sameDescription ? props.description?.writable : undefined)) !== false
+  const configured = candidate?.configured ?? (sameDescription && props.description?.configured === true)
 
   const save = async () => {
-    if (props.credentials === undefined || configuredRef === undefined || draft.trim() === '') return
-    const result = await props.credentials.set(configuredRef, draft.trim())
-    if (!result.ok) {
-      setNote(t('credentialFailed', { message: result.error.message }))
-      return
+    if (busy.current || !writable || props.credentials === undefined || configuredRef === undefined || draft.trim() === '') return
+    busy.current = true
+    setPending(true)
+    setNote(undefined)
+    try {
+      const result = await props.credentials.set(configuredRef, draft.trim())
+      if (!result.ok) {
+        setNote(t('credentialFailed', { message: result.error.message }))
+        return
+      }
+      setDraft('')
+      setNote(t('credentialSaved'))
+      props.onChanged()
+    } catch (error) {
+      setNote(t('credentialFailed', { message: error instanceof Error ? error.message : String(error) }))
+    } finally {
+      busy.current = false
+      setPending(false)
     }
-    setDraft('')
-    setNote(t('credentialSaved'))
-    props.onChanged()
   }
 
   const clear = async () => {
-    if (props.credentials === undefined || configuredRef === undefined) return
-    const result = await props.credentials.unset(configuredRef)
-    if (!result.ok) {
-      setNote(t('credentialFailed', { message: result.error.message }))
-      return
+    if (busy.current || !writable || props.credentials === undefined || configuredRef === undefined) return
+    busy.current = true
+    setPending(true)
+    setNote(undefined)
+    try {
+      const result = await props.credentials.unset(configuredRef)
+      if (!result.ok) {
+        setNote(t('credentialFailed', { message: result.error.message }))
+        return
+      }
+      setNote(t('credentialSaved'))
+      props.onChanged()
+    } catch (error) {
+      setNote(t('credentialFailed', { message: error instanceof Error ? error.message : String(error) }))
+    } finally {
+      busy.current = false
+      setPending(false)
     }
-    setNote(t('credentialSaved'))
-    props.onChanged()
   }
 
   return (
@@ -182,18 +209,18 @@ function CredentialPanel(props: {
           type="password"
           autoComplete="off"
           value={draft}
-          disabled={!writable || props.credentials === undefined}
+          disabled={pending || !writable || props.credentials === undefined}
           placeholder={t('credentialPlaceholder')}
           onChange={event => setDraft((event.target as HTMLInputElement).value)}
           style={{ maxWidth: '280px' }}
         />
-        <Button size="sm" variant="primary" disabled={draft.trim() === ''} onClick={() => void save()}>
+        <Button size="sm" variant="primary" disabled={pending || !writable || props.credentials === undefined || configuredRef === undefined || draft.trim() === ''} onClick={() => void save()}>
           {t('credentialSave')}
         </Button>
         <Button
           size="sm"
           variant="outline"
-          disabled={configuredRef === undefined || props.description?.configured !== true}
+          disabled={pending || !writable || props.credentials === undefined || configuredRef === undefined || !configured}
           onClick={() => void clear()}
         >
           {t('credentialClear')}
@@ -229,6 +256,7 @@ function ProviderCard(props: {
   failure: { kind: string; detail?: string } | undefined
   index: number
   total: number
+  disabled: boolean
   onMode: (mode: ProviderMode) => void
   onMove: (delta: number) => void
   onField: (path: string[], value: string) => void
@@ -258,14 +286,14 @@ function ProviderCard(props: {
           {row.providerName === row.provider ? null : <span style={MUTED}> {row.provider}</span>}
         </span>
         <span style={CONTROLS}>
-          <Button size="sm" variant="ghost" aria-label={t('moveUp')} disabled={props.index === 0} onClick={() => props.onMove(-1)}>
+          <Button size="sm" variant="ghost" aria-label={t('moveUp')} disabled={props.disabled || props.index === 0} onClick={() => props.onMove(-1)}>
             ↑
           </Button>
           <Button
             size="sm"
             variant="ghost"
             aria-label={t('moveDown')}
-            disabled={props.index === props.total - 1}
+            disabled={props.disabled || props.index === props.total - 1}
             onClick={() => props.onMove(1)}
           >
             ↓
@@ -275,6 +303,7 @@ function ProviderCard(props: {
               key={mode}
               size="sm"
               variant={row.selected === mode ? 'primary' : 'outline'}
+              disabled={props.disabled}
               onClick={() => props.onMode(mode)}
             >
               {modeLabel(mode, t)}
@@ -300,6 +329,7 @@ function ProviderCard(props: {
           <div style={ROW}>
             <span style={MUTED}>{t('sourceLabel')}</span>
             <select
+              disabled={props.disabled}
               value={entry?.sourceId ?? ''}
               onChange={event => {
                 const value = (event.target as HTMLSelectElement).value
@@ -319,6 +349,7 @@ function ProviderCard(props: {
           <div style={ROW}>
             <span style={MUTED}>{t('baseUrl')}</span>
             <DraftInput
+              disabled={props.disabled}
               value={entry?.baseUrl ?? ''}
               placeholder={
                 row.resolution.mode === null
@@ -339,6 +370,7 @@ function ProviderCard(props: {
           <div style={ROW}>
             <span style={MUTED}>{t('apiKeyRef')}</span>
             <DraftInput
+              disabled={props.disabled}
               value={entry?.apiKeyRef ?? ''}
               width="220px"
               onCommit={value => {
@@ -352,6 +384,7 @@ function ProviderCard(props: {
           <CredentialPanel
             t={t}
             refs={refs}
+            refOverride={row.resolution.apiKeyRef}
             description={props.description}
             credentials={props.credentials}
             onChanged={props.onCredentialChanged}
@@ -372,6 +405,7 @@ export function SettingsSection(props: SettingsSectionProps) {
   const { t } = props
   const snapshot = useSettingsValue(props.settings)
   const state = useStoreState(props.usageState)
+  const [writeError, setWriteError] = useState<string | undefined>(undefined)
 
   useEffect(() => {
     void props.usageState.refreshModels()
@@ -383,13 +417,24 @@ export function SettingsSection(props: SettingsSectionProps) {
   }
 
   const config = normalizeConfig(snapshot.value ?? {})
-  const rows = buildProviderRows({ models: state.models, config, catalog: state.catalog, registry: state.modelRegistry })
+  const rows = buildProviderRows({
+    models: state.models, config, catalog: state.catalog, registry: state.modelRegistry, endpointHints: state.endpointHints,
+  })
 
+  const mutate = async (ops: Parameters<typeof props.settings.mutate>[0]) => {
+    if (!snapshot.writable) return
+    setWriteError(undefined)
+    try {
+      await props.settings.mutate(ops)
+    } catch (error) {
+      setWriteError(error instanceof Error ? error.message : String(error))
+    }
+  }
   const write = (path: string[], value: unknown) => {
-    void props.settings.mutate([{ op: 'set', path, value }])
+    void mutate([{ op: 'set', path, value }])
   }
   const clear = (path: string[]) => {
-    void props.settings.mutate([{ op: 'unset', path }])
+    void mutate([{ op: 'unset', path }])
   }
 
   return (
@@ -408,6 +453,8 @@ export function SettingsSection(props: SettingsSectionProps) {
           </span>
           {state.error === undefined ? null : <span style={MUTED}>{t('refreshFailed', { message: state.error })}</span>}
           {state.modelsError === undefined ? null : <span style={MUTED}>{state.modelsError}</span>}
+          {state.credentialsError === undefined ? null : <span style={MUTED}>{t('credentialFailed', { message: state.credentialsError })}</span>}
+          {writeError === undefined ? null : <span role="alert" style={MUTED}>{t('settingsFailed', { message: writeError })}</span>}
         </div>
       </header>
 
@@ -427,14 +474,19 @@ export function SettingsSection(props: SettingsSectionProps) {
             failure={row.resolution.key === undefined ? undefined : state.snapshots[row.resolution.key]?.error}
             index={index}
             total={rows.length}
+            disabled={!snapshot.writable}
             onMode={mode => write(['providers'], setProviderMode(config.providers, row.provider, mode))}
             onMove={delta => {
-              const next = reorderProviders(config.order, row.provider, delta)
+              const next = reorderProviders(rows.map(candidate => candidate.provider), row.provider, delta)
               if (next !== undefined) write(['order'], next)
             }}
             onField={(path, value) => write(path, value)}
             onClearField={path => clear(path)}
-            onCredentialChanged={() => void props.usageState.refreshCredentials()}
+            onCredentialChanged={() => {
+              props.usageState.invalidate()
+              void props.usageState.refreshCredentials()
+              void props.usageState.refresh(true)
+            }}
           />
         ))}
       </section>
@@ -445,6 +497,7 @@ export function SettingsSection(props: SettingsSectionProps) {
           <span style={MUTED}>{t('thresholdWarn')}</span>
           <DraftInput
             type="number"
+            disabled={!snapshot.writable}
             value={String(config.display.thresholdWarnPercent)}
             width="90px"
             onCommit={value => write(['display', 'thresholdWarnPercent'], Number(value))}
@@ -452,6 +505,7 @@ export function SettingsSection(props: SettingsSectionProps) {
           <span style={MUTED}>{t('thresholdCritical')}</span>
           <DraftInput
             type="number"
+            disabled={!snapshot.writable}
             value={String(config.display.thresholdCriticalPercent)}
             width="90px"
             onCommit={value => write(['display', 'thresholdCriticalPercent'], Number(value))}
@@ -461,12 +515,14 @@ export function SettingsSection(props: SettingsSectionProps) {
           <span style={MUTED}>{t('intervalMinutes')}</span>
           <DraftInput
             type="number"
+            disabled={!snapshot.writable}
             value={String(config.refresh.intervalMinutes)}
             width="90px"
             onCommit={value => write(['refresh', 'intervalMinutes'], Number(value))}
           />
         </div>
         <Switch
+          disabled={!snapshot.writable}
           checked={config.display.progressBar}
           label={t('progressBar')}
           onChange={next => write(['display', 'progressBar'], next)}

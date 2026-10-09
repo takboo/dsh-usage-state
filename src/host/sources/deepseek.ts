@@ -26,10 +26,12 @@ function pickBalanceInfo(infos: unknown): PickedBalance | undefined {
   for (const raw of infos) {
     if (raw === null || typeof raw !== 'object') continue
     const entry = raw as Record<string, unknown>
+    const amount = toFiniteNumber(entry.total_balance)
+    if (amount === undefined) continue
     const granted = toFiniteNumber(entry.granted_balance)
     const toppedUp = toFiniteNumber(entry.topped_up_balance)
     entries.push({
-      amount: toFiniteNumber(entry.total_balance) ?? 0,
+      amount,
       currency: typeof entry.currency === 'string' ? entry.currency : '',
       ...(granted === undefined ? {} : { granted }),
       ...(toppedUp === undefined ? {} : { toppedUp }),

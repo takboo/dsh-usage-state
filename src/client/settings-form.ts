@@ -1,6 +1,10 @@
 import { normalizeConfig, type UsageStateConfig } from '../shared/config.ts'
 import type { ConfigFormLike, SettingsScopeLike, SettingsScopeSnapshotLike } from './context.ts'
 
+async function requireAccepted(write: Promise<boolean>): Promise<void> {
+  if (!await write) throw new Error('The host did not accept the settings write')
+}
+
 /**
  * Present one `configForms` entry as the settings scope the components consume.
  *
@@ -39,13 +43,13 @@ export function usageStateSettings(form: ConfigFormLike<unknown>): SettingsScope
     getSnapshot: snapshot,
     subscribe: listener => form.subscribe(listener),
     set: async (field, value) => {
-      await form.set(field, value)
+      await requireAccepted(form.set(field, value))
     },
     unset: async field => {
-      await form.unset(field)
+      await requireAccepted(form.unset(field))
     },
     mutate: async (ops, expectedRevision) => {
-      await form.mutate(ops, expectedRevision)
+      await requireAccepted(form.mutate(ops, expectedRevision))
     },
   }
 }

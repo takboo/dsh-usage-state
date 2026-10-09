@@ -3,8 +3,8 @@ import type { SourceCatalog } from './display.ts'
 import type { UsageMode } from './types.ts'
 
 /**
- * Provider-level resolution: which account (data source) and which reading mode
- * a DSH provider maps to.
+ * Provider-level resolution: which data source and reading mode a DSH
+ * provider maps to. A source category does not establish account identity.
  *
  * The readings this plugin shows are **account-level** — every model behind one
  * provider shares the same balance or quota — so the configuration unit is the
@@ -61,7 +61,7 @@ export interface ResolveProviderInput {
   provider: string
   config: UsageStateConfig
   catalog: SourceCatalog
-  /** Endpoint declared by the DSH provider profile; used only to suggest a source. */
+  /** Provider API base: suggests a source and supplies its request origin. */
   endpointHint?: string
 }
 
@@ -77,22 +77,23 @@ function withTarget(resolution: ProviderResolution): ProviderResolution {
  */
 export function resolveProvider(input: ResolveProviderInput): ProviderResolution {
   const entry = input.config.providers[input.provider]
-  // An endpoint declared by the DSH provider profile is used for real, not merely
-  // as a hint: it is how a user says "my GLM account is the China one".
+  const sourceId = entry?.sourceId ?? suggestSourceId(input.provider, input.endpointHint) ?? null
+  const defaults = sourceId === null ? undefined : input.config.sources[sourceId]
   const declared = originOf(input.endpointHint)
-  const baseUrl = entry?.baseUrl ?? declared
+  const explicitBaseUrl = entry?.baseUrl ?? defaults?.baseUrl
+  const baseUrl = explicitBaseUrl ?? declared
+  const apiKeyRef = entry?.apiKeyRef ?? defaults?.apiKeyRef
   const base: Pick<ProviderResolution, 'provider' | 'baseUrl' | 'baseUrlPinned' | 'apiKeyRef'> = {
     provider: input.provider,
     ...(baseUrl === undefined ? {} : { baseUrl }),
-    ...(entry?.baseUrl === undefined ? {} : { baseUrlPinned: true }),
-    ...(entry?.apiKeyRef === undefined ? {} : { apiKeyRef: entry.apiKeyRef }),
+    ...(explicitBaseUrl === undefined ? {} : { baseUrlPinned: true }),
+    ...(apiKeyRef === undefined ? {} : { apiKeyRef }),
   }
 
   if (entry?.mode === 'hidden') {
     return { ...base, sourceId: null, mode: null, reason: 'hidden' }
   }
 
-  const sourceId = entry?.sourceId ?? suggestSourceId(input.provider, input.endpointHint) ?? null
   if (sourceId === null) {
     return { ...base, sourceId: null, mode: null, reason: 'unknown-source' }
   }

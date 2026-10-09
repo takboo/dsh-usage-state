@@ -24,14 +24,12 @@ function firstFinite(candidates: readonly unknown[]): number | undefined {
 }
 
 /**
- * Moonshot's balance is documented in cents by some sources and in yuan by others,
- * and there is no field that disambiguates the two. This mirrors the heuristic used
- * by the plugin this project replaces: amounts of 100 or more are read as cents.
- * Verified against a real key before trusting the absolute value.
+ * Moonshot's official /v1/users/me/balance fields are already in yuan.
+ * https://platform.kimi.com/docs/api/balance
+ * Amount size never changes the unit; retain the existing two-decimal rounding.
  */
 function moonshotBalanceToYuan(value: number): number {
-  const yuan = value >= 100 ? value / 100 : value
-  return Math.round(yuan * 100) / 100
+  return Math.round(value * 100) / 100
 }
 
 /** Used percentage from an explicit used/limit pair, or by inverting remaining. */

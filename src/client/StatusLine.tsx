@@ -202,7 +202,7 @@ function statusOf(resolution: ReturnType<typeof resolveProvider>, catalogEmpty: 
  * One read-only usage line: balance in API mode, 5h/7d quota in coding-plan mode.
  *
  * It reports the account's **current** reading, so it has exactly one home: the
- * line under the composer. There is no per-turn copy — an account-level number
+ * line above the composer. There is no per-turn copy — an account-level number
  * cannot honestly describe a single turn (see `slots.ts`).
  */
 export function StatusLine(props: StatusLineProps) {
@@ -218,10 +218,17 @@ export function StatusLine(props: StatusLineProps) {
   if (config === undefined || current === null) return null
 
   const status: ModelStatus = statusOf(
-    resolveProvider({ provider: current.provider, config, catalog: state.catalog }),
+    resolveProvider({
+      provider: current.provider, config, catalog: state.catalog,
+      endpointHint: state.endpointHints?.[current.provider],
+    }),
     state.catalog.length === 0,
   )
-  const snapshot = status.kind === 'ready' ? state.snapshots[status.key] : undefined
+  if (status.kind === 'hidden') return null
+  const kept = status.kind === 'ready' ? state.snapshots[status.key] : undefined
+  const snapshot = kept === undefined || state.error === undefined ? kept : {
+    ...kept, stale: true, error: { kind: 'network' as const, detail: state.error },
+  }
   const sourceLabel =
     status.kind === 'ready'
       ? (state.catalog.find(entry => entry.id === status.sourceId)?.displayName ?? status.sourceId)

@@ -1,6 +1,7 @@
 {
   "name": "dsh-usage-state",
   "version": "0.4.4",
+  "packageManager": "npm@11.19.1",
   "type": "module",
   "description": "DSH plugin: show account balance (API mode) or coding-plan quota (5h/7d/30d) for the model in use",
   "license": "MIT",
@@ -13,7 +14,13 @@
     "test:watch": "node --import ./tests/support/client-render-hook.mjs --test --watch",
     "typecheck": "tsc --noEmit",
     "build": "node -e \"require('node:fs').rmSync('lib',{recursive:true,force:true})\" && tsdown",
-    "watch": "tsdown --watch"
+    "watch": "tsdown --watch",
+    "verify:metadata": "node scripts/verify-metadata.mjs",
+    "verify:artifacts": "node scripts/verify-artifacts.mjs",
+    "verify:package": "node scripts/verify-package.mjs",
+    "verify:release": "node scripts/verify-release.mjs",
+    "smoke:runtime": "node scripts/runtime-smoke.mjs",
+    "verify": "npm run verify:metadata && npm run typecheck && npm run build && npm test && npm run verify:artifacts && npm run verify:package"
   },
   "exports": {
     ".": {
@@ -36,19 +43,21 @@
     "@deepseek-ai/dsh-client-ui-slots": "^0.2.0-rc.2",
     "@deepseek-ai/dsh-typert-loader": "^0.2.0-rc.2",
     "@deepseek-ai/dsh-typert-registry": "^0.2.0-rc.2",
-    "@deepseek-ai/schemastery": "^3.18.2",
+    "@deepseek-ai/schemastery": "^3.18.3",
     "@types/node": "^24.0.0",
     "@types/react": "~18.3.1",
     "@types/react-dom": "~18.3.1",
+    "@types/react-test-renderer": "18.3.1",
     "react": "^18.3.1",
     "react-dom": "^18.2.0",
+    "react-test-renderer": "18.3.1",
     "tsdown": "^0.22.14",
     "typescript": "^5.9.2",
     "unrun": "^0.2.39"
   },
   "peerDependencies": {
     "@deepseek-ai/dsh-settings": "^0.2.0-rc.2",
-    "@deepseek-ai/schemastery": "^3.18.2"
+    "@deepseek-ai/schemastery": "^3.18.3"
   },
   "dependencies": {
     "zod": "4.5.1"

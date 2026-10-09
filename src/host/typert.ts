@@ -86,6 +86,7 @@ const credentialDescriptionSchema = z.object({
 export const usageStateViewSchema = z.object({
   sources: z.array(catalogEntrySchema),
   snapshots: z.record(z.string(), snapshotSchema),
+  endpointHints: z.record(z.string(), z.string()).optional(),
   checkedAt: z.number(),
 })
 

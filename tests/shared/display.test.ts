@@ -146,7 +146,7 @@ test('describeStatus keeps a stale reading visible and marks it stale', () => {
   })
 
   assert.deepEqual(segments, [
-    { kind: 'label', text: 'DeepSeek', stale: true, staleSince: 1_000 },
+    { kind: 'label', text: 'DeepSeek', stale: true, staleSince: 1_000, errorKind: 'network', errorDetail: 'offline' },
     { kind: 'balance', amount: '¥66.28', currency: 'CNY' },
   ])
 })

@@ -30,6 +30,8 @@ export interface CredentialDescription {
 export interface UsageStateView {
   sources: SourceCatalog
   snapshots: Record<string, UsageSnapshot>
+  /** Scheme and host only; never URL credentials, query parameters or keys. */
+  endpointHints?: Record<string, string>
   checkedAt: number
 }
 

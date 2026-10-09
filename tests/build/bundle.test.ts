@@ -10,8 +10,8 @@ import { loadBrowserFace, realRegistry, shellModuleTable } from '../support/brow
  * `dsh plugin add github:...` installs straight from the repository with no build
  * step, so a broken or mis-wrapped bundle would ship silently.
  *
- * Run `npm run build` first; without `lib/` these checks are skipped rather than
- * failed, so a fresh checkout can still run the unit tests.
+ * Run `npm run build` first. Missing committed delivery artifacts are a hard
+ * failure: a checkout with absent bundles must never look like passing tests.
  */
 const CLIENT = new URL('../../lib/client.js', import.meta.url)
 const HOST = new URL('../../lib/index.js', import.meta.url)
@@ -37,12 +37,14 @@ const ALLOWED_CLIENT_REQUIRES = new Set([
   '@deepseek-ai/dsh-client-ui-dockkit',
 ])
 
-function built(): boolean {
-  return existsSync(CLIENT) && existsSync(HOST) && existsSync(TYPERT)
+function requireBuilt(): void {
+  for (const file of [CLIENT, HOST, TYPERT]) {
+    assert.ok(existsSync(file), `required delivery artifact is missing: ${file.pathname}; run npm run build`)
+  }
 }
 
 test('the browser bundle is wrapped in the module-loader envelope', t => {
-  if (!built()) return t.skip('run `npm run build` first')
+  requireBuilt()
   const code = readFileSync(CLIENT, 'utf8')
 
   assert.match(code, /window\.__ModuleLoader__\.load\(\{/)
@@ -53,7 +55,7 @@ test('the browser bundle is wrapped in the module-loader envelope', t => {
 })
 
 test('the browser bundle requires nothing outside the shell module table', t => {
-  if (!built()) return t.skip('run `npm run build` first')
+  requireBuilt()
   const code = readFileSync(CLIENT, 'utf8')
   const requires = [...code.matchAll(/require\("([^"]+)"\)/g)].map(match => match[1])
 
@@ -64,7 +66,8 @@ test('the browser bundle requires nothing outside the shell module table', t => 
   assert.doesNotMatch(code, /from\s*"node:/, 'the browser bundle must not reference node builtins')
 })
 
-test('the host bundle is ESM exporting the cordis entry points', t => {  if (!built()) return t.skip('run `npm run build` first')
+test('the host bundle is ESM exporting the cordis entry points', t => {
+  requireBuilt()
   const code = readFileSync(HOST, 'utf8')
 
   // The loader reads `Config` off the module namespace and calls `apply(ctx, config)`.
@@ -78,7 +81,7 @@ test('the host bundle is ESM exporting the cordis entry points', t => {  if (!bu
 })
 
 test('the typert bundle exports the named manifest and keeps zod external', t => {
-  if (!built()) return t.skip('run `npm run build` first')
+  requireBuilt()
   const code = readFileSync(TYPERT, 'utf8')
 
   assert.match(code, /export \{[^}]*TYPERT[^}]*\}/)
@@ -87,7 +90,7 @@ test('the typert bundle exports the named manifest and keeps zod external', t =>
 })
 
 test('every declared export and manifest path exists once built', t => {
-  if (!built()) return t.skip('run `npm run build` first')
+  requireBuilt()
 
   for (const [key, value] of Object.entries(PACKAGE.exports ?? {})) {
     const target = typeof value === 'string' ? value : (value as { default?: string }).default
@@ -105,7 +108,7 @@ test('every declared export and manifest path exists once built', t => {
  * code) that unit tests over `src/` cannot see.
  */
 test('the built host bundle wires up and reads a balance through a fake host', async t => {
-  if (!built()) return t.skip('run `npm run build` first')
+  requireBuilt()
 
   const mod = (await import(HOST.href)) as {
     createUsageState: (ctx: unknown, deps: unknown) => { getState(force: boolean): Promise<unknown> }
@@ -167,7 +170,7 @@ test('the built host bundle wires up and reads a balance through a fake host', a
  * nothing else in this file would notice.
  */
 test('the built browser bundle mounts its RPC contribution through the real 0.2 registry', async t => {
-  if (!built()) return t.skip('run `npm run build` first')
+  requireBuilt()
 
   const client = loadBrowserFace(CLIENT.pathname, shellModuleTable()) as { apply(ctx: unknown): void; inject: string[] }
   const registry = await realRegistry()

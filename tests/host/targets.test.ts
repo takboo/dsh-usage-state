@@ -151,14 +151,11 @@ test('a legacy per-model entry for a provider DSH no longer has is not polled ei
   assert.deepEqual(targets.map(target => target.key), ['deepseek:api'])
 })
 
-test('an empty live provider list means "could not ask", so configured entries still run', () => {
-  // ctx.get('llm') may be unavailable on early ticks; an empty list is not proof that
-  // no provider exists, so the configured entries must keep working.
+test('an unknown provider list keeps stored configuration, while a known empty list stops polling', () => {
   const config = normalizeConfig({ providers: { 'zai-cn': { mode: 'coding-plan' } } })
 
-  const targets = resolveTargets(config, { providers: [] })
-
-  assert.deepEqual(targets.map(target => target.key), ['zai:coding-plan'])
+  assert.deepEqual(resolveTargets(config).map(target => target.key), ['zai:coding-plan'])
+  assert.deepEqual(resolveTargets(config, { providers: [] }), [])
 })
 
 test('resolveTargets deduplicates models that share one account-level reading', () => {  const targets = resolveTargets(
@@ -171,4 +168,13 @@ test('resolveTargets deduplicates models that share one account-level reading', 
   )
 
   assert.deepEqual(targets.map(target => target.key), ['deepseek:api', 'zai:coding-plan'])
+})
+
+test('hiding a provider cannot be undone by its legacy model configuration', () => {
+  const config = normalizeConfig({
+    models: [{ provider: 'deepseek', model: 'm', sourceId: 'deepseek', mode: 'api' }],
+    providers: { deepseek: { mode: 'hidden' } },
+  })
+
+  assert.deepEqual(resolveTargets(config), [])
 })

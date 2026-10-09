@@ -2,24 +2,17 @@ import type { CredentialDescription } from './credentials.ts'
 import type { UsageTarget } from './targets.ts'
 import type { SourceCatalog } from '../shared/display.ts'
 import type { UsageSnapshot } from '../shared/types.ts'
+import type { CredentialReport, UsageStateView } from '../shared/rpc.ts'
+
+export type { CredentialReport, UsageStateView } from '../shared/rpc.ts'
 
 /** Cordis service key the RPC gateway resolves. */
 export const USAGE_STATE_SERVICE = 'usageState'
 /** RPC namespace; the wire endpoint is `<namespace>/<method>`. */
 export const USAGE_STATE_RPC_NAMESPACE = 'usageState'
 
-export interface UsageStateView {
-  sources: SourceCatalog
-  snapshots: Record<string, UsageSnapshot>
-  checkedAt: number
-}
-
-export interface CredentialReport {
-  credentials: Record<string, CredentialDescription>
-}
-
 export interface UsageStateStoreLike {
-  refresh(key: string, options?: { force?: boolean }): Promise<UsageSnapshot>
+  refresh(key: string, options?: { force?: boolean; onlyIfMissing?: boolean }): Promise<UsageSnapshot>
   snapshots(): Record<string, UsageSnapshot>
 }
 
@@ -27,6 +20,7 @@ export interface UsageStateServiceDeps {
   store: UsageStateStoreLike
   targets(): UsageTarget[]
   catalog(): SourceCatalog
+  endpointHints?(): Record<string, string>
   describe(target: UsageTarget): Promise<CredentialDescription>
   now(): number
 }
@@ -44,19 +38,21 @@ export class UsageStateService {
   }
 
   /**
-   * Refresh what is due and report every reading. Forcing bypasses the minimum
-   * interval, so it is reserved for the explicit "refresh now" affordance.
+   * Initialize a missing account identity, otherwise report cached readings.
+   * The host owns periodic/turn refreshes; polling this method cannot shorten
+   * that cadence. Forcing is reserved for an explicit refresh.
    *
    * Settled rather than all: one unreachable provider must not blank the whole
    * status line for the others.
    */
   async getState(force?: boolean): Promise<UsageStateView> {
-    const options = force === true ? { force: true } : {}
+    const options = force === true ? { force: true } : { onlyIfMissing: true }
     await Promise.allSettled(this.deps.targets().map(target => this.deps.store.refresh(target.key, options)))
 
     return {
       sources: this.deps.catalog(),
       snapshots: this.deps.store.snapshots(),
+      ...(this.deps.endpointHints === undefined ? {} : { endpointHints: this.deps.endpointHints() }),
       checkedAt: this.deps.now(),
     }
   }

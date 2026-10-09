@@ -7,10 +7,9 @@ import type { CredentialReport, RemoteResult, UsageStateView } from '../shared/r
  * The client bundle runs inside the shell's module table, so it must not import
  * platform packages at runtime — and typing them structurally also avoids
  * interface-merge collisions between host and client package typings. The shapes
- * below come from the installed 0.1.5-rc.2 declarations: `devDependencies` are
- * deliberately pinned to the *floor* of the supported `engines.dsh` range
- * (`>=0.1.5-rc.1 <0.3.0-0`), so type-checking keeps proving the plugin still
- * compiles against the oldest host it claims to support.
+ * below mirror the 0.2 configuration and RPC transport. The lockfile and real
+ * registry tests record the supported baseline; these structural declarations
+ * alone do not prove compatibility with every version in engines.dsh.
  */
 
 export interface Translate {
@@ -72,9 +71,9 @@ export interface ConfigFormsLike {
 export interface ConfigFormLike<T> {
   getSnapshot(): ConfigFormSnapshotLike<T>
   subscribe(listener: () => void): () => void
-  set(field: string, value: unknown): Promise<unknown>
-  unset(field: string): Promise<unknown>
-  mutate(ops: readonly SettingsPathOp[], expectedRevision?: number): Promise<unknown>
+  set(field: string, value: unknown): Promise<boolean>
+  unset(field: string): Promise<boolean>
+  mutate(ops: readonly SettingsPathOp[], expectedRevision?: number): Promise<boolean>
 }
 
 /** One namespace's projection, with the platform's own status names. */

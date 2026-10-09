@@ -17,6 +17,7 @@ export interface UsageStateSnapshotSource {
     status: 'idle' | 'loading' | 'ready' | 'error'
     error: string | undefined
     catalog: SourceCatalog
+    endpointHints?: Record<string, string>
     snapshots: Record<string, UsageSnapshot>
     credentials: Record<string, CredentialDescription>
   }
@@ -30,6 +31,7 @@ export interface UsageStateSnapshotSource {
  */
 export interface UsageStateClientSource extends UsageStateSnapshotSource {
   getSnapshot(): UsageStateClientState
+  invalidate(): void
   refresh(force?: boolean): Promise<void>
   refreshCredentials(): Promise<void>
   refreshModels(): Promise<void>

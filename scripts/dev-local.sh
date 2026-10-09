@@ -6,21 +6,16 @@
 # then boots a host on a spare port. Because the link points at the working tree, a
 # rebuild of `lib/` is picked up by the running host:
 #
-#   - client half (`src/client/**`): `dsh-client-hmr` stat-polls every client bundle
-#     (500ms) and pushes a reload over `/plugins/events`, so `npm run watch` in a
-#     second terminal is enough — no restart, no reload needed in most cases.
-#   - host half (`src/host/**`, `src/index.ts`, `cordis.patch.yml`): read at boot, so
-#     restart this script.
+#   - client half: watch rebuilds the linked bundle. Hot replacement additionally
+#     needs active host client-hmr transport and a connected browser receiver.
+#   - host half (including typert and the patch): restart this script after rebuild.
 #
-# Your real profiles (`~/.dsh/profiles/{web,desktop}`) are never touched: everything
-# lives under `$DSH_HOME` (default `/tmp/dsh-dev`), which the OS may clear on reboot.
-#
-# **What this profile does not have**: credentials. `$DSH_HOME/.credentials.yaml` is
-# home-level, and a fresh home starts empty — so there are no API keys, no provider
-# rows and none of your other plugins (a font plugin changes the very metrics a
-# layout change depends on). This loop is therefore for **structural / host-side**
-# checks. To judge how something *looks*, install the same build into a profile that
-# already has your keys and plugins, without publishing:
+# Everything lives under the explicitly selected DSH_HOME. The /tmp/dsh-dev
+# default applies only when that variable is unset; never point it at a real home.
+# A fresh home has its own credential file, but still inherits process environment
+# keys. It also lacks your other plugins (fonts can change layout measurements).
+# This loop is useful for structural checks; use an explicitly chosen validation
+# environment to judge live account readings and appearance.
 #
 #   npm pack --pack-destination /tmp --cache /tmp/npm-cache
 #   dsh plugin --profile web add /tmp/dsh-usage-state-<version>.tgz   # file: install
@@ -42,8 +37,8 @@ PORT=${PORT:-3099}
 DSH_HOME=${DSH_HOME:-/tmp/dsh-dev}
 export DSH_HOME
 
-# The bundled CLI ships the runtime the Desktop app uses (0.2.0-rc.2) *and* its own
-# pnpm, so the dev profile is built with the same toolchain the app uses.
+# Prefer the existing Desktop CLI and its bundled package manager when available.
+# Record its actual version when checking compatibility.
 DSH=${DSH:-/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh}
 if [[ ! -x "$DSH" ]]; then
   if command -v dsh >/dev/null 2>&1; then
@@ -62,10 +57,9 @@ if [[ ! -f "$profile_dir/package.json" ]]; then
   "$DSH" --profile "$PROFILE" --from-default-profile web --dump-config >/dev/null
 fi
 
-# `link:` on purpose: the host then serves this working tree's `lib/` directly, which
-# is what makes the watch loop work. (A link install resolves `@deepseek-ai/*` from
-# this repository's own node_modules — a packed install resolves it through the
-# platform's module fallback instead. See docs/implementation.md §9 item 5.)
+# `link:` serves this working tree's lib directly. Dependency lookup depends on
+# the installed host version and checkout path; a link can see devDependencies,
+# so a release smoke must use the tarball. See docs/platform-notes.md.
 if ! grep -q "dsh-usage-state" "$profile_dir/package.json"; then
   echo "dev-local: linking $ROOT into profile '$PROFILE'"
   "$DSH" plugin --profile "$PROFILE" add "$ROOT" >/dev/null
@@ -77,6 +71,6 @@ if [[ ! -f "$ROOT/lib/client.js" ]]; then
 fi
 
 echo "dev-local: hosting profile '$PROFILE' on port $PORT"
-echo "dev-local: client changes hot-reload — keep \`npm run watch\` in another terminal;"
+echo "dev-local: client HMR needs an active host/browser channel; run \`npm run watch\` in another terminal;"
 echo "dev-local: host changes need this script restarted."
 exec "$DSH" --profile "$PROFILE" --port "$PORT" --no-open

@@ -62,6 +62,7 @@ function configWith(providers: Record<string, ProviderConfigEntry> = {}): UsageS
 
 function storeWith(input: {
   catalog?: SourceCatalog
+  endpointHints?: Record<string, string>
   snapshots?: Record<string, UsageSnapshot>
   credentials?: Record<string, CredentialDescription>
   models?: Array<{ provider: string; providerName: string; model: string; name: string }>
@@ -73,6 +74,7 @@ function storeWith(input: {
   const state = {
     status: input.status ?? ('ready' as const),
     catalog: input.catalog ?? [],
+    endpointHints: input.endpointHints,
     snapshots: input.snapshots ?? {},
     credentials: input.credentials ?? {},
     checkedAt: 1_000,
@@ -85,6 +87,7 @@ function storeWith(input: {
   const source = {
     getSnapshot: () => state,
     subscribe: () => () => undefined,
+    invalidate: () => {},
     refresh: async () => undefined,
     refreshCredentials: async () => undefined,
     refreshModels: async () => undefined,
@@ -114,6 +117,25 @@ const CREDENTIALS: CredentialsRemoteLike = {
   set: async () => ({ ok: true, value: undefined }),
   unset: async () => ({ ok: true, value: undefined }),
 }
+
+test('a provider recognized by the host endpoint renders consistently in the line and settings', () => {
+  const store = storeWith({
+    catalog: CATALOG,
+    endpointHints: { 'custom-account': 'https://api.deepseek.com' },
+    models: [{ provider: 'custom-account', providerName: 'Custom account', model: 'm', name: 'Model' }],
+    snapshots: { 'deepseek:api': {
+      sourceId: 'deepseek', mode: 'api', balances: [{ amount: 66.28, currency: 'CNY' }], windows: [], fetchedAt: 1000,
+    } },
+  })
+  const settings = settingsWith(configWith())
+  const line = renderToStaticMarkup(h(StatusLine, {
+    t, usageState: store, settings, useProjection: projectionOf({ provider: 'custom-account', model: 'm' }),
+  }))
+  const page = renderToStaticMarkup(h(SettingsSection, { t, usageState: store, settings, credentials: CREDENTIALS, close: () => {} }))
+
+  assert.match(line, /¥66\.28/)
+  assert.match(page, /Detected DeepSeek · API balance/)
+})
 
 test('the status line renders a balance for the session model', () => {
   const config = configWith({ 'deepseek-official': { mode: 'api' } })
@@ -256,6 +278,26 @@ test('a self-hosted provider without an endpoint asks for one', () => {
   assert.match(html, /Needs an endpoint first/)
 })
 
+test('an RPC failure after a successful reading marks the kept value stale and explains the connection failure', () => {
+  const html = renderToStaticMarkup(h(StatusLine, {
+    t,
+    usageState: storeWith({
+      catalog: CATALOG, status: 'error', error: 'RPC connection lost',
+      snapshots: { 'deepseek:api': {
+        sourceId: 'deepseek', mode: 'api', balances: [{ amount: 66.28, currency: 'CNY' }],
+        windows: [], fetchedAt: Date.now() - 60_000,
+      } },
+    }),
+    settings: settingsWith(configWith()),
+    useProjection: projectionOf({ provider: 'deepseek', model: 'm' }),
+  }))
+
+  assert.match(html, /¥66\.28/)
+  assert.match(html, /⚠/)
+  assert.match(html, /1m ago/)
+  assert.match(html, /RPC connection lost/)
+})
+
 test('a stale reading stays visible and is marked', () => {
   const config = configWith({ 'deepseek-official': { mode: 'api' } })
   const html = renderToStaticMarkup(
@@ -284,6 +326,7 @@ test('a stale reading stays visible and is marked', () => {
   assert.match(html, /showing the last value that was fetched successfully/i)
   assert.match(html, /12m ago/)
   assert.match(html, /\$12\.50/)
+  assert.match(html, /offline/)
 })
 
 test('the settings page shows one row per provider with its models and resolved account', () => {

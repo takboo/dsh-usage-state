@@ -1,4 +1,4 @@
-import type { UsageStateConfig } from '../shared/config.ts'
+import { normalizeConfig, type UsageStateConfig } from '../shared/config.ts'
 import { resolveProvider } from '../shared/providers.ts'
 import type { UsageMode } from '../shared/types.ts'
 import { toSourceCatalog } from './catalog.ts'
@@ -15,6 +15,10 @@ export interface UsageTarget {
   baseUrl?: string
   /** True when the endpoint is the user's explicit choice, so no mirror is tried. */
   baseUrlPinned?: boolean
+  /** Credential ref selected for the provider that owns this target. */
+  apiKeyRef?: string
+  /** Provider-declared refs captured with this target; values remain host-only. */
+  preferredRefs?: readonly string[]
 }
 
 export function targetKey(sourceId: string, mode: UsageMode): string {
@@ -42,15 +46,16 @@ export interface TargetOptions {
  * known source, or ask for a mode the source cannot serve are skipped silently.
  */
 export function resolveTargets(
-  config: UsageStateConfig,
+  rawConfig: UsageStateConfig,
   options: TargetOptions = {},
 ): UsageTarget[] {
+  const config = normalizeConfig(rawConfig)
   const sources = options.sources ?? ALL_SOURCES
   const catalog = toSourceCatalog(sources)
   const targets: UsageTarget[] = []
   const seen = new Set<string>()
 
-  const push = (sourceId: string, mode: UsageMode, endpoint?: { baseUrl?: string; pinned?: boolean }): void => {
+  const push = (sourceId: string, mode: UsageMode, endpoint?: { baseUrl?: string; pinned?: boolean; apiKeyRef?: string }): void => {
     const source = sources.find(candidate => candidate.id === sourceId)
     if (source === undefined || !source.modes.includes(mode)) return
     const key = targetKey(sourceId, mode)
@@ -64,28 +69,21 @@ export function resolveTargets(
       mode,
       ...(endpoint?.baseUrl === undefined ? {} : { baseUrl: endpoint.baseUrl }),
       ...(endpoint?.pinned === true ? { baseUrlPinned: true } : {}),
+      ...(endpoint?.apiKeyRef === undefined ? {} : { apiKeyRef: endpoint.apiKeyRef }),
     })
   }
 
   /**
-   * The live runtime's provider ids, when we have them. An empty list means "could
-   * not ask" (the `llm` service is missing on early ticks), not "nothing exists", so
-   * it must not suppress the configured entries.
+   * The live runtime's provider ids, when known. `undefined` means the host
+   * could not answer; an empty list is authoritative and stops stale targets.
    */
-  const live = options.providers !== undefined && options.providers.length > 0 ? new Set(options.providers) : undefined
+  const live = options.providers === undefined ? undefined : new Set(options.providers)
   /**
    * Whether a stored entry may still produce requests. The entry itself is kept — a
    * provider that comes back keeps the mode the user chose for it — but a provider
    * DSH no longer has must not keep an account being polled behind an invisible row.
    */
   const pollable = (provider: string): boolean => live === undefined || live.has(provider)
-
-  // Legacy per-model entries first: an older document's explicit choices still win.
-  for (const entry of config.models) {
-    if (entry.mode === 'hidden' || entry.sourceId === null) continue
-    if (!pollable(entry.provider)) continue
-    push(entry.sourceId, entry.mode)
-  }
 
   const providers = new Set<string>()
   for (const provider of [...config.order, ...Object.keys(config.providers)]) {
@@ -103,6 +101,7 @@ export function resolveTargets(
       push(resolution.sourceId, resolution.mode, {
         ...(resolution.baseUrl === undefined ? {} : { baseUrl: resolution.baseUrl }),
         ...(resolution.baseUrlPinned === true ? { pinned: true } : {}),
+        ...(resolution.apiKeyRef === undefined ? {} : { apiKeyRef: resolution.apiKeyRef }),
       })
     }
   }

@@ -40,7 +40,15 @@ export type ModelStatus =
 export type Severity = 'normal' | 'warn' | 'critical'
 
 export type StatusSegment =
-  | { kind: 'label'; text: string; stale?: boolean; /** epoch ms of the kept reading, when stale. */ staleSince?: number }
+  | {
+      kind: 'label'
+      text: string
+      stale?: boolean
+      /** Epoch ms of the last successful reading, including a valid zero. */
+      staleSince?: number
+      errorKind?: SnapshotError['kind']
+      errorDetail?: string
+    }
   | { kind: 'balance'; amount: string; currency: string; granted?: number; toppedUp?: number }
   | {
       kind: 'window'
@@ -142,7 +150,9 @@ export function describeStatus(input: StatusInput): StatusSegment[] {
           stale: true,
           // "kept the last good value" is only actionable if the user can see how
           // old it is (design: stale marker = time + ⚠).
-          ...(snapshot.fetchedAt > 0 ? { staleSince: snapshot.fetchedAt } : {}),
+          staleSince: snapshot.fetchedAt,
+          ...(snapshot.error === undefined ? {} : { errorKind: snapshot.error.kind }),
+          ...(snapshot.error?.detail === undefined ? {} : { errorDetail: snapshot.error.detail }),
         }
       : { kind: 'label', text: input.sourceLabel }
 
