@@ -1,6 +1,6 @@
 # 发布与验收
 
-本文件是维护流程。已发布事实放 [更新日志](../CHANGELOG.md)，状态见 [Backlog](backlog.md#a11)，外部规则见 [规范研究](research/repository-release-standards-2026-10.md)。CI、Dependabot与默认verify的手动Release已在GitHub；[2026-10-09 main CI](https://github.com/takboo/dsh-usage-state/actions/runs/37893422944)已通过。2026-10-10修复Release表达式上下文并加入工作流语法门禁；main保护仍未配置，npm trusted publisher未确认，没有新tag、GitHub Release或npm发布。
+本文件是维护流程。已发布事实放 [更新日志](../CHANGELOG.md)，状态见 [Backlog](backlog.md#a11)，外部规则见 [规范研究](research/repository-release-standards-2026-10.md)。CI、Dependabot与默认verify的手动Release已在GitHub；[2026-10-09 main CI](https://github.com/takboo/dsh-usage-state/actions/runs/37893422944)已通过。2026-10-10修复Release表达式上下文并加入工作流语法门禁；main保护仍未配置；npm trusted publisher已由维护者接通，0.4.5正在准备，实际OIDC发布结果见 [Backlog](backlog.md#a13)。
 
 ## 1. 版本和支持范围
 
@@ -10,7 +10,7 @@
 - 平台依赖的锁定基线与所声明下界必须实际复验；结构类型镜像/编译相同不能证明最低宿主兼容。新DSH发布线先验再扩大范围。
 - 维护者应给今后版本创建一致的tag（例如v<version>）及GitHub Release；历史没有tag时，Changelog使用有依据的commit，不补造发布点。
 
-锁文件根版本已同步0.4.4，本轮产物已重建；所有修复仍在Unreleased。npm0.4.4已经占用，本地同号tarball内容与该发布不同，不能再次发布该号。源码和bundle应一起提交；verify:artifacts对HEAD检查，提交前的新产物diff是合理失败，不可隐藏。新版本需先同步package/lock、带日期Changelog和稳定tag。
+当前package/lock为0.4.5，本轮修复已移入带日期版本章节。npm0.4.4已经占用；历史本地同号tarball内容与该发布不同，不能再次发布该号。源码和bundle应一起提交；verify:artifacts对HEAD检查，提交前的新产物diff是合理失败，不可隐藏。新版本需先同步package/lock、带日期Changelog和稳定tag。
 
 ## 2. 构建、最终产物与打包
 
@@ -90,9 +90,11 @@ DSH_HOME="$verify_home" "$dsh_bin" --profile smoke --port 3081 --no-open
 
 ## 5. 发布并核对版本
 
-[手动Release](../.github/workflows/release.yml) 只支持稳定 **vM.m.p**，从可信main派发，默认 **verify**，不会自动发布或由tag push触发。先验证tag是origin/main祖先、package/lock一致且有带日期版本章节，再checkout不可变commit。规范Node24验证/打包一次；同tarball继续做Node20预构建独立安装。
+[Release](../.github/workflows/release.yml) 只支持稳定 **vM.m.p**。新建版本tag的push自动派发可信main上的同一工作流，mode=publish；tag入口只有actions:write权限，不执行npm发布。非稳定tag不派发；移动或删除tag不触发发布。手动触发仍须选择main，默认 **verify**。先验证tag是origin/main祖先、package/lock一致且有带日期版本章节，再checkout不可变commit。规范Node24验证/打包一次；同tarball继续做Node20预构建独立安装。
 
-选择publish才执行npm job，前提是维护者已配置对应owner/repository/release.yml的trusted publisher并允许direct publish。该job仅contents:read/id-token:write，校验未占用版本、报告commit和checksum，发布同一tgz并ignore-scripts。固定Node24.21.0/npm11.19.1满足OIDC最低要求；公开repo+包的自动provenance依据见 [官方npm文档](https://docs.npmjs.com/trusted-publishers/)。本轮未配置publisher或执行发布。
+选择publish才执行npm job，前提是维护者已配置对应owner/repository/release.yml的trusted publisher并允许direct publish。该job仅contents:read/id-token:write，校验未占用版本、报告commit和checksum，发布同一tgz并ignore-scripts。固定Node24.21.0/npm11.19.1满足OIDC最低要求；公开repo+包的自动provenance依据见 [官方npm文档](https://docs.npmjs.com/trusted-publishers/)。维护者已接通publisher；首次OIDC实跑与实际npm版本见 [Backlog](backlog.md#a13)。
+
+推送release提交到main并等待CI通过，再推送版本tag。GitHub的GITHUB_TOKEN允许触发workflow_dispatch；发布工作流与npm授权仍绑定release.yml/main，tag入口无需额外长期Token。依据见 [GitHub触发规则](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow#triggering-a-workflow-from-a-workflow)。
 
 GitHub Release附档由独立contents:write job执行，再核对同一报告/tgz，附相同tarball和checksum。npm已成功而附档失败时，在7天artifact保留期内单独重跑失败附档job；它不要求npm版本仍未使用，不再次publish或重pack。Actions artifact不是永久分发渠道。
 

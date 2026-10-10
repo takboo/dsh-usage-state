@@ -2,7 +2,7 @@
 
 这是唯一维护未完成事项状态的清单。2026-10-08 [审计快照](research/repository-audit-2026-10-08.md) 的A01–A17为稳定编号；报告保留当时证据，本文件记录后续进度。P1优先处理，P2为功能/交付问题，P3为局部健壮性改进。
 
-本轮本地整改实现于 [984878e](https://github.com/takboo/dsh-usage-state/commit/984878ee0ddc8ce3e42bcbc69d7a5052c6cdcf10)，源码、测试和预构建产物已一起提交，尚未发布npm。Node26.10.0、开发下界22.18.0及规范24.21.0的完整319测试均通过、无失败或跳过；HEAD三产物一致性和4份工作流YAML/32组shell校验已通过。最终tarball与隔离运行证据见 [架构验收记录](architecture.md#测试与证据)。这里的“本地完成”不表示GitHub远端、真实账户或视觉验收完成。
+本轮本地整改实现于 [984878e](https://github.com/takboo/dsh-usage-state/commit/984878ee0ddc8ce3e42bcbc69d7a5052c6cdcf10)，源码、测试和预构建产物已一起提交；0.4.5包含这些整改，正在准备首次OIDC发布。Node26.10.0、开发下界22.18.0及规范24.21.0的完整319测试均通过、无失败或跳过；HEAD三产物一致性和4份工作流YAML/32组shell校验已通过。最终tarball与隔离运行证据见 [架构验收记录](architecture.md#测试与证据)。这里的“本地完成”不表示GitHub远端、真实账户或视觉验收完成。
 
 ## 1. 审计整改
 
@@ -70,7 +70,7 @@
 
 ### A11 · P2 · GitHub CI与主分支门禁
 
-**状态：CI已在GitHub实跑，远端保护与发布认证待实施。** [2026-10-09 main CI](https://github.com/takboo/dsh-usage-state/actions/runs/37893422944)的Node22.18、规范Node24打包及Node20预构建冒烟均通过。2026-10-10修复Release的job级env引用runner.temp造成的解析失败，新增固定actionlint/checksum的Workflow syntax门禁；限制React及TypeScript的自动major更新，Zod测试不再锁死旧补丁号。main保护仍未配置，npm trusted publisher未确认；Release实际发布尚未执行。
+**状态：CI已在GitHub实跑，远端保护与发布认证待实施。** [2026-10-09 main CI](https://github.com/takboo/dsh-usage-state/actions/runs/37893422944)的Node22.18、规范Node24打包及Node20预构建冒烟均通过。2026-10-10修复Release的job级env引用runner.temp造成的解析失败，新增固定actionlint/checksum的Workflow syntax门禁；限制React及TypeScript的自动major更新，Zod测试不再锁死旧补丁号。main保护仍未配置；维护者已接通npm trusted publisher，稳定tag自动派发main上的Release，首次发布结果见A13。
 
 <a id="a12"></a>
 
@@ -82,7 +82,7 @@
 
 ### A13 · P2 · 发布元数据与版本追溯
 
-**状态：本地完成；新发版和远端引用仍待实施。** 锁文件根版本已同步0.4.4，metadata守卫校对依赖/engines；历史日期/引用已校正。verify:release校验可信main祖先、稳定vM.m.p、tag/package/lock/带日期Changelog及同产物报告。包号尚未升级，新版本应未被npm占用；没有新tag、GitHub Release或npm发布。
+**状态：0.4.5已准备，待OIDC发布实跑。** package/lock根版本已同步0.4.5，metadata守卫校对依赖/engines；历史日期/引用已校正。verify:release校验可信main祖先、稳定vM.m.p、tag/package/lock/带日期Changelog及同产物报告。维护者已接通npm trusted publisher；新稳定tag自动派发main上的Release。
 
 <a id="a14"></a>
 
@@ -94,7 +94,7 @@
 
 ### A15 · P2 · 文档与市场事实漂移
 
-**状态：本地文档及已核对源码/脚本文案完成，外部描述待合并。** 文档明确Unreleased与已发布npm0.4.4不同，历史快照及修订1–24保留；[开发脚本](../scripts/dev-local.sh)、客户端类型镜像、状态行位置和Kimi单位注释已按当前行为校正。
+**状态：本地文档及已核对源码/脚本文案完成，外部描述待合并。** 文档明确0.4.5包含整改、npm0.4.4仍是旧实现，历史快照及修订1–24保留；[开发脚本](../scripts/dev-local.sh)、客户端类型镜像、状态行位置和Kimi单位注释已按当前行为校正。
 
 [市场条目](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/blob/main/data/plugins/takboo__dsh-usage-state.yml)还写输入框下方；[PR6622](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/6622)在2026-10-08核验仍open，跟踪既有PR。合并并成功构建/catalog更新后复核实际区域，不重复提交。
 

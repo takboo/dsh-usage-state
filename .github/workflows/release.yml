@@ -1,9 +1,12 @@
 name: Release
 
-# Dispatch from trusted main. This workflow only releases stable vX.Y.Z tags.
+# Tag pushes dispatch publication from trusted main. Manual runs default to verify.
+# This workflow only releases stable vX.Y.Z tags.
 # Verify is the default. npm publish additionally requires the repository-bound
 # release.yml trusted publisher with direct publish allowed.
 on:
+  push:
+    tags: ['v*']
   workflow_dispatch:
     inputs:
       tag:
@@ -21,10 +24,29 @@ permissions:
   contents: read
 
 concurrency:
-  group: release-${{ inputs.tag }}
+  group: release-${{ inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
+  dispatch-tag:
+    name: Start tagged release from trusted main
+    if: github.repository == 'takboo/dsh-usage-state' && github.event_name == 'push' && github.event.created && !github.event.deleted
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ github.ref_name }}
+    steps:
+      - name: Dispatch stable tags to the npm-authorized workflow on main
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Skipping non-stable release tag: $RELEASE_TAG"
+            exit 0
+          fi
+          gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref main -f "tag=$RELEASE_TAG" -f mode=publish
+
   verify:
     name: Verify trusted release tag
     if: github.repository == 'takboo/dsh-usage-state' && github.ref == 'refs/heads/main'

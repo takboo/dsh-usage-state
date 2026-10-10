@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+## [0.4.5] - 2026-10-10
+
 ### Fixed
 
 - provider级凭据覆盖贯通读取、描述和保存；显式provider端点/ref优先于legacy source默认，固定端点不尝试镜像。
@@ -20,14 +22,14 @@
 - 新增标准Ubuntu CI、Dependabot和默认verify的手动Release；action固定完整SHA，npm OIDC与GitHub附档分离权限，复用同一已验证tarball和checksum。
 - 修复Release在job级env使用runner.temp导致整份工作流无法解析的问题，tarball路径改在runner步骤中设置；CI新增固定版本/checksum的actionlint检查表达式上下文。
 - Dependabot保留React18与TypeScript JavaScript编译API兼容线，忽略这些依赖的自动major更新；纳入tsdown0.23.0、unrun0.3.1和Zod4.6.5。Zod测试验证固定v4依赖及真实codec行为，不再要求旧补丁号4.5.1。
-- 新增metadata、已提交产物、实际tarball、稳定发布tag和预构建runtime门禁；必要产物缺失改为硬失败，不再skip。规范工具链固定Node24.21.0/npm11.19.1，锁文件根版本同步0.4.4。
+- 新增metadata、已提交产物、实际tarball、稳定发布tag和预构建runtime门禁；必要产物缺失改为硬失败，不再skip。规范工具链固定Node24.21.0/npm11.19.1，锁文件根版本同步包版本。
 - schemastery peer/dev下界更正为3.18.3（3.18.2缺少volatile能力），锁定解析版本3.18.4；没有扩大DSH发布线范围。
-- 本轮包号仍0.4.4，整改尚未npm发布；main CI已于2026-10-09实跑通过，远端main保护、trusted publisher及新tag/Release仍需后续配置/验收。
+- 版本升至0.4.5，交付此前Unreleased整改；新增稳定版本tag自动派发可信main上的Release，手动触发仍默认verify。npm经OIDC发布同一已验证tarball，GitHub Release附相同字节与checksum。
 
 ### Documentation
 
-- 精简中英README，增加任务导航、领域术语、开发指南和用户排查；区分当前Unreleased与已发布npm0.4.4。
-- 双语README增加CI/npm状态徽章和2026-10-10发布核对；修复版安装指向GitHub，npm安装明确仍为未包含整改的0.4.4。
+- 精简中英README，增加任务导航、领域术语、开发指南和用户排查；明确0.4.5包含整改，0.4.4及更早版本仍有旧版问题。
+- 双语README增加CI/npm状态徽章，恢复修复版npm安装指引并记录0.4.5版本说明。
 - 设计、架构、适配器、平台和发布文档同步本地实现及验证边界；A01–A17状态归入唯一Backlog，历史研究与修订1–24保留。
 - 0.4.4发布日期和历史提交引用已校正；真实账户、视觉及实际凭据写入验证仍未新增。
 
@@ -98,9 +100,10 @@
 
 ## 历史引用说明
 
-核验时仓库没有版本tag/Release。0.3.0及之后的比较端点来自各npm版本的gitHead；0.2系列引用对应实现提交，不能替代当时没有保存的正式发布产物。早期日期沿用历史版本记录。今后版本应按发布流程建立稳定引用。
+0.4.5起建立版本tag/Release；更早发布没有保存这些引用。0.3.0至0.4.4的比较端点来自各npm版本的gitHead；0.2系列引用对应实现提交，不能替代当时没有保存的正式发布产物。早期日期沿用历史版本记录。今后版本应按发布流程建立稳定引用。
 
-[Unreleased]: https://github.com/takboo/dsh-usage-state/compare/3ad9a71e2f7e4b9a05c69bc529e396a364ae6aeb...HEAD
+[Unreleased]: https://github.com/takboo/dsh-usage-state/compare/v0.4.5...HEAD
+[0.4.5]: https://github.com/takboo/dsh-usage-state/compare/3ad9a71e2f7e4b9a05c69bc529e396a364ae6aeb...v0.4.5
 [0.4.4]: https://github.com/takboo/dsh-usage-state/compare/885541638ffa4da05b39bd1864085ba6d9acc288...3ad9a71e2f7e4b9a05c69bc529e396a364ae6aeb
 [0.4.3]: https://github.com/takboo/dsh-usage-state/compare/0d2d4376d0db990fb36df5d6124e5b7894974d62...885541638ffa4da05b39bd1864085ba6d9acc288
 [0.4.2]: https://github.com/takboo/dsh-usage-state/compare/e5ef97375d01faf9073ef5e4c7522f6ff59514f9...0d2d4376d0db990fb36df5d6124e5b7894974d62

@@ -48,7 +48,7 @@ npm run verify:package
 
 必要产物缺失现在是测试硬失败。三个bundle与源码需要一起审阅、提交；随后执行 `npm run verify`。verify:artifacts比较 **HEAD**，故已重建但未提交的产物修改会合理失败，暂存也不会消除该失败。不要跳过门禁或用旧产物替代新代码；在规范Node24.21.0上完成构建后，提交再复核一致性。
 
-源码、构建产物和真实包入口由现有门禁分别检查，具体发布/tarball及Node20冒烟见 [发布流程](release.md)。本轮包号仍0.4.4，所有整改属于Unreleased；不能把生成本地0.4.4.tgz当成已发布npm0.4.4同一内容。
+源码、构建产物和真实包入口由现有门禁分别检查，具体发布/tarball及Node20冒烟见 [发布流程](release.md)。当前源码包号为0.4.5，包含此前整改；历史本地0.4.4.tgz与已发布npm0.4.4不同。正式发布结果见Backlog A13。
 
 ## 本地宿主回路
 
@@ -94,5 +94,5 @@ DSH_HOME=/tmp/dsh-usage-state-verify dsh plugin --profile p add "/tmp/dsh-usage-
 - 增加数据源按 [适配器指南](adapters.md) 更新注册、自动识别和必要词典，维护中英README关键事实。
 - 可见行为改变后更新用户说明、Backlog状态与Unreleased；实际发布日期以registry记录为准。
 - 新设计取舍追加 [设计修订](design-changelog.md)。历史研究的错误用勘误或补充记录，不覆盖原始证据。
-- 本地已配置 [CI](../.github/workflows/ci.yml)、[Dependabot](../.github/dependabot.yml) 和默认verify的 [手动Release](../.github/workflows/release.yml)，自动化状态见A11/A14。工作流尚未推送实跑，main保护与npm publisher仍需维护者配置。
-- 所有本轮修复记录为Unreleased，npm0.4.4仍是旧实现；产物和源码统一提交后再完成HEAD一致性门禁，实际tag/Release/npm发布是后续操作。
+- GitHub已运行 [CI](../.github/workflows/ci.yml)、[Dependabot](../.github/dependabot.yml) 和默认verify的 [手动Release](../.github/workflows/release.yml)，自动化状态见A11/A14。main CI已通过；维护者已接通npm publisher，main保护仍待配置。
+- 此前整改记录在0.4.5，npm0.4.4仍是旧实现；产物和源码统一提交后完成HEAD一致性门禁，再发布稳定tag。新tag自动派发main上的Release，手动运行仍默认verify。

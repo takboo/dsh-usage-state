@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/dsh-usage-state)](https://www.npmjs.com/package/dsh-usage-state)
 
-> **Release status (checked 2026-10-10):** GitHub `main` contains the fixes described below, recorded under [Unreleased](CHANGELOG.md#unreleased). [npm latest](https://www.npmjs.com/package/dsh-usage-state) remains **0.4.4**, published on 2026-10-06, and does not contain these fixes. Install from GitHub for the fixes and record the commit. The source package version is still 0.4.4, so the version alone cannot distinguish the two. The next npm release must use a new version number.
+> **Version note:** **0.4.5** includes the balance parsing, credential override, cache isolation and failure-display fixes previously recorded as Unreleased. See the [Changelog](CHANGELOG.md#045---2026-10-10). Users of 0.4.4 or earlier should upgrade to 0.4.5 or a newer compatible version.
 
 Show the current model provider's **account balance** or **coding-plan quota** above the composer input in [DSH (DeepSeek Harness)](https://github.com/deepseek-ai/deepseek-harness). The line matches the input card's width and preserves the native statistics and context meter.
 
@@ -25,21 +25,20 @@ DeepSeek · ¥58.13
 
 Requires DSH matching `>=0.2.0-rc.2 <0.3.0-0`. The prebuilt plugin declares Node ≥20. Install into the `web` profile you actually use.
 
-Install the current fixes from GitHub:
-
-```bash
-dsh plugin --profile web add github:takboo/dsh-usage-state
-# Restart DSH afterwards: the bundle patch is read at startup.
-```
-
-This repository commits prebuilt artifacts for DSH's GitHub installation path. A floating Git branch may be ahead of npm; record the source and version/commit when reproducing an issue. This does not describe every npm Git installation's lifecycle.
-
-Install the published npm **0.4.4** (without the Unreleased fixes above):
+Install from npm:
 
 ```bash
 dsh plugin --profile web add dsh-usage-state
-# Restart DSH afterwards.
+# Restart DSH afterwards: the bundle patch is read at startup.
 ```
+
+You can also install from GitHub:
+
+```bash
+dsh plugin --profile web add github:takboo/dsh-usage-state
+```
+
+This repository commits prebuilt artifacts for DSH's GitHub installation path. A floating Git branch may be ahead of npm; record the source and version/commit when reproducing an issue. This does not describe every npm Git installation's lifecycle.
 
 You can also search for `usage state` or `takboo` in [dsh-market](https://github.com/dsh-market/dsh-market); check the actual installation source and version afterwards. The plugin is on the [curated list](https://awesome-dsh-plugin.com); catalog visibility depends on the selected region and a successful catalog build.
 
@@ -88,7 +87,7 @@ The plugin queries balances/quotas and reads the selected model and provider cat
 
 See the [Backlog (Chinese)](https://github.com/takboo/dsh-usage-state/blob/main/docs/backlog.md) for remediation status and verification scope.
 
-- **Published npm 0.4.4:** still has credential override, pin/cache identity, legacy hiding, default ordering and failure-display defects. It still divides Moonshot balances ≥100 yuan by 100 and may turn invalid DeepSeek amounts into zero. These are fixed in the current Unreleased tree, not yet delivered through npm. Cross-check old-version amounts against the [official API](https://platform.kimi.com/docs/api/balance.md).
+- **Older npm 0.4.4 and earlier:** still has credential override, pin/cache identity, legacy hiding, default ordering and failure-display defects. It still divides Moonshot balances ≥100 yuan by 100 and may turn invalid DeepSeek amounts into zero. These are fixed in 0.4.5; upgrade if you use an older version. Cross-check old-version amounts against the [official API](https://platform.kimi.com/docs/api/balance.md).
 - **Account scope:** one target is still selected per source and mode. Identity isolation does not add independent multi-account support.
 - **Live verification:** Kimi Code/Sub2API accounts, high-threshold colors, real credential writes and nonzero OpenCode readings still lack live coverage. Local interaction tests do not replace that acceptance.
 - **Scope:** the line can be absent without a selected model or when hidden; clicking it does not open settings; readings are not saved as history.

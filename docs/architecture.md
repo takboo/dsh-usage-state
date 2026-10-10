@@ -18,7 +18,7 @@ flowchart LR
   Model[当前模型选择] --> UI
 ```
 
-数值、source元数据和origin-only endpointHints从宿主经RPC传到浏览器；设置页和状态行用该提示调用共享resolveProvider。提示不含userinfo/query或apiKey，[A08](backlog.md#a08) 的两端识别缺口已在当前Unreleased修复。SVG只在浏览器绘制，不是两端传输协议。本文的当前实现指工作树，已发布npm0.4.4仍是整改前版本。
+数值、source元数据和origin-only endpointHints从宿主经RPC传到浏览器；设置页和状态行用该提示调用共享resolveProvider。提示不含userinfo/query或apiKey，[A08](backlog.md#a08) 的两端识别缺口已在0.4.5修复。SVG只在浏览器绘制，不是两端传输协议。本文的当前实现指工作树，已发布npm0.4.4仍是整改前版本。
 
 宿主产物是ESM，客户端是平台模块加载器接收的CJS工厂；三个预构建文件提交入库，供DSH直接GitHub安装。浏览器仅依赖shell模块表提供的运行模块；宿主运行依赖zod和共享schemastery。具体依赖与link解析必须按宿主版本验证。
 
@@ -113,4 +113,4 @@ flowchart LR
 
 规范工具链固定Node24.21.0/npm11.19.1；schema下界为3.18.3、锁3.18.4。运行Node≥20与DSH0.2声明未因开发工具扩张。结构类型镜像仍需平台/安装验证。
 
-具体命令见 [开发指南](development.md)，发布与tarball见 [发布流程](release.md)。CI、Dependabot和手动Release配置已在工作树；未推送实跑、未设远端保护/publisher或创建实际发布，状态见 [Backlog](backlog.md)。
+具体命令见 [开发指南](development.md)，发布与tarball见 [发布流程](release.md)。CI、Dependabot和Release已在GitHub；main的四项CI检查通过，稳定版本tag自动派发main上的Release。维护者已接通npm publisher，main保护仍待配置；实际发布状态见 [Backlog](backlog.md)。

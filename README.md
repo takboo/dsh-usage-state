@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/dsh-usage-state)](https://www.npmjs.com/package/dsh-usage-state)
 
-> **发布状态（2026-10-10核对）**：GitHub `main` 已包含下文修复，仍属于 [Unreleased](CHANGELOG.md#unreleased)。[npm latest](https://www.npmjs.com/package/dsh-usage-state) 仍是2026-10-06发布的 **0.4.4**，不含这些修复。使用修复版请从GitHub安装并记录提交；源码包号仍为0.4.4，不能仅凭包号区分两者。下一次npm发布必须使用新版本号。
+> **版本说明**：**0.4.5** 包含此前的余额解析、凭据覆盖、缓存隔离和失败展示修复，详情见 [更新日志](CHANGELOG.md#045---2026-10-10)。使用0.4.4及更早版本的用户请升级至0.4.5或更新的兼容版本。
 
 在 [DSH（DeepSeek Harness）](https://github.com/deepseek-ai/deepseek-harness) 输入框上方显示当前模型供应商的**账户余额**或**套餐额度**。状态行与输入卡片同宽，保留原生统计行和上下文计量器。
 
@@ -25,21 +25,20 @@ DeepSeek · ¥58.13
 
 要求：DSH版本满足 `>=0.2.0-rc.2 <0.3.0-0`，运行预构建插件声明Node≥20，安装到正在使用的 `web` profile。
 
-当前修复版从GitHub安装：
-
-```bash
-dsh plugin --profile web add github:takboo/dsh-usage-state
-# 安装后重启DSH；bundle patch在启动时读取
-```
-
-本仓库提交预构建产物，供DSH的GitHub安装路径直接使用。浮动GitHub分支可能领先于npm；复现问题时记录安装来源和版本/提交。不要把这一行为推广到所有npm Git安装。
-
-安装已发布的npm **0.4.4**（不包含上述Unreleased修复）：
+从npm安装：
 
 ```bash
 dsh plugin --profile web add dsh-usage-state
-# 安装后重启DSH
+# 安装后重启DSH；bundle patch在启动时读取
 ```
+
+也可从GitHub安装：
+
+```bash
+dsh plugin --profile web add github:takboo/dsh-usage-state
+```
+
+本仓库提交预构建产物，供DSH的GitHub安装路径直接使用。浮动GitHub分支可能领先于npm；复现问题时记录安装来源和版本/提交。不要把这一行为推广到所有npm Git安装。
 
 也可通过 [dsh-market](https://github.com/dsh-market/dsh-market) 搜索 `usage state` 或 `takboo` 安装；安装后核对实际来源与版本。本插件已进入 [精选列表](https://awesome-dsh-plugin.com)；目录更新的可见时间取决于所用区域与成功构建。
 
@@ -88,7 +87,7 @@ OpenCode Zen Go三个窗口，独立状态行位于输入框上方：
 
 完整整改状态及验证范围见 [待办清单](https://github.com/takboo/dsh-usage-state/blob/main/docs/backlog.md)。
 
-- **已发布npm0.4.4**：仍有provider凭据覆盖、pin/缓存身份、legacy隐藏、默认排序和失败展示缺陷；Moonshot≥100元仍会被除以100，DeepSeek非法金额仍可能变0。这些已在当前Unreleased修复，尚未通过npm交付。旧版金额应与 [官方接口](https://platform.kimi.com/docs/api/balance.md) 核对。
+- **旧版npm0.4.4及更早版本**：仍有provider凭据覆盖、pin/缓存身份、legacy隐藏、默认排序和失败展示缺陷；Moonshot≥100元仍会被除以100，DeepSeek非法金额仍可能变0。这些已在0.4.5修复；使用旧版请升级。旧版金额应与 [官方接口](https://platform.kimi.com/docs/api/balance.md) 核对。
 - **账户范围**：仍按source+mode选择一个目标；配置身份隔离不等于新增独立多账户支持。
 - **未验证范围**：Kimi Code/Sub2API真实账户、高阈值视觉、真实凭据写入和OpenCode非零路径仍缺活体验证；本地交互测试不代替这些验收。
 - **范围**：无模型选择或隐藏时可以不显示；点击状态行不打开设置；不保存历史读数。
