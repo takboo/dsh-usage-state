@@ -18,6 +18,8 @@ npm test
 
 平常验证使用 `npm ci` 复现锁文件。只有有意调整依赖时才使用 `npm install` 并审查锁文件变化。缓存目录不可写是环境特例；可临时加 `--cache /tmp/dsh-usage-state-npm-cache`，不要求所有贡献者都使用同一缓存。
 
+React开发依赖、DOM、renderer及对应类型保留18线，以匹配宿主浏览器模块表；升级必须成套验证。TSX测试hook使用TypeScript的JavaScript编译API，当前保留5线；TypeScript7的导出不能直接替代该API。Dependabot忽略这两组的major更新，其他兼容更新仍自动检查。
+
 ## 构建和测试
 
 | 命令 | 实际行为 |
