@@ -2,7 +2,9 @@
 
 **中文** | [English](README.en.md)
 
-> **发布状态**：下文的修复行为描述当前工作树的 **Unreleased**。包版本仍为0.4.4，但npm于2026-10-06发布的0.4.4不包含本轮整改；直接安装该npm版本仍有下文列出的旧版问题。当前修复尚未发布，复现时请区分npm版本与本地提交/产物。
+[![CI](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/dsh-usage-state)](https://www.npmjs.com/package/dsh-usage-state)
+
+> **发布状态（2026-10-10核对）**：GitHub `main` 已包含下文修复，仍属于 [Unreleased](CHANGELOG.md#unreleased)。[npm latest](https://www.npmjs.com/package/dsh-usage-state) 仍是2026-10-06发布的 **0.4.4**，不含这些修复。使用修复版请从GitHub安装并记录提交；源码包号仍为0.4.4，不能仅凭包号区分两者。下一次npm发布必须使用新版本号。
 
 在 [DSH（DeepSeek Harness）](https://github.com/deepseek-ai/deepseek-harness) 输入框上方显示当前模型供应商的**账户余额**或**套餐额度**。状态行与输入卡片同宽，保留原生统计行和上下文计量器。
 
@@ -23,20 +25,23 @@ DeepSeek · ¥58.13
 
 要求：DSH版本满足 `>=0.2.0-rc.2 <0.3.0-0`，运行预构建插件声明Node≥20，安装到正在使用的 `web` profile。
 
-```bash
-dsh plugin --profile web add dsh-usage-state
-# 安装后重启DSH；bundle patch在启动时读取
-```
-
-也可通过 [dsh-market](https://github.com/dsh-market/dsh-market) 搜索 `usage state` 或 `takboo` 安装。本插件已进入 [精选列表](https://awesome-dsh-plugin.com)；目录更新的可见时间取决于所用区域与成功构建。
-
-从GitHub安装：
+当前修复版从GitHub安装：
 
 ```bash
 dsh plugin --profile web add github:takboo/dsh-usage-state
+# 安装后重启DSH；bundle patch在启动时读取
 ```
 
 本仓库提交预构建产物，供DSH的GitHub安装路径直接使用。浮动GitHub分支可能领先于npm；复现问题时记录安装来源和版本/提交。不要把这一行为推广到所有npm Git安装。
+
+安装已发布的npm **0.4.4**（不包含上述Unreleased修复）：
+
+```bash
+dsh plugin --profile web add dsh-usage-state
+# 安装后重启DSH
+```
+
+也可通过 [dsh-market](https://github.com/dsh-market/dsh-market) 搜索 `usage state` 或 `takboo` 安装；安装后核对实际来源与版本。本插件已进入 [精选列表](https://awesome-dsh-plugin.com)；目录更新的可见时间取决于所用区域与成功构建。
 
 DSH0.1使用历史版本0.3.2；该版本不适配0.2。0.4.0有RPC挂载缺陷，应升级至**最新兼容版**。完整版本记录见 [更新日志](CHANGELOG.md)。
 

@@ -48,7 +48,7 @@ test('package.json exposes the manifest where the typert loader looks for it', a
 
   assert.equal(manifest.name, TYPERT.package, 'TYPERT.package must equal the npm name')
   assert.ok(manifest.exports?.['./typert'] !== undefined, 'package.json must export ./typert')
-  assert.equal(manifest.dependencies?.zod, '4.5.1', 'the host codecs require zod v4')
+  assert.match(manifest.dependencies?.zod ?? '', /^4\.\d+\.\d+$/, 'the host codecs require a pinned zod v4 dependency')
 })
 
 test('every invocation is well formed and uses strict codecs', () => {

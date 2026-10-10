@@ -70,7 +70,7 @@
 
 ### A11 · P2 · GitHub CI与主分支门禁
 
-**状态：配置本地完成，外部仍待实施。** 已有标准Ubuntu的PR/main CI、Dependabot和手动Release默认verify，action完整SHA、任务级权限及Node20预构建冒烟。远端main保护/npm trusted publisher未配置，工作流未推送实跑。后续先验证稳定job，再设置required checks和publisher，不能把本地YAML存在视作远端生效。
+**状态：CI已在GitHub实跑，远端保护与发布认证待实施。** [2026-10-09 main CI](https://github.com/takboo/dsh-usage-state/actions/runs/37893422944)的Node22.18、规范Node24打包及Node20预构建冒烟均通过。2026-10-10修复Release的job级env引用runner.temp造成的解析失败，新增固定actionlint/checksum的Workflow syntax门禁；限制React及TypeScript的自动major更新，Zod测试不再锁死旧补丁号。main保护仍未配置，npm trusted publisher未确认；Release实际发布尚未执行。
 
 <a id="a12"></a>
 

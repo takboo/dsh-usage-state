@@ -114,7 +114,6 @@ jobs:
       RELEASE_TAG: ${{ needs.verify.outputs.tag }}
       VERIFIED_COMMIT: ${{ needs.verify.outputs.commit }}
       VERSION: ${{ needs.verify.outputs.version }}
-      TARBALL: ${{ runner.temp }}/release-package/dsh-usage-state-${{ needs.verify.outputs.version }}.tgz
     steps:
       # Publication validation uses trusted main code, not code from the archive.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -131,6 +130,8 @@ jobs:
           path: ${{ runner.temp }}/release-package/
           digest-mismatch: error
       - run: npm run verify:metadata
+      - name: Locate the verified tarball on the runner
+        run: echo "TARBALL=$RUNNER_TEMP/release-package/dsh-usage-state-$VERSION.tgz" >> "$GITHUB_ENV"
       - name: Check immutable bytes, trusted stable tag and unused npm version
         run: |
           node scripts/verify-release.mjs --tag "$RELEASE_TAG" --base origin/main --artifact-report "$RUNNER_TEMP/release-package/verification.json" --require-unpublished
@@ -150,7 +151,6 @@ jobs:
       RELEASE_TAG: ${{ needs.verify.outputs.tag }}
       VERIFIED_COMMIT: ${{ needs.verify.outputs.commit }}
       VERSION: ${{ needs.verify.outputs.version }}
-      TARBALL: ${{ runner.temp }}/release-package/dsh-usage-state-${{ needs.verify.outputs.version }}.tgz
       GH_TOKEN: ${{ github.token }}
     steps:
       # This job can be rerun after npm succeeded; it never republishes npm.
@@ -167,6 +167,8 @@ jobs:
           name: verified-release
           path: ${{ runner.temp }}/release-package/
           digest-mismatch: error
+      - name: Locate the verified tarball on the runner
+        run: echo "TARBALL=$RUNNER_TEMP/release-package/dsh-usage-state-$VERSION.tgz" >> "$GITHUB_ENV"
       - name: Recheck artifact identity and bytes without requiring npm to be unused
         run: |
           node scripts/verify-release.mjs --tag "$RELEASE_TAG" --base origin/main --artifact-report "$RUNNER_TEMP/release-package/verification.json"

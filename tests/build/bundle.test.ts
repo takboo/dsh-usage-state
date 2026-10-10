@@ -86,7 +86,7 @@ test('the typert bundle exports the named manifest and keeps zod external', t =>
 
   assert.match(code, /export \{[^}]*TYPERT[^}]*\}/)
   assert.match(code, /from "zod"/)
-  assert.equal(PACKAGE.dependencies?.zod, '4.5.1', 'the host codecs need zod v4 as a real dependency')
+  assert.match(PACKAGE.dependencies?.zod ?? '', /^4\.\d+\.\d+$/, 'the host codecs need a pinned zod v4 as a real dependency')
 })
 
 test('every declared export and manifest path exists once built', t => {

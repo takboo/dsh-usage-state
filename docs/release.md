@@ -1,6 +1,6 @@
 # 发布与验收
 
-本文件是维护流程。已发布事实放 [更新日志](../CHANGELOG.md)，状态见 [Backlog](backlog.md#a11)，外部规则见 [规范研究](research/repository-release-standards-2026-10.md)。当前工作树已有CI、Dependabot与默认verify的手动Release，但尚未推送实跑或配置main保护/npm trusted publisher；没有实际新tag、GitHub Release或npm发布。
+本文件是维护流程。已发布事实放 [更新日志](../CHANGELOG.md)，状态见 [Backlog](backlog.md#a11)，外部规则见 [规范研究](research/repository-release-standards-2026-10.md)。CI、Dependabot与默认verify的手动Release已在GitHub；[2026-10-09 main CI](https://github.com/takboo/dsh-usage-state/actions/runs/37893422944)已通过。2026-10-10修复Release表达式上下文并加入工作流语法门禁；main保护仍未配置，npm trusted publisher未确认，没有新tag、GitHub Release或npm发布。
 
 ## 1. 版本和支持范围
 
@@ -111,7 +111,7 @@ npm view "dsh-usage-state@$package_version" version engines repository gitHead d
 
 [CI](../.github/workflows/ci.yml) 在PR/main/manual触发，开发下界Node22.18执行类型/构建/测试；规范Node24.21另做HEAD一致性和实际pack，Node20job只消费该artifact。标准Ubuntu公开runner，普通job为contents:read；checkout不保留凭据，action完整SHA、有限timeout/concurrency和7天artifact保留已配置。
 
-[Dependabot](../.github/dependabot.yml) 每周分组检查action和npm升级。Release的npm OIDC与GitHub写入权限分别属于独立job。当前是本地配置与脚本，尚未推送Actions实跑、未设置required checks/main保护；先验证稳定job再由维护者设置远端规则，状态见A11。
+[Dependabot](../.github/dependabot.yml) 每周分组检查action和npm升级，React及对应类型/renderer、TypeScript的major更新需单独迁移。CI的Workflow syntax使用固定actionlint1.7.12和SHA-256校验归档，检查整份Release的表达式；单纯YAML解析不能检测不可用的上下文。Release的npm OIDC与GitHub写入权限分别属于独立job。main CI已实跑，尚未设置required checks/main保护；验证稳定job后由维护者设置远端规则，状态见A11。
 
 ## 7. dshmarket维护
 
