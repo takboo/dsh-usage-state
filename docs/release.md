@@ -1,6 +1,6 @@
 # 发布与验收
 
-本文件是维护流程。已发布事实放 [更新日志](../CHANGELOG.md)，状态见 [Backlog](backlog.md#a11)，外部规则见 [规范研究](research/repository-release-standards-2026-10.md)。CI、Dependabot与默认verify的手动Release已在GitHub；[2026-10-09 main CI](https://github.com/takboo/dsh-usage-state/actions/runs/37893422944)已通过。2026-10-10修复Release表达式上下文并加入工作流语法门禁；main保护仍未配置；npm trusted publisher已由维护者接通，0.4.5正在准备，实际OIDC发布结果见 [Backlog](backlog.md#a13)。
+本文件是维护流程。已发布事实放 [更新日志](../CHANGELOG.md)，状态见 [Backlog](backlog.md#a11)，外部规则见 [规范研究](research/repository-release-standards-2026-10.md)。CI、Dependabot与Release已在GitHub。2026-10-10修复Release表达式上下文并加入工作流语法门禁；[0.4.5发布流程](https://github.com/takboo/dsh-usage-state/actions/runs/38028392663)已通过，npm trusted publisher/OIDC及稳定tag自动派发均已实跑成功。npm与GitHub Release的安装包字节一致，证据见 [Backlog](backlog.md#a13)；main保护仍未配置。
 
 ## 1. 版本和支持范围
 
@@ -10,7 +10,7 @@
 - 平台依赖的锁定基线与所声明下界必须实际复验；结构类型镜像/编译相同不能证明最低宿主兼容。新DSH发布线先验再扩大范围。
 - 维护者应给今后版本创建一致的tag（例如v<version>）及GitHub Release；历史没有tag时，Changelog使用有依据的commit，不补造发布点。
 
-当前package/lock为0.4.5，本轮修复已移入带日期版本章节。npm0.4.4已经占用；历史本地同号tarball内容与该发布不同，不能再次发布该号。源码和bundle应一起提交；verify:artifacts对HEAD检查，提交前的新产物diff是合理失败，不可隐藏。新版本需先同步package/lock、带日期Changelog和稳定tag。
+当前package/lock为0.4.5，本轮修复已移入带日期版本章节并正式发布。npm0.4.4和0.4.5均已占用；历史本地0.4.4 tarball内容与当时发布不同，不能再次发布该号。源码和bundle应一起提交；verify:artifacts对HEAD检查，提交前的新产物diff是合理失败，不可隐藏。新版本需先同步package/lock、带日期Changelog和稳定tag。
 
 ## 2. 构建、最终产物与打包
 

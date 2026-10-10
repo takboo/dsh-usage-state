@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/dsh-usage-state)](https://www.npmjs.com/package/dsh-usage-state)
 
-> **版本说明**：**0.4.5** 包含此前的余额解析、凭据覆盖、缓存隔离和失败展示修复，详情见 [更新日志](CHANGELOG.md#045---2026-10-10)。使用0.4.4及更早版本的用户请升级至0.4.5或更新的兼容版本。
+> **发布状态**：**0.4.5** 已于2026-10-10发布至 [npm](https://www.npmjs.com/package/dsh-usage-state)，[GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.5) 附有相同安装包和校验文件。此版本包含余额解析、凭据覆盖、缓存隔离和失败展示修复，详情见 [更新日志](CHANGELOG.md#045---2026-10-10)。使用0.4.4及更早版本的用户请升级。
 
 在 [DSH（DeepSeek Harness）](https://github.com/deepseek-ai/deepseek-harness) 输入框上方显示当前模型供应商的**账户余额**或**套餐额度**。状态行与输入卡片同宽，保留原生统计行和上下文计量器。
 

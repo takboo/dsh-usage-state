@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/dsh-usage-state)](https://www.npmjs.com/package/dsh-usage-state)
 
-> **Version note:** **0.4.5** includes the balance parsing, credential override, cache isolation and failure-display fixes previously recorded as Unreleased. See the [Changelog](CHANGELOG.md#045---2026-10-10). Users of 0.4.4 or earlier should upgrade to 0.4.5 or a newer compatible version.
+> **Release status:** **0.4.5** was published to [npm](https://www.npmjs.com/package/dsh-usage-state) on 2026-10-10. The [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.5) includes the same tarball and checksum. This version fixes balance parsing, credential overrides, cache isolation and failure displays; see the [Changelog](CHANGELOG.md#045---2026-10-10). Users of 0.4.4 or earlier should upgrade.
 
 Show the current model provider's **account balance** or **coding-plan quota** above the composer input in [DSH (DeepSeek Harness)](https://github.com/deepseek-ai/deepseek-harness). The line matches the input card's width and preserves the native statistics and context meter.
 

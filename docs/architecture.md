@@ -18,7 +18,7 @@ flowchart LR
   Model[当前模型选择] --> UI
 ```
 
-数值、source元数据和origin-only endpointHints从宿主经RPC传到浏览器；设置页和状态行用该提示调用共享resolveProvider。提示不含userinfo/query或apiKey，[A08](backlog.md#a08) 的两端识别缺口已在0.4.5修复。SVG只在浏览器绘制，不是两端传输协议。本文的当前实现指工作树，已发布npm0.4.4仍是整改前版本。
+数值、source元数据和origin-only endpointHints从宿主经RPC传到浏览器；设置页和状态行用该提示调用共享resolveProvider。提示不含userinfo/query或apiKey，[A08](backlog.md#a08) 的两端识别缺口已随0.4.5发布。SVG只在浏览器绘制，不是两端传输协议。本文的当前实现指工作树及已发布npm0.4.5；npm0.4.4仍是整改前版本。
 
 宿主产物是ESM，客户端是平台模块加载器接收的CJS工厂；三个预构建文件提交入库，供DSH直接GitHub安装。浏览器仅依赖shell模块表提供的运行模块；宿主运行依赖zod和共享schemastery。具体依赖与link解析必须按宿主版本验证。
 
@@ -113,4 +113,16 @@ flowchart LR
 
 规范工具链固定Node24.21.0/npm11.19.1；schema下界为3.18.3、锁3.18.4。运行Node≥20与DSH0.2声明未因开发工具扩张。结构类型镜像仍需平台/安装验证。
 
-具体命令见 [开发指南](development.md)，发布与tarball见 [发布流程](release.md)。CI、Dependabot和Release已在GitHub；main的四项CI检查通过，稳定版本tag自动派发main上的Release。维护者已接通npm publisher，main保护仍待配置；实际发布状态见 [Backlog](backlog.md)。
+### 首次OIDC发布验收（2026-10-10）
+
+| 检查 | 实际结果 |
+|---|---|
+| 发布引用 | v0.4.5指向 [353bb2a](https://github.com/takboo/dsh-usage-state/commit/353bb2af09ea983444f2edfe7856a9893476b8d3)，package/lock及带日期Changelog一致 |
+| main CI | [四项检查通过](https://github.com/takboo/dsh-usage-state/actions/runs/38028317296)：工作流语法、Node22.18开发回归、规范Node24打包及Node20预构建冒烟 |
+| 自动发布 | [tag派发成功](https://github.com/takboo/dsh-usage-state/actions/runs/38028386351)，随后 [main Release](https://github.com/takboo/dsh-usage-state/actions/runs/38028392663)通过319测试、同包Node20冒烟、npm OIDC发布及GitHub附件上传 |
+| npm | [registry元数据](https://registry.npmjs.org/dsh-usage-state)记录0.4.5发布于2026-10-10T05:44:19.690Z，latest为0.4.5，包含provenance attestation |
+| 最终字节 | 本地干净发布检出的10文件tarball、npm下载包与 [GitHub Release附件](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.5)完全一致；8个包内相对链接验证通过 |
+
+已发布包SHA-256为 `56e008a2767c6bef3a201a8483e1c4ff8b874e3a3223fe86e477535b9dc19139`。发布后文档更新不移动v0.4.5，也不重新发布已占用版本。上述云端和字节验收补充了2026-10-08本地证据；真实DSH profile安装、凭据写入、厂商账户和视觉验收范围不变。
+
+具体命令见 [开发指南](development.md)，发布与tarball见 [发布流程](release.md)。CI、Dependabot和Release已在GitHub；稳定版本tag自动派发main上的Release，npm publisher/OIDC已实跑成功。main保护仍待配置；实际发布状态见 [Backlog](backlog.md)。
