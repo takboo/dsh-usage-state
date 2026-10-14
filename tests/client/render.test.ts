@@ -5,6 +5,8 @@ import { renderToStaticMarkup } from 'react-dom/server'
 
 import { SettingsSection } from '../../src/client/SettingsSection.tsx'
 import { StatusLine } from '../../src/client/StatusLine.tsx'
+import { kimi } from '../../src/host/sources/kimi.ts'
+import { toSourceCatalog } from '../../src/host/catalog.ts'
 import { en } from '../../src/client/locales.ts'
 import { normalizeConfig, type ProviderConfigEntry, type UsageStateConfig } from '../../src/shared/config.ts'
 import type { SourceCatalog } from '../../src/shared/display.ts'
@@ -662,4 +664,19 @@ test('a separator is boxed with the segment it introduces, so a wrap cannot orph
   // Every following group carries its own separator, and the first one does not.
   assert.doesNotMatch(groups[1] ?? '', />·</)
   for (const group of groups.slice(2)) assert.match(group.slice(0, 200), />·</)
+})
+
+
+test('Kimi auto mode renders subscription windows and localized monthly labels', () => {
+  const html = renderToStaticMarkup(h(StatusLine, {
+    t, settings: settingsWith(configWith()), useProjection: projectionOf({ provider: 'custom-code', model: 'kimi-for-coding' }),
+    usageState: storeWith({ catalog: toSourceCatalog([kimi]), endpointHints: { 'custom-code': 'https://api.kimi.ai' }, snapshots: {
+      'kimi:coding-plan': { sourceId: 'kimi', mode: 'coding-plan', balances: [], fetchedAt: 1000,
+        windows: [{ id: '5h', usedPercent: 25 }, { id: 'month', usedPercent: 50 }, { id: 'month-code', usedPercent: 10 }] },
+    } }),
+  }))
+  assert.match(html, /5h 25%/)
+  assert.match(html, /Monthly total 50%/)
+  assert.match(html, /Monthly code 10%/)
+  assert.doesNotMatch(html, /Not configured|Mode not supported|window\.month/)
 })

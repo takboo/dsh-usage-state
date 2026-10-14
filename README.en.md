@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/dsh-usage-state)](https://www.npmjs.com/package/dsh-usage-state)
 
-> **Release status:** **0.4.5** was published to [npm](https://www.npmjs.com/package/dsh-usage-state) on 2026-10-10. The [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.5) includes the same tarball and checksum. This version fixes balance parsing, credential overrides, cache isolation and failure displays; see the [Changelog](CHANGELOG.md#045---2026-10-10). Users of 0.4.4 or earlier should upgrade.
+> **Release status:** Current version **0.4.6** adds automatic Kimi Code provider usage detection, regional endpoints, and current/legacy quota responses. See the [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.6) for the tarball and checksum and the [Changelog](CHANGELOG.md#046---2026-10-14) for details.
 
 Show the current model provider's **account balance** or **coding-plan quota** above the composer input in [DSH (DeepSeek Harness)](https://github.com/deepseek-ai/deepseek-harness). The line matches the input card's width and preserves the native statistics and context meter.
 
@@ -63,6 +63,8 @@ Advanced controls offer source, endpoint, credential name and key writes. Explic
 | OpenCode Zen Go | — | 5h / 7d / 30d used % | OPENCODE_GO_API_KEY / OPENCODE_API_KEY |
 | Sub2API | Balance or key allowance | Depends on the instance, e.g. 5h / 1d / 7d / 30d | SUB2API_API_KEY and instance URL |
 
+Kimi Code routes `kimi-code`, `kimi-coding`, and `kimi-for-coding`, plus custom providers declaring `api.kimi.com` / `api.kimi.ai`, automatically read subscription usage. The plugin displays only returned windows: 5h, 7d, monthly total, and monthly code usage. Moonshot regional APIs retain CNY balance mode. Explicit settings take precedence.
+
 Percentages mean **used**. z.ai keys belong to their China/global region; China is the default endpoint and failures may try the mirror. The current cache merges by source and mode, so separate keys/instances must not be treated as supported independent accounts. Endpoints, field semantics and extension steps are in the [adapter guide (Chinese)](https://github.com/takboo/dsh-usage-state/blob/main/docs/adapters.md).
 
 ## Screenshots
@@ -89,7 +91,7 @@ See the [Backlog (Chinese)](https://github.com/takboo/dsh-usage-state/blob/main/
 
 - **Older npm 0.4.4 and earlier:** still has credential override, pin/cache identity, legacy hiding, default ordering and failure-display defects. It still divides Moonshot balances ≥100 yuan by 100 and may turn invalid DeepSeek amounts into zero. These are fixed in 0.4.5; upgrade if you use an older version. Cross-check old-version amounts against the [official API](https://platform.kimi.com/docs/api/balance.md).
 - **Account scope:** one target is still selected per source and mode. Identity isolation does not add independent multi-account support.
-- **Live verification:** Kimi Code/Sub2API accounts, high-threshold colors, real credential writes and nonzero OpenCode readings still lack live coverage. Local interaction tests do not replace that acceptance.
+- **Live verification:** Kimi Code monthly quotas, Sub2API accounts, high-threshold colors, real credential writes and nonzero OpenCode readings still lack live coverage. Local interaction tests do not replace that acceptance.
 - **Scope:** the line can be absent without a selected model or when hidden; clicking it does not open settings; readings are not saved as history.
 
 ## Development and docs

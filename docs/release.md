@@ -10,7 +10,7 @@
 - 平台依赖的锁定基线与所声明下界必须实际复验；结构类型镜像/编译相同不能证明最低宿主兼容。新DSH发布线先验再扩大范围。
 - 维护者应给今后版本创建一致的tag（例如v<version>）及GitHub Release；历史没有tag时，Changelog使用有依据的commit，不补造发布点。
 
-当前package/lock为0.4.5，本轮修复已移入带日期版本章节并正式发布。npm0.4.4和0.4.5均已占用；历史本地0.4.4 tarball内容与当时发布不同，不能再次发布该号。源码和bundle应一起提交；verify:artifacts对HEAD检查，提交前的新产物diff是合理失败，不可隐藏。新版本需先同步package/lock、带日期Changelog和稳定tag。
+当前package/lock为0.4.6，Kimi自动识别与响应兼容修复已移入带日期版本章节；发布状态以对应Actions、npm和GitHub Release为准。npm0.4.4和0.4.5均已占用；历史本地0.4.4 tarball内容与当时发布不同，不能再次发布该号。源码和bundle应一起提交；verify:artifacts对HEAD检查，提交前的新产物diff是合理失败，不可隐藏。新版本需先同步package/lock、带日期Changelog和稳定tag。
 
 ## 2. 构建、最终产物与打包
 

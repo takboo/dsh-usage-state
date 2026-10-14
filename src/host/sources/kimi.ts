@@ -7,7 +7,7 @@ const KIMI_CODE_BASE_URL = 'https://api.kimi.com'
 /** The Kimi Code quota endpoint rejects requests without the CLI user agent. */
 const KIMI_CLI_USER_AGENT = 'KimiCLI/1.6'
 
-const WINDOW_RANK: Record<string, number> = { '5h': 0, '1d': 1, '7d': 2 }
+const WINDOW_RANK: Record<string, number> = { '5h': 0, '1d': 1, '7d': 2, month: 3, 'month-code': 4 }
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -38,24 +38,24 @@ function percentFrom(record: Record<string, unknown>): number | null {
   if (limit === undefined || limit <= 0) return null
 
   const used = toFiniteNumber(record.used)
-  if (used !== undefined) return clampPercent((used / limit) * 100)
+  if (used !== undefined && used >= 0) return clampPercent(Math.min(1, used / limit) * 100)
 
   const remaining = toFiniteNumber(record.remaining)
-  if (remaining !== undefined) return clampPercent(((limit - remaining) / limit) * 100)
+  if (remaining !== undefined && remaining >= 0 && remaining <= limit) return clampPercent(((limit - remaining) / limit) * 100)
   return null
 }
 
 /** `{ duration: 5, timeUnit: 'hour' }` -> `5h`, and weekly variants -> `7d`. */
 function windowIdFrom(window: Record<string, unknown> | undefined): string | undefined {
   if (window === undefined) return undefined
-  const unit = typeof window.timeUnit === 'string' ? window.timeUnit.trim().toLowerCase() : ''
+  const unit = typeof window.timeUnit === 'string' ? window.timeUnit.trim().toLowerCase().replace(/^time_unit_/, '') : ''
   const duration = toFiniteNumber(window.duration)
   if (unit === '' || duration === undefined || duration <= 0) return undefined
 
-  if (unit.startsWith('hour')) return `${duration}h`
+  if (unit.startsWith('hour')) return duration % 24 === 0 ? `${duration / 24}d` : `${duration}h`
   if (unit.startsWith('day')) return duration === 7 ? '7d' : `${duration}d`
   if (unit.startsWith('week')) return duration === 1 ? '7d' : `${duration * 7}d`
-  if (unit.startsWith('minute')) return `${duration}m`
+  if (unit.startsWith('minute')) return windowIdFrom({ duration: duration / 60, timeUnit: 'hour' })
   if (unit.startsWith('month')) return '30d'
   return `${duration}${unit.slice(0, 4)}`
 }
@@ -67,6 +67,7 @@ function sortWindows(windows: Iterable<QuotaWindow>): QuotaWindow[] {
 /** `GET /v1/users/me/balance` — pay-as-you-go wallet, CNY. */
 function parseMoonshotBalance(payload: unknown): UsageReading {
   const root = asRecord(payload)
+  rejectErrorEnvelope(root)
   const nested = root === undefined ? undefined : asRecord(root.data)
   const value = firstFinite([
     root?.available_balance,
@@ -81,21 +82,42 @@ function parseMoonshotBalance(payload: unknown): UsageReading {
   return { balances: [{ amount: moonshotBalanceToYuan(value), currency: 'CNY' }], windows: [] }
 }
 
+function rejectErrorEnvelope(root: Record<string, unknown> | undefined): void {
+  if (root?.error != null || root?.status === false || (root?.code !== undefined && root.code !== 0 && root.code !== '0')) {
+    throw new SourceError('parse', 'Kimi response contains an API error')
+  }
+}
+
 /**
  * `GET /coding/v1/usages` — Kimi Code subscription. The top-level `usage` is the
- * weekly quota; `limits[]` carries the rolling windows (5h among them). Neither is
- * officially documented, so every field is optional here.
+ * weekly quota in legacy responses; `limits[]` carries rolling windows. Current
+ * official client reads ratio pools in `usages` (see docs/adapters.md).
  */
 function parseKimiCodeUsage(payload: unknown): UsageReading {
   const root = asRecord(payload)
   if (root === undefined) throw new SourceError('parse', 'Kimi Code usage response is not a JSON object')
+  rejectErrorEnvelope(root)
 
   const found = new Map<string, QuotaWindow>()
+
+  // Prefer current ratio pools over legacy counters for the same window.
+  const usages = asRecord(root.usages)
+  for (const [field, id] of [
+    ['limit_5h', '5h'], ['limit_7d', '7d'],
+    ['limit_month_total', 'month'], ['limit_month_code', 'month-code'],
+  ] as const) {
+    const pool = asRecord(usages?.[field])
+    const ratio = toFiniteNumber(pool?.used_ratio)
+    if (ratio === undefined || ratio < 0) continue
+    const usedPercent = clampPercent(Math.min(1, ratio) * 100)
+    const resetsAt = normalizeResetAt(pool?.reset_time)
+    found.set(id, resetsAt === undefined ? { id, usedPercent } : { id, usedPercent, resetsAt })
+  }
 
   const usage = asRecord(root.usage)
   if (usage !== undefined) {
     const usedPercent = percentFrom(usage)
-    if (usedPercent !== null) {
+    if (usedPercent !== null && !found.has('7d')) {
       const resetsAt = normalizeResetAt(usage.resetTime ?? usage.reset_at ?? usage.resetsAt)
       found.set('7d', resetsAt === undefined ? { id: '7d', usedPercent } : { id: '7d', usedPercent, resetsAt })
     }
@@ -144,7 +166,8 @@ export const kimi: UsageSource = {
 
   request(input: RequestInput): UsageRequest {
     const codingPlan = input.mode === 'coding-plan'
-    const base = normalizeBaseUrl(input.baseUrl) ?? (codingPlan ? KIMI_CODE_BASE_URL : MOONSHOT_BASE_URL)
+    const normalized = normalizeBaseUrl(input.baseUrl) ?? (codingPlan ? KIMI_CODE_BASE_URL : MOONSHOT_BASE_URL)
+    const base = codingPlan ? normalized.replace(/\/coding$/i, '') : normalized
     return {
       url: codingPlan ? `${base}/coding/v1/usages` : `${base}/v1/users/me/balance`,
       headers: {

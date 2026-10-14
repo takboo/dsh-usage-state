@@ -90,6 +90,8 @@ export const zh = {
   'window.1d': '1d',
   'window.7d': '7d',
   'window.30d': '30d',
+  'window.month': '月总额度',
+  'window.month-code': '编程月用量',
 } as const
 
 export type UsageStateKey = keyof typeof zh
@@ -177,6 +179,8 @@ export const en: Record<UsageStateKey, string> = {
   'window.1d': '1d',
   'window.7d': '7d',
   'window.30d': '30d',
+  'window.month': 'Monthly total',
+  'window.month-code': 'Monthly code',
 }
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {

@@ -1,4 +1,6 @@
-import { suggestSourceId } from '../shared/config.ts'
+import { suggestSourceId, type UsageStateConfig } from '../shared/config.ts'
+import { kimiMode } from '../shared/providers.ts'
+import type { UsageMode } from '../shared/types.ts'
 
 /**
  * Inputs for deriving credential refs from the DSH provider configuration.
@@ -6,6 +8,8 @@ import { suggestSourceId } from '../shared/config.ts'
  */
 export interface ProviderCredentialRefsInput {
   sourceId: string
+  mode?: UsageMode
+  config?: UsageStateConfig
   /** The `llm-deepseek` settings namespace, when the host has it. */
   deepseekSettings?: unknown
   /** The `llm-pi-ai` settings namespace, when the host has it. */
@@ -48,6 +52,14 @@ export function providerCredentialRefs(input: ProviderCredentialRefsInput): stri
     if (profile === undefined) continue
     const baseUrl = typeof profile.baseURL === 'string' ? profile.baseURL : undefined
     if (suggest(providerId, baseUrl) !== input.sourceId) continue
+    if (input.sourceId === 'kimi' && input.mode !== undefined) {
+      const entry = input.config?.providers[providerId]
+      const choice = entry?.mode
+      if (choice === 'hidden') continue
+      const endpoint = entry?.baseUrl ?? input.config?.sources.kimi?.baseUrl ?? baseUrl
+      const mode = choice === 'api' || choice === 'coding-plan' ? choice : kimiMode(providerId, endpoint)
+      if (mode !== input.mode) continue
+    }
     push(profile.apiKeyEnv)
   }
 

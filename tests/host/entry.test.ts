@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 
 import { apply, createUsageState, inject, name, type PluginContextLike, type UsageStateDeps } from '../../src/index.ts'
 import type { FetchLike } from '../../src/host/read.ts'
+import { TYPERT } from '../../src/host/typert.ts'
 import type { VolatileLike } from '../../src/host/settings.ts'
 
 const BALANCE_BODY = { is_available: true, balance_infos: [{ currency: 'CNY', total_balance: '66.28' }] }
@@ -693,4 +694,45 @@ test('a delayed credential lookup cannot restore the previous provider configura
   const state = await pending
 
   assert.deepEqual(state.snapshots['deepseek:api']?.balances, [{ amount: 22, currency: 'CNY' }])
+})
+
+test('Kimi and Moonshot auto discovery reads separate credentials, crosses RPC, and preserves stale quotas', async () => {
+  const host = contextStub({ settings: { 'llm-pi-ai': { providers: {
+    moonshot: { baseURL: 'https://api.moonshot.ai/v1', apiKeyEnv: 'WALLET_KEY' },
+    'custom-code': { baseURL: 'https://api.kimi.ai/coding/v1', apiKeyEnv: 'CODE_KEY' },
+  } } }, credentials: { WALLET_KEY: 'fake-wallet', CODE_KEY: 'fake-code' } })
+  const get = host.ctx.get.bind(host.ctx)
+  host.ctx.get = name => name === 'llm' ? { listProviders: () => [{ id: 'moonshot' }, { id: 'custom-code' }] } : get(name)
+  const requests: Array<{ url: string; key: string }> = []
+  let failure: 'auth' | 'parse' | undefined
+  const service = createUsageState(host.ctx, deps(host, { fetch: async (url, init) => {
+    requests.push({ url, key: init.headers.authorization! })
+    if (url.includes('moonshot')) return { ok: true, status: 200, json: async () => ({ code: 0, data: { available_balance: 100 } }) }
+    assert.equal(init.headers['user-agent'], 'KimiCLI/1.6')
+    return { ok: failure !== 'auth', status: failure === 'auth' ? 401 : 200, json: async () => failure === 'parse' ? {} : ({
+      usages: { limit_5h: { used_ratio: 0.25 }, limit_month_total: { used_ratio: 0.5 } },
+    }) }
+  } }))
+  const state = await service.getState(false)
+  assert.deepEqual(requests, [
+    { url: 'https://api.moonshot.ai/v1/users/me/balance', key: 'Bearer fake-wallet' },
+    { url: 'https://api.kimi.ai/coding/v1/usages', key: 'Bearer fake-code' },
+  ])
+  assert.deepEqual(state.snapshots['kimi:api']?.balances, [{ amount: 100, currency: 'CNY' }])
+  assert.deepEqual(state.snapshots['kimi:coding-plan']?.windows, [{ id: '5h', usedPercent: 25 }, { id: 'month', usedPercent: 50 }])
+  const invocation = TYPERT.invocations.find(invocation => invocation.method === 'getState')!
+  const codec = invocation.result.create() as { parse(value: unknown): unknown }
+  codec.parse(JSON.parse(JSON.stringify(state)))
+  const report = await service.describeCredentials()
+  assert.equal(report.credentials['kimi:api']?.ref, 'WALLET_KEY')
+  assert.equal(report.credentials['kimi:coding-plan']?.ref, 'CODE_KEY')
+  for (const kind of ['auth', 'parse'] as const) {
+    failure = kind
+    const stale = (await service.getState(true)).snapshots['kimi:coding-plan']!
+    assert.deepEqual(stale.windows, state.snapshots['kimi:coding-plan']?.windows)
+    assert.equal(stale.error?.kind, kind)
+    assert.equal(stale.stale, true)
+  }
+  for (const secret of ['fake-code', 'fake-wallet']) assert.equal(JSON.stringify({ state, report }).includes(secret), false)
+  host.dispose()
 })

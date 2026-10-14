@@ -37,9 +37,9 @@ new Script(readFileSync(path.join(packageRoot, manifest.exports['./client'].defa
 const supplied = new Map(), urls = []
 const ctx = {
   get: name => name === 'credentials' ? {
-    resolve: async ref => ref === 'DEEPSEEK_API_KEY' ? { value: 'runtime-smoke-fake-key', source: 'test' } : undefined,
+    resolve: async ref => ['DEEPSEEK_API_KEY', 'KIMI_CODING_API_KEY'].includes(ref) ? { value: 'runtime-smoke-fake-key', source: 'test' } : undefined,
     describe: async () => ({ configured: true, source: 'test', writable: true }),
-  } : name === 'llm' ? { listProviders: () => [{ id: 'deepseek-official' }] } : undefined,
+  } : name === 'llm' ? { listProviders: () => [{ id: 'deepseek-official' }, { id: 'kimi-code' }] } : undefined,
   on: () => () => {}, effect: callback => callback(), provide: (key, value) => supplied.set(key, value),
   timeout: () => () => {}, interval: () => () => {},
 }
@@ -48,11 +48,14 @@ const service = host.createUsageState(ctx, {
   credentialFallback: false,
   fetch: async url => {
     urls.push(url)
-    return { ok: true, status: 200, json: async () => ({ balance_infos: [{ currency: 'CNY', total_balance: '42.25' }] }) }
+    return { ok: true, status: 200, json: async () => url.includes('api.kimi.com')
+      ? { usages: { limit_5h: { used_ratio: 0.25 }, limit_month_total: { used_ratio: 0.5 } } }
+      : { balance_infos: [{ currency: 'CNY', total_balance: '42.25' }] } }
   },
 })
 const view = await service.getState(false)
-assert.deepEqual(urls, ['https://api.deepseek.com/user/balance'])
+assert.deepEqual(urls, ['https://api.deepseek.com/user/balance', 'https://api.kimi.com/coding/v1/usages'])
+assert.deepEqual(view.snapshots['kimi:coding-plan'].windows, [{ id: '5h', usedPercent: 25 }, { id: 'month', usedPercent: 50 }])
 assert.ok(Object.values(view.snapshots).some(snapshot => snapshot.balances.some(balance => balance.amount === 42.25 && balance.currency === 'CNY')))
 assert.equal(supplied.get('usageState'), service)
 assert.equal(service.typertRemote.service, service)

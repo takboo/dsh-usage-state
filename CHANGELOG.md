@@ -6,6 +6,19 @@
 
 ## [Unreleased]
 
+## [0.4.6] - 2026-10-14
+
+### Fixed
+
+- Kimi Code provider（kimi-code/kimi-coding/kimi-for-coding）和api.kimi.com/api.kimi.ai自动选择Coding Plan用量，Moonshot保持API余额；显式模式选择优先。
+- Kimi用量兼容官方客户端usages比例池（5h/7d/月总额度/编程月用量）及旧usage/limits计数；TIME_UNIT_MINUTE的300分钟归一为5h，新套餐无周额度时不虚构7d。
+- Kimi Code完整API地址不再重复拼接coding路径；Moonshot与Kimi Code的provider凭据按模式筛选，HTTP200错误信封及非法读数不会覆盖成功值。
+
+### Validation
+
+- 新增provider→凭据→请求→RPC回归、月额度状态行渲染及真实tarball的Kimi预构建运行冒烟，纳入现有CI/Release的Node24与Node20门禁。
+- 使用既有KIMI_CODING_API_KEY对官方接口完成只读实测，成功读取5h/7d窗口；未将密钥或账户响应写入仓库。月额度形态依官方客户端固定源码和去身份fixture验证。
+
 ## [0.4.5] - 2026-10-10
 
 ### Fixed
@@ -102,7 +115,8 @@
 
 0.4.5起建立版本tag/Release；更早发布没有保存这些引用。0.3.0至0.4.4的比较端点来自各npm版本的gitHead；0.2系列引用对应实现提交，不能替代当时没有保存的正式发布产物。早期日期沿用历史版本记录。今后版本应按发布流程建立稳定引用。
 
-[Unreleased]: https://github.com/takboo/dsh-usage-state/compare/v0.4.5...HEAD
+[Unreleased]: https://github.com/takboo/dsh-usage-state/compare/v0.4.6...HEAD
+[0.4.6]: https://github.com/takboo/dsh-usage-state/compare/v0.4.5...v0.4.6
 [0.4.5]: https://github.com/takboo/dsh-usage-state/compare/3ad9a71e2f7e4b9a05c69bc529e396a364ae6aeb...v0.4.5
 [0.4.4]: https://github.com/takboo/dsh-usage-state/compare/885541638ffa4da05b39bd1864085ba6d9acc288...3ad9a71e2f7e4b9a05c69bc529e396a364ae6aeb
 [0.4.3]: https://github.com/takboo/dsh-usage-state/compare/0d2d4376d0db990fb36df5d6124e5b7894974d62...885541638ffa4da05b39bd1864085ba6d9acc288

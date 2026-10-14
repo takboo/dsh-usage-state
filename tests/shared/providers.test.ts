@@ -7,6 +7,11 @@ import type { SourceCatalog } from '../../src/shared/display.ts'
 
 const CATALOG: SourceCatalog = [
   {
+    id: 'kimi', displayName: 'Kimi / Moonshot', modes: ['api', 'coding-plan'], requiresBaseUrl: false,
+    defaultBaseUrl: { api: 'https://api.moonshot.cn', 'coding-plan': 'https://api.kimi.com' },
+    credentialRefs: { api: ['MOONSHOT_API_KEY'], 'coding-plan': ['KIMI_CODING_API_KEY'] },
+  },
+  {
     id: 'deepseek',
     displayName: 'DeepSeek',
     modes: ['api'],
@@ -228,4 +233,27 @@ test('orderProviders keeps the configured order and appends newcomers', () => {
 
   assert.deepEqual(orderProviders(['deepseek-official', 'zai', 'newcomer'], config), ['zai', 'deepseek-official', 'newcomer'])
   assert.deepEqual(orderProviders([], config), [])
+})
+
+
+test('Kimi Code routes and regional endpoints select quotas automatically on host and client', () => {
+  for (const provider of ['kimi-code', 'kimi-coding', 'kimi-for-coding', 'managed:kimi-code']) {
+    assert.equal(resolveProvider({ provider, config: DEFAULT_CONFIG, catalog: CATALOG }).key, 'kimi:coding-plan')
+  }
+  for (const host of ['api.kimi.com', 'api.kimi.ai']) {
+    const result = resolveProvider({ provider: 'custom', endpointHint: `https://${host}/coding/v1`, config: DEFAULT_CONFIG, catalog: CATALOG })
+    assert.equal(result.key, 'kimi:coding-plan')
+    assert.equal(result.baseUrl, `https://${host}`)
+    assert.equal(resolveProvider({ provider: 'kimi', endpointHint: result.baseUrl, config: DEFAULT_CONFIG, catalog: CATALOG }).key, result.key)
+  }
+})
+
+test('Moonshot remains a wallet and explicit Kimi mode choices take precedence', () => {
+  for (const host of ['api.moonshot.cn', 'api.moonshot.ai']) {
+    assert.equal(resolveProvider({ provider: 'custom', endpointHint: `https://${host}/v1`, config: DEFAULT_CONFIG, catalog: CATALOG }).key, 'kimi:api')
+  }
+  assert.equal(resolveProvider({ provider: 'kimi', config: DEFAULT_CONFIG, catalog: CATALOG }).key, 'kimi:api')
+  const config = configWith({ providers: { 'kimi-code': { mode: 'api' }, kimi: { mode: 'coding-plan' } } })
+  assert.equal(resolveProvider({ provider: 'kimi-code', config, catalog: CATALOG }).key, 'kimi:api')
+  assert.equal(resolveProvider({ provider: 'kimi', config, catalog: CATALOG }).key, 'kimi:coding-plan')
 })

@@ -126,3 +126,65 @@ test('kimi rejects payloads it cannot read in either mode', () => {
     )
   }
 })
+
+
+test('Kimi accepts origin and full coding API bases without duplicating the path', () => {
+  for (const baseUrl of ['https://api.kimi.ai', 'https://api.kimi.ai/coding', 'https://api.kimi.ai/coding/v1/']) {
+    assert.equal(kimi.request({ mode: 'coding-plan', apiKey: 'test', baseUrl }).url, 'https://api.kimi.ai/coding/v1/usages')
+  }
+  assert.equal(kimi.request({ mode: 'api', apiKey: 'test', baseUrl: 'https://api.moonshot.ai/v1/' }).url, 'https://api.moonshot.ai/v1/users/me/balance')
+})
+
+test('Kimi reads official-client ratio pools and prefers them to legacy counters', () => {
+  const reading = kimi.parse({
+    usages: {
+      limit_5h: { used_ratio: '0.01', reset_time: FIVE_H_RESET },
+      limit_7d: { used_ratio: 0, reset_time: WEEK_RESET },
+      limit_month_total: { used_ratio: 1 },
+      limit_month_code: { used_ratio: 0.25 },
+    },
+    usage: { limit: 100, used: 80 },
+    limits: [{ window: { duration: 300, timeUnit: 'TIME_UNIT_MINUTE' }, detail: { limit: 100, used: 99 } }],
+  }, 'coding-plan')
+  assert.deepEqual(reading, { balances: [], windows: [
+    { id: '5h', usedPercent: 1, resetsAt: Date.parse(FIVE_H_RESET) },
+    { id: '7d', usedPercent: 0, resetsAt: Date.parse(WEEK_RESET) },
+    { id: 'month', usedPercent: 100 },
+    { id: 'month-code', usedPercent: 25 },
+  ] })
+})
+
+test('Kimi supports new plans without inventing a weekly quota and clamps overage', () => {
+  assert.deepEqual(kimi.parse({ usages: {
+    limit_5h: { used_ratio: 1.2, reset_time: 'invalid' },
+    limit_month_total: { used_ratio: 0 },
+  } }, 'coding-plan').windows, [
+    { id: '5h', usedPercent: 100 }, { id: 'month', usedPercent: 0 },
+  ])
+})
+
+test('Kimi canonicalizes legacy enum minute/hour/week windows', () => {
+  for (const window of [
+    { duration: 300, timeUnit: 'TIME_UNIT_MINUTE' }, { duration: 5, timeUnit: 'TIME_UNIT_HOUR' },
+  ]) {
+    assert.deepEqual(kimi.parse({ limits: [{ window, detail: { limit: '100', remaining: '25', resetTime: '1790000000' } }] }, 'coding-plan').windows,
+      [{ id: '5h', usedPercent: 75, resetsAt: 1790000000000 }])
+  }
+  assert.deepEqual(kimi.parse({ limits: [{ window: { duration: 1, timeUnit: 'TIME_UNIT_WEEK' }, detail: { limit: 100, used: 20 } }] }, 'coding-plan').windows,
+    [{ id: '7d', usedPercent: 20 }])
+})
+
+test('Kimi never turns a finite extreme overage into zero through overflow', () => {
+  assert.deepEqual(kimi.parse({ usages: { limit_5h: { used_ratio: 1e308 } } }, 'coding-plan').windows, [{ id: '5h', usedPercent: 100 }])
+  assert.deepEqual(kimi.parse({ usage: { used: 1e308, limit: 1e-300 } }, 'coding-plan').windows, [{ id: '7d', usedPercent: 100 }])
+})
+
+test('Kimi rejects malformed quota values and HTTP-200 error envelopes', () => {
+  for (const value of [undefined, null, '', ' ', 'bad', true, {}, -1, Infinity, NaN]) {
+    assert.throws(() => kimi.parse({ usages: { limit_5h: { used_ratio: value } } }, 'coding-plan'), SourceError)
+  }
+  for (const error of [{ error: { message: 'denied' } }, { code: 401 }, { status: false }]) {
+    assert.throws(() => kimi.parse({ ...error, usages: { limit_5h: { used_ratio: 0 } } }, 'coding-plan'), SourceError)
+    assert.throws(() => kimi.parse({ ...error, data: { available_balance: 100 } }, 'api'), SourceError)
+  }
+})

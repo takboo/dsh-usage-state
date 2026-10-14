@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
+import { normalizeConfig } from '../../src/shared/config.ts'
 import { providerCredentialRefs, providerEndpointHints } from '../../src/host/provider-refs.ts'
 
 const PI_AI = {
@@ -97,4 +98,28 @@ test('providerEndpointHints reports each configured endpoint, trimmed', () => {
   })
   assert.deepEqual(providerEndpointHints({ providers: { a: { baseURL: '  ' }, b: 'x' } }), {})
   assert.deepEqual(providerEndpointHints(undefined), {})
+})
+
+
+test('Moonshot and Kimi Code provider refs stay within their billing mode', () => {
+  const piAiSettings = { providers: {
+    moonshot: { apiKeyEnv: 'WALLET_KEY', baseURL: 'https://api.moonshot.cn/v1' },
+    kimi: { apiKeyEnv: 'CODE_KEY', baseURL: 'https://api.kimi.ai/coding/v1' },
+  } }
+  assert.deepEqual(providerCredentialRefs({ sourceId: 'kimi', mode: 'api', piAiSettings }), ['WALLET_KEY'])
+  assert.deepEqual(providerCredentialRefs({ sourceId: 'kimi', mode: 'coding-plan', piAiSettings }), ['CODE_KEY'])
+})
+
+
+test('Kimi ref filtering honors explicit modes, endpoint pins and hidden routes', () => {
+  const piAiSettings = { providers: {
+    'kimi-code': { apiKeyEnv: 'OVERRIDE_KEY' },
+    'kimi-coding': { apiKeyEnv: 'HIDDEN_KEY' },
+    kimi: { apiKeyEnv: 'PINNED_KEY' },
+  } }
+  const config = normalizeConfig({ providers: {
+    'kimi-code': { mode: 'api' }, 'kimi-coding': { mode: 'hidden' }, kimi: { baseUrl: 'https://api.kimi.ai' },
+  } })
+  assert.deepEqual(providerCredentialRefs({ sourceId: 'kimi', mode: 'api', piAiSettings, config }), ['OVERRIDE_KEY'])
+  assert.deepEqual(providerCredentialRefs({ sourceId: 'kimi', mode: 'coding-plan', piAiSettings, config }), ['PINNED_KEY'])
 })

@@ -1,6 +1,6 @@
 # 适配器指南
 
-适用于扩展或调整余额/额度来源。当前代码支持DeepSeek、z.ai、Kimi、OpenCode和Sub2API。用户安装排查请读 [排查指南](https://github.com/takboo/dsh-usage-state/blob/main/docs/troubleshooting.md)，候选和整改状态见 [Backlog](https://github.com/takboo/dsh-usage-state/blob/main/docs/backlog.md)。本文件随npm包发布，代码和其他文档链接指向GitHub。下文描述当前Unreleased工作树，npm已发布0.4.4不包含本轮修复。
+适用于扩展或调整余额/额度来源。当前代码支持DeepSeek、z.ai、Kimi、OpenCode和Sub2API。用户安装排查请读 [排查指南](https://github.com/takboo/dsh-usage-state/blob/main/docs/troubleshooting.md)，候选和整改状态见 [Backlog](https://github.com/takboo/dsh-usage-state/blob/main/docs/backlog.md)。本文件随npm包发布，代码和其他文档链接指向GitHub。下文描述0.4.6实现。
 
 ## Interface
 
@@ -56,7 +56,7 @@ requiresApiKey在类型中存在，但当前宿主装配仍要求解析到凭据
 | DeepSeek API | GET {base}/user/balance，Bearer | balance_infos多币种；优先有余额/CNY并保留granted/topped_up。有限真实0合法，非法total_balance跳过；无有效行抛parse |
 | z.ai Coding Plan | GET {base}/api/monitor/usage/quota/limit，Bearer；默认open.bigmodel.cn，镜像api.z.ai | unit3→5h、6→7d；TOKENS_LIMIT/CREDIT_LIMIT读percentage，不将TIME_LIMIT混为编码额度；兼容plans/flat形态。HTTP200 success:false/code1000归auth；属社区接口观察，已有历史真机证据 |
 | Moonshot API | GET api.moonshot.cn/v1/users/me/balance，Bearer | 官方data.available_balance以人民币元计，voucher/cash也为元，cash可为负；当前余额不按大小换单位，保留已有两位小数舍入及兼容字段，不新增负available_balance支持 |
-| Kimi Code | GET api.kimi.com/coding/v1/usages，Bearer及KimiCLI/1.6 UA | 当前parse从usage读周窗口、limits[].detail/window读滚动窗口；UA/形态来自社区观察，缺真实账户验证 |
+| Kimi Code | GET api.kimi.com/coding/v1/usages，Bearer及KimiCLI/1.6 UA | usages.limit_5h/limit_7d/limit_month_total/limit_month_code的used_ratio×100，reset_time归一；兼容usage周计数及limits[].detail/window，枚举分钟归一到小时；国内5h/7d已真实账户验证，月额度仅fixture验证 |
 | OpenCode Zen Go | GET opencode.ai/zen/go/v1/usage，Bearer及浏览器UA | usage或data.usage；rolling/weekly/monthly→5h/7d/30d；percent为0..100；resetsAt归一。历史真机观察UA缺失触发Cloudflare；非零/status非ok未验证 |
 | Sub2API | GET {instance}/v1/usage，Bearer；必须实例地址 | quota.remaining或wallet balance、rate_limits窗口；subscription.daily/weekly/monthly→1d/7d/30d。单位缺失默认USD；parse目前未按mode过滤，可能同时返回余额和窗口；接口字段随实例版本变化 |
 
@@ -67,3 +67,6 @@ requiresApiKey在类型中存在，但当前宿主装配仍要求解析到凭据
 当前共享解析以显式provider覆盖→legacy source默认→provider声明origin/Adapter默认确定有效目标。ref和pin贯通读取/凭据描述；显式pin使fallbackRequests返回空列表。相关回归见 [A01](https://github.com/takboo/dsh-usage-state/blob/main/docs/backlog.md#a01)、[A03](https://github.com/takboo/dsh-usage-state/blob/main/docs/backlog.md#a03)。
 
 无pin时首站失败仍按序尝试fallback，不仅在未配置端点时发生。扩展必须同时测Adapter、读取层和入口，覆盖真实HTTP、凭据选择、配置切换及错误边界，不能只证明一个模块接受参数。以上是Unreleased行为，npm0.4.4仍旧实现。
+
+
+Kimi当前响应和国际端点依据[官方客户端固定源码](https://github.com/MoonshotAI/kimi-code/blob/b510fa9aec85f02849f64121550be2c3fbd4294d/packages/oauth/src/managed-usage.ts)。比例池优先于同名旧计数，缺失周额度不补0；月总额度和编程月用量分别显示，不相加。官方客户端源码是接口观察依据，不视为稳定公开API保证。2026-10-14使用本机既有Kimi Code凭据对api.kimi.com完成只读查询，5h/7d均可解析；未验证国际区域账户和月额度活体响应。

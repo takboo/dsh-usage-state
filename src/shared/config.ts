@@ -277,7 +277,7 @@ const PROVIDER_HINTS: ReadonlyArray<{ sourceId: string; pattern: RegExp }> = [
 const HOST_HINTS: ReadonlyArray<{ sourceId: string; pattern: RegExp }> = [
   { sourceId: 'deepseek', pattern: /(^|\.)api\.deepseek\.com$/ },
   { sourceId: 'zai', pattern: /(^|\.)(api\.z\.ai|open\.bigmodel\.cn|bigmodel\.cn)$/ },
-  { sourceId: 'kimi', pattern: /(^|\.)(api\.kimi\.com|api\.moonshot\.cn|moonshot\.cn)$/ },
+  { sourceId: 'kimi', pattern: /(^|\.)(api\.kimi\.(com|ai)|api\.moonshot\.(cn|ai)|moonshot\.cn)$/ },
   { sourceId: 'opencode', pattern: /(^|\.)opencode\.ai$/ },
 ]
 

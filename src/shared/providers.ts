@@ -57,6 +57,18 @@ export function originOf(url: string | undefined): string | undefined {
   }
 }
 
+/** Kimi Code and Moonshot use distinct keys and billing endpoints. */
+export function kimiMode(provider: string, endpoint?: string): UsageMode {
+  const origin = originOf(endpoint)
+  if (origin !== undefined) {
+    const host = new URL(origin).hostname
+    if (host === 'api.kimi.com' || host === 'api.kimi.ai') return 'coding-plan'
+    if (host === 'api.moonshot.cn' || host === 'api.moonshot.ai') return 'api'
+  }
+  return /(?:^|[^a-z])kimi[-_ ]?(?:for[-_ ]?coding|coding|code)(?:$|[^a-z])/i.test(provider)
+    ? 'coding-plan' : 'api'
+}
+
 export interface ResolveProviderInput {
   provider: string
   config: UsageStateConfig
@@ -110,13 +122,13 @@ export function resolveProvider(input: ResolveProviderInput): ProviderResolution
     return withTarget({ ...base, sourceId, mode: entry.mode, reason: 'configured' })
   }
 
-  // Auto: the source's primary mode (DeepSeek and Kimi lead with `api`, z.ai has
-  // only `coding-plan`). A self-hosted source cannot be read before it has an endpoint.
+  // Auto: Kimi's endpoint/route distinguishes the subscription from the wallet;
+  // other sources use their primary mode.
   if (source.requiresBaseUrl && baseUrl === undefined) {
     return { ...base, sourceId, mode: null, reason: 'needs-endpoint' }
   }
-  const mode = source.modes[0]
-  if (mode === undefined) {
+  const mode = sourceId === 'kimi' ? kimiMode(input.provider, baseUrl) : source.modes[0]
+  if (mode === undefined || !source.modes.includes(mode)) {
     return { ...base, sourceId, mode: null, reason: 'unsupported' }
   }
   return withTarget({ ...base, sourceId, mode, reason: 'auto' })

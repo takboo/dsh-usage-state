@@ -224,6 +224,8 @@ export function createUsageState(ctx: PluginContextLike, deps: UsageStateDeps = 
       ...target,
       preferredRefs: providerCredentialRefs({
         sourceId: target.sourceId,
+        mode: target.mode,
+        config,
         deepseekSettings: readNamespace(ctx, 'llm-deepseek'),
         piAiSettings: readNamespace(ctx, 'llm-pi-ai'),
       }),

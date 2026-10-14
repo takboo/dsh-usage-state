@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/dsh-usage-state)](https://www.npmjs.com/package/dsh-usage-state)
 
-> **发布状态**：**0.4.5** 已于2026-10-10发布至 [npm](https://www.npmjs.com/package/dsh-usage-state)，[GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.5) 附有相同安装包和校验文件。此版本包含余额解析、凭据覆盖、缓存隔离和失败展示修复，详情见 [更新日志](CHANGELOG.md#045---2026-10-10)。使用0.4.4及更早版本的用户请升级。
+> **发布状态**：当前版本 **0.4.6**，增加 Kimi Code provider 自动用量检测，兼容国内/国际端点和新旧套餐响应。安装包及校验文件见 [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.6)，详情见 [更新日志](CHANGELOG.md#046---2026-10-14)。
 
 在 [DSH（DeepSeek Harness）](https://github.com/deepseek-ai/deepseek-harness) 输入框上方显示当前模型供应商的**账户余额**或**套餐额度**。状态行与输入卡片同宽，保留原生统计行和上下文计量器。
 
@@ -63,6 +63,8 @@ DSH0.1使用历史版本0.3.2；该版本不适配0.2。0.4.0有RPC挂载缺陷�
 | OpenCode Zen Go | — | 5h / 7d / 30d已用% | OPENCODE_GO_API_KEY / OPENCODE_API_KEY |
 | Sub2API | 余额或key配额 | 按实例响应，如5h / 1d / 7d / 30d | SUB2API_API_KEY及实例地址 |
 
+Kimi Code 的 `kimi-code`、`kimi-coding`、`kimi-for-coding` provider，以及声明 `api.kimi.com` / `api.kimi.ai` 的自定义 provider，会自动读取套餐用量。支持 5h、7d、月总额度及编程月用量，仅展示账户实际返回的窗口。Moonshot 国内/国际 API 继续显示人民币余额；可在设置中显式选择模式。
+
 百分比表示**已用**。z.ai的key分国内/国际区域；默认国内地址，失败可尝试镜像。当前缓存按数据源与模式合并，不能将不同密钥/实例视为已支持独立多账户。厂商端点、字段和扩展步骤见 [适配器指南](https://github.com/takboo/dsh-usage-state/blob/main/docs/adapters.md)。
 
 ## 截图
@@ -89,7 +91,7 @@ OpenCode Zen Go三个窗口，独立状态行位于输入框上方：
 
 - **旧版npm0.4.4及更早版本**：仍有provider凭据覆盖、pin/缓存身份、legacy隐藏、默认排序和失败展示缺陷；Moonshot≥100元仍会被除以100，DeepSeek非法金额仍可能变0。这些已在0.4.5修复；使用旧版请升级。旧版金额应与 [官方接口](https://platform.kimi.com/docs/api/balance.md) 核对。
 - **账户范围**：仍按source+mode选择一个目标；配置身份隔离不等于新增独立多账户支持。
-- **未验证范围**：Kimi Code/Sub2API真实账户、高阈值视觉、真实凭据写入和OpenCode非零路径仍缺活体验证；本地交互测试不代替这些验收。
+- **未验证范围**：Kimi Code月额度真实账户、Sub2API真实账户、高阈值视觉、真实凭据写入和OpenCode非零路径仍缺活体验证；本地交互测试不代替这些验收。
 - **范围**：无模型选择或隐藏时可以不显示；点击状态行不打开设置；不保存历史读数。
 
 ## 开发与文档
