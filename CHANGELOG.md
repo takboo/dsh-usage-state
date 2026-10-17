@@ -6,6 +6,14 @@
 
 ## [Unreleased]
 
+## [0.4.8] - 2026-10-17
+
+### Compatibility
+
+- 完成 DSH 0.2.1-rc.2 兼容性复验：隔离 tarball 安装与宿主启动、设置页、模型目录、getState/describeCredentials、已保存凭据优先级和隐藏/API配置往返均通过；输入区状态行可与新增的1017模型标记同时显示。
+- 未发现新的运行兼容性问题，源码及三个预构建入口与0.4.7一致。现有 `^0.2.0-rc.2 || ^0.2.1-rc.1` 已覆盖rc.2，保留支持下界及peer范围，更新中英兼容性声明。
+- CI将0.2.1-rc.1与0.2.1-rc.2纳入独立矩阵，分别运行精确版本的真实Typert host/browser及产物契约测试；333项基线测试及rc.2的18项契约测试通过。浏览器验证使用本地模拟余额与模型流，不访问真实厂商账户。
+
 ## [0.4.7] - 2026-10-17
 
 ### Fixed
@@ -127,7 +135,8 @@
 
 0.4.5起建立版本tag/Release；更早发布没有保存这些引用。0.3.0至0.4.4的比较端点来自各npm版本的gitHead；0.2系列引用对应实现提交，不能替代当时没有保存的正式发布产物。早期日期沿用历史版本记录。今后版本应按发布流程建立稳定引用。
 
-[Unreleased]: https://github.com/takboo/dsh-usage-state/compare/v0.4.7...HEAD
+[Unreleased]: https://github.com/takboo/dsh-usage-state/compare/v0.4.8...HEAD
+[0.4.8]: https://github.com/takboo/dsh-usage-state/compare/v0.4.7...v0.4.8
 [0.4.7]: https://github.com/takboo/dsh-usage-state/compare/v0.4.6...v0.4.7
 [0.4.6]: https://github.com/takboo/dsh-usage-state/compare/v0.4.5...v0.4.6
 [0.4.5]: https://github.com/takboo/dsh-usage-state/compare/3ad9a71e2f7e4b9a05c69bc529e396a364ae6aeb...v0.4.5

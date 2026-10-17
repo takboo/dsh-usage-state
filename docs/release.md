@@ -6,11 +6,11 @@
 
 - 本次版本、package/lock根元数据、正式Changelog条目、已验证产物、Git引用应来自同一发布提交。版本不可重用。
 - Changelog日期采用npm实际发布时间的UTC日期；Unreleased只记录尚未发版的变更。0.4.4已于2026-10-06发布，不能继续标待发布。
-- 当前DSH范围是 `^0.2.0-rc.2 || ^0.2.1-rc.1`（两版均已复验），运行Node声明≥20。开发使用Node22.18+的22线或24.11+；发布建议符合条件的Node24及npm≥11.5.1。
+- 当前DSH范围是 `^0.2.0-rc.2 || ^0.2.1-rc.1`（已验证0.2.0-rc.2、0.2.1-rc.1/rc.2），运行Node声明≥20。开发使用Node22.18+的22线或24.11+；发布建议符合条件的Node24及npm≥11.5.1。
 - 平台依赖的锁定基线与所声明下界必须实际复验；结构类型镜像/编译相同不能证明最低宿主兼容。新DSH发布线先验再扩大范围。
 - 维护者应给今后版本创建一致的tag（例如v<version>）及GitHub Release；历史没有tag时，Changelog使用有依据的commit，不补造发布点。
 
-当前package/lock为0.4.7，DSH0.2.1-rc.1兼容性和凭据服务启动顺序修复已移入带日期版本章节；发布状态以对应Actions、npm和GitHub Release为准。npm0.4.4和0.4.5均已占用；历史本地0.4.4 tarball内容与当时发布不同，不能再次发布该号。源码和bundle应一起提交；verify:artifacts对HEAD检查，提交前的新产物diff是合理失败，不可隐藏。新版本需先同步package/lock、带日期Changelog和稳定tag。
+当前package/lock为0.4.8，已新增DSH0.2.1-rc.2兼容性证据；运行代码与0.4.7一致，当前版本范围已覆盖rc.2；发布状态以对应Actions、npm和GitHub Release为准。npm0.4.4和0.4.5均已占用；历史本地0.4.4 tarball内容与当时发布不同，不能再次发布该号。源码和bundle应一起提交；verify:artifacts对HEAD检查，提交前的新产物diff是合理失败，不可隐藏。新版本需先同步package/lock、带日期Changelog和稳定tag。
 
 ## 2. 构建、最终产物与打包
 
@@ -69,7 +69,7 @@ DSH_HOME="$verify_home" "$dsh_bin" --profile smoke --port 3081 --no-open
 | RPC | 贡献已挂载，usageState/getState与describeCredentials可解析；返回source目录/缺key状态，不需要虚构0读数 |
 | 产物契约 | [源码贡献](../tests/client/contribution.test.ts)及 [bundle测试](../tests/build/bundle.test.ts) 都使用真实registry；必要时用 [browser-face helper](../tests/support/browser-face.mjs) 对宿主实际提供的client产物做同一验证 |
 
-在声明的最低DSH和当前受支持DSH上复验。真实宿主启动、客户端挂载和RPC往返是不同证据，任一失败都不能记兼容通过。0.4.7的隔离宿主、真实客户端/RPC和fixture范围见 [平台复验](platform-notes.md#dsh-021-compatibility)；Node预构建冒烟不替代此验收。
+在声明的最低DSH和当前受支持DSH上复验。真实宿主启动、客户端挂载和RPC往返是不同证据，任一失败都不能记兼容通过。rc.1及下界的隔离宿主证据见 [0.4.7复验](platform-notes.md#dsh-021-compatibility)，rc.2见 [0.4.8复验](platform-notes.md#dsh-021-rc2-compatibility)；Node预构建冒烟不替代此验收。
 
 ## 4. 功能及人工验收
 

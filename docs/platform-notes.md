@@ -118,3 +118,16 @@ validateStoredEvents(session.header, [{ ...event, ignorable: true }]) // 对照�
 支持声明及dsh-settings peer为 `^0.2.0-rc.2 || ^0.2.1-rc.1`，显式纳入新候选版。0.2.1宿主的兼容性判断优先engines.dsh并启用includePrerelease；缺失时才回退DSH peers，依据为该tag的 [plugin-compatibility.ts](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.2.1-rc.1/packages/boot/app-boot/src/plugin-compatibility.ts)。凭据优先级依宿主版本而异，依据为同tag的 [credentials-local](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.2.1-rc.1/packages/credentials/credentials-local/src/index.ts)；直接回退仍保留旧环境优先语义。
 
 本次没有新增真实厂商账户、凭据写入落盘、warn/critical视觉或旧宿主热重载证据。隔离fixture证明的是平台装配、身份选择和RPC往返，不代表真实账户接口验收。
+
+
+<a id="dsh-021-rc2-compatibility"></a>
+
+## 14. 0.4.8 与 DSH0.2.1-rc.2 兼容性复验
+
+**2026-10-17，Node24.21.0/npm11.19.1。** 官方 [dsh-v0.2.1-rc.2](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.2) 为687f282e；[与rc.1的比较](https://github.com/deepseek-ai/deepseek-harness/compare/dsh-v0.2.1-rc.1...dsh-v0.2.1-rc.2)主要增加1017模型标记和DeepSeek Search/Fetch API。本插件使用的Typert、凭据实现及input.dock槽位没有运行逻辑变更。
+
+本次使用全新临时home/profile安装真实tarball，清空继承账户环境，同时提供两份不同的假环境/文件凭据。余额及模型请求仅访问本地HTTP fixture；文件凭据被优先使用，余额为42.25，模拟模型通过SSE正常完成会话。真实浏览器同时显示账户状态行、1017标记和原生统计；设置页列出供应商与模型，getState/describeCredentials均成功，凭据来源为file且可写。隐藏后状态行消失，恢复API模式后重新显示，浏览器无error日志。
+
+未发现新的兼容性问题。0.4.8的源码及lib/index.js、lib/client.js、lib/typert.js与0.4.7逐字节一致，沿用第13节的0.2.0下界及rc.1宿主验证；并在当前锁定基线上重新通过333项完整回归，rc.2真实host/browser及产物契约18项通过。CI矩阵保留rc.1并新增rc.2，均安装精确平台版本；Cordis4.0.5、schemastery3.18.5与实际rc.2宿主一致。
+
+现有engines.dsh及dsh-settings peer `^0.2.0-rc.2 || ^0.2.1-rc.1` 已包含rc.2，无需增加重复区间或提高支持下界。版本发布仅更新兼容性证据、README、Changelog和CI；厂商真实账户、凭据保存落盘和完整视觉验收范围仍按第13节说明。
