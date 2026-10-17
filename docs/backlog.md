@@ -110,6 +110,8 @@
 
 **状态：已随0.4.5发布。** response.json的SyntaxError归parse；AbortError/TimeoutError/transport中断归network。证据：[read测试](../tests/host/read.test.ts) 覆盖响应头成功后的body失败，保持HTTP/镜像契约。
 
+2026-10-17，0.4.7完成DSH0.2.1-rc.1隔离tarball安装与浏览器RPC复验，修复凭据服务延迟激活/重载后仍走直接回退的问题，并保留0.2.0下界。333项回归与两版真实Typert契约通过；证据及测试边界见 [平台说明](platform-notes.md#dsh-021-compatibility)。
+
 ## 2. 尚缺活体或视觉验证
 
 | 项目 | 现有范围 | 需要补的证据 |

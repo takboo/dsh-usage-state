@@ -8,9 +8,10 @@ import type { CredentialLookup } from './credentials.ts'
  * Last-resort credential sources, used only when the platform's credential
  * service cannot answer.
  *
- * The platform provider resolves `inherited environment > $DSH_HOME/.credentials.yaml`
- * (see `dsh-credentials-local`), so these fallbacks follow the same precedence and
- * never override it. They exist because a plugin row mounted at the profile root
+ * The platform answer always wins, including its version-specific precedence
+ * (DSH 0.2.1 Web/Desktop prefers saved credentials; 0.2.0 prefers environment).
+ * Without a platform answer, retain the legacy environment-then-file fallback.
+ * They exist because a plugin row mounted at the profile root
  * may not see the credentials service at all, and a balance line that silently
  * shows "not configured" is worse than reading the same two sources directly.
  *

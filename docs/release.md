@@ -6,11 +6,11 @@
 
 - 本次版本、package/lock根元数据、正式Changelog条目、已验证产物、Git引用应来自同一发布提交。版本不可重用。
 - Changelog日期采用npm实际发布时间的UTC日期；Unreleased只记录尚未发版的变更。0.4.4已于2026-10-06发布，不能继续标待发布。
-- 当前DSH范围是 `>=0.2.0-rc.2 <0.3.0-0`，运行Node声明≥20。开发使用Node22.18+的22线或24.11+；发布建议符合条件的Node24及npm≥11.5.1。
+- 当前DSH范围是 `^0.2.0-rc.2 || ^0.2.1-rc.1`（两版均已复验），运行Node声明≥20。开发使用Node22.18+的22线或24.11+；发布建议符合条件的Node24及npm≥11.5.1。
 - 平台依赖的锁定基线与所声明下界必须实际复验；结构类型镜像/编译相同不能证明最低宿主兼容。新DSH发布线先验再扩大范围。
 - 维护者应给今后版本创建一致的tag（例如v<version>）及GitHub Release；历史没有tag时，Changelog使用有依据的commit，不补造发布点。
 
-当前package/lock为0.4.6，Kimi自动识别与响应兼容修复已移入带日期版本章节；发布状态以对应Actions、npm和GitHub Release为准。npm0.4.4和0.4.5均已占用；历史本地0.4.4 tarball内容与当时发布不同，不能再次发布该号。源码和bundle应一起提交；verify:artifacts对HEAD检查，提交前的新产物diff是合理失败，不可隐藏。新版本需先同步package/lock、带日期Changelog和稳定tag。
+当前package/lock为0.4.7，DSH0.2.1-rc.1兼容性和凭据服务启动顺序修复已移入带日期版本章节；发布状态以对应Actions、npm和GitHub Release为准。npm0.4.4和0.4.5均已占用；历史本地0.4.4 tarball内容与当时发布不同，不能再次发布该号。源码和bundle应一起提交；verify:artifacts对HEAD检查，提交前的新产物diff是合理失败，不可隐藏。新版本需先同步package/lock、带日期Changelog和稳定tag。
 
 ## 2. 构建、最终产物与打包
 
@@ -69,7 +69,7 @@ DSH_HOME="$verify_home" "$dsh_bin" --profile smoke --port 3081 --no-open
 | RPC | 贡献已挂载，usageState/getState与describeCredentials可解析；返回source目录/缺key状态，不需要虚构0读数 |
 | 产物契约 | [源码贡献](../tests/client/contribution.test.ts)及 [bundle测试](../tests/build/bundle.test.ts) 都使用真实registry；必要时用 [browser-face helper](../tests/support/browser-face.mjs) 对宿主实际提供的client产物做同一验证 |
 
-在声明的最低DSH和当前受支持DSH上复验。真实宿主启动、客户端挂载和RPC往返是不同证据，任一失败都不能记兼容通过。本轮本地整改未新增完整真机DSH安装/浏览器往返证据，Node预构建冒烟不替代此验收。
+在声明的最低DSH和当前受支持DSH上复验。真实宿主启动、客户端挂载和RPC往返是不同证据，任一失败都不能记兼容通过。0.4.7的隔离宿主、真实客户端/RPC和fixture范围见 [平台复验](platform-notes.md#dsh-021-compatibility)；Node预构建冒烟不替代此验收。
 
 ## 4. 功能及人工验收
 
@@ -86,7 +86,7 @@ DSH_HOME="$verify_home" "$dsh_bin" --profile smoke --port 3081 --no-open
 | 异步写key和只读状态 | 保存/清除结果有反馈，无环境遮蔽时写入后确实生效 |
 | 视觉 | 长名、窄屏、中文/英文、正常/warn/critical与所用字体 |
 
-本轮本地fake账户/时钟/React交互回归已覆盖过去的失败路径，最终跨Node/tarball证据在交付时同步。真实DSH凭据落盘、完整浏览器RPC、厂商账户和视觉仍需单独验收；不把本地测试或历史截图记成这些真实操作已完成。
+本轮本地fake账户/时钟/React交互回归已覆盖过去的失败路径，最终跨Node/tarball证据在交付时同步。0.4.7已补新版浏览器RPC及隐藏/恢复配置往返；真实DSH凭据落盘、厂商账户和完整视觉仍需单独验收；不把本地测试或历史截图记成这些真实操作已完成。
 
 ## 5. 发布并核对版本
 
@@ -121,7 +121,7 @@ npm view "dsh-usage-state@$package_version" version engines repository gitHead d
 
 npm repository必须映射回收录仓库，不能在YAML手写npm字段。截图可选，本仓库 [声明](../screenshots.json) 为3张；允许1–8张本仓库路径或GitHub托管HTTPS，换截图无需新收录PR。
 
-当前市场兼容将engines.dsh（或dsh.engines.dsh）与相关DSH同线host peers**共同判断**，不是有engines就忽略peer。发现页常查latest，命名版本操作可读该目标版本清单；schemastery/Cordis不按DSH同线版本推算。固定源码依据在规范研究。
+DSH0.2.1-rc.1 的运行/安装兼容性门禁优先使用 engines.dsh，且包含预发布版本；缺失时才回退到 DSH peers。市场目录可能采用不同版本规则，因此同时维护 engines 与 host peer。发现页常查latest，命名版本操作可读该目标版本清单；schemastery/Cordis不按DSH同线版本推算。固定源码依据在规范研究。
 
 全球区域使用在线站点；中国区域通常优先npm catalog，再回退站点。上游当前日构建cron为UTC02:23触发，但可能延迟或失败；可见性应按成功构建和实际catalog确认，不保证“合并后马上/次日必可搜到”。发布前复查 [上游工作流](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/blob/main/.github/workflows/build-site.yml)。
 

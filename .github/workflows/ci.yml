@@ -72,6 +72,28 @@ jobs:
           if-no-files-found: error
           compression-level: 0
 
+  dsh-compatibility:
+    name: DSH 0.2.1-rc.1 RPC contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-toolchain
+      - run: npm ci
+      - name: Install the exact supported candidate's platform contracts
+        run: >-
+          npm install --prefix "$RUNNER_TEMP/dsh-platform" --ignore-scripts --legacy-peer-deps --no-audit --no-fund
+          @deepseek-ai/cordis@4.0.5 @deepseek-ai/schemastery@3.18.5
+          @deepseek-ai/dsh-typert-loader@0.2.1-rc.1 @deepseek-ai/dsh-typert-registry@0.2.1-rc.1
+      - name: Validate source and shipped bundles against the candidate's real validators
+        env:
+          DSH_PLATFORM_ROOT: ${{ runner.temp }}/dsh-platform
+        run: >-
+          node --import ./tests/support/client-render-hook.mjs --test
+          tests/host/typert.test.ts tests/client/contribution.test.ts tests/build/bundle.test.ts
+
   runtime-node20:
     name: Prebuilt runtime Node 20
     needs: canonical

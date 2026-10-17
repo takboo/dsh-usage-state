@@ -12,6 +12,9 @@ export function loadBrowserFace(
 /** A `require` implementation covering exactly the shell's three modules. */
 export function shellModuleTable(): (specifier: string) => unknown
 
+/** Resolve packages from DSH_PLATFORM_ROOT, or the repository's locked baseline. */
+export const platformRequire: import('node:module').Require
+
 /** Mount the platform's real browser-face Typert registry on a fresh context. */
 export function realRegistry(): Promise<{
   ctx: unknown

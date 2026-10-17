@@ -4,6 +4,8 @@
 
 主要历史环境为DSH0.1.5-rc.2与0.2.0-rc.2；来源见 [Typert研究](research/typert-rpc-minimal-contract.md) 和 [修订17–23](design-changelog.md)。2026-10-08官方文档复核见 [规范研究补充](research/repository-release-standards-2026-10.md#documentation-recheck)。本轮没有重新启动这些历史宿主。
 
+2026-10-17 的 0.4.7 兼容性复验见本文第13节，覆盖 DSH0.2.1-rc.1 及原下界0.2.0-rc.2；前文“本轮”指0.4.5整改时的历史范围。
+
 ## 1. 宿主RPC服务绑定
 
 历史调查及当前产物测试要求typertRemote.service指向服务对象本身，serviceKey是注册名，namespace匹配线上命名空间。把service写成字符串会导致gateway/binding-invalid。
@@ -100,3 +102,19 @@ validateStoredEvents(session.header, [{ ...event, ignorable: true }]) // 对照�
 历史观察：turnTail是单赢家chain，assistant-actions在回合动作条，旧回合动作条通常悬停才可见；它们不适合本项目常显的账户读数。0.2的composer.dock是原生统计/上下文计量器共排的一行pill，input.dock是输入卡片上方的list槽位。
 
 当前只注册input.dock、order=200，排在平台queue之后；无模型选择或槽位zone未开放时可能没有读数。依据：[slots定义](../src/client/slots.ts)、[槽位测试](../tests/client/slots.test.ts)、修订13/19/20。平台字号和槽位变化需人工/契约复核，固定CSS测试不会自动发现上游改变。
+
+<a id="dsh-021-compatibility"></a>
+
+## 13. 0.4.7 与 DSH0.2.1-rc.1 兼容性复验
+
+**2026-10-17，Node24.21.0/npm11.19.1，真实 tarball 隔离安装。** 目标为官方 [dsh-v0.2.1-rc.1](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.1)（1600d8a）。使用新的临时 home/profile，清空继承账户环境，只注入假凭据；余额请求指向本机 HTTP fixture，不访问厂商账户。
+
+- 0.4.6 可启动并挂载 RPC，但真实浏览器显示 `env (direct)` 且不可写，环境与文件两份不同 fixture 同时存在时读取了环境账户。根因为插件只在 apply 时获取一次 credentials 服务，当时服务尚未激活，后续一直走直接回退。
+- 0.4.7 在每次 resolve/describe 时获取当前服务。相同场景改用已保存 fixture，设置显示 `Configured (file)` 并提供写入控件；真实会话的 input.dock 显示 `DeepSeek ¥42.25`。隐藏/API切换经 configForms 往返立即移除/恢复状态行。模型请求也指向本地 fixture，其非流式响应导致的 STREAM_CLOSED 是测试装置的预期限制。
+- 上游拆分的是 composer.dock 的旧 stats 项，本插件的 input.dock 仍有效，无需更换槽位。设置页、模型目录、getState、describeCredentials 和来源目录均已在真实浏览器装配中验证。
+- 本地333项回归通过；旧/新平台分别18项真实Typert贡献、host manifest及构建产物契约通过。新增 CI 独立安装精确0.2.1-rc.1的loader/registry，显式使用新包的browser条件；主测试继续使用锁文件中的0.2.0基线。
+- 原下界0.2.0-rc.2也安装相同预构建代码的tarball并启动Web复验。该隔离宿主固定同期Cordis4.0.4、cosmokit1.8.5、schemastery3.18.4、loader1.0.5/include1.0.9/group1.0.4/timer1.1.6，关闭HMR；未将这次结果记作旧宿主HMR验收。测试凭据文件须为0600。
+
+支持声明及dsh-settings peer为 `^0.2.0-rc.2 || ^0.2.1-rc.1`，显式纳入新候选版。0.2.1宿主的兼容性判断优先engines.dsh并启用includePrerelease；缺失时才回退DSH peers，依据为该tag的 [plugin-compatibility.ts](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.2.1-rc.1/packages/boot/app-boot/src/plugin-compatibility.ts)。凭据优先级依宿主版本而异，依据为同tag的 [credentials-local](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.2.1-rc.1/packages/credentials/credentials-local/src/index.ts)；直接回退仍保留旧环境优先语义。
+
+本次没有新增真实厂商账户、凭据写入落盘、warn/critical视觉或旧宿主热重载证据。隔离fixture证明的是平台装配、身份选择和RPC往返，不代表真实账户接口验收。

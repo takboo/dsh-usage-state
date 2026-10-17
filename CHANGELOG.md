@@ -6,6 +6,18 @@
 
 ## [Unreleased]
 
+## [0.4.7] - 2026-10-17
+
+### Fixed
+
+- 每次读取/描述凭据时获取当前宿主服务，修复插件早于凭据服务启动时永久缓存“服务不可用”的问题；服务激活或重载后不再继续使用直接回退凭据。DSH 0.2.1-rc.1 的已保存凭据优先级和可写状态因此得到保留。
+
+### Compatibility
+
+- 明确声明 DSH `^0.2.0-rc.2 || ^0.2.1-rc.1`，同步 dsh-settings peer；保留原开发锁定基线。新旧宿主的隔离 tarball 安装、启动、客户端设置装配及 RPC 均复验。
+- CI 增加精确 0.2.1-rc.1 的真实 Typert host/browser 校验；测试 helper 显式选取 browser 条件，兼容上游新增的 Node/browser 双入口。
+- 333 项本地测试通过，包括先失败后修复的服务延迟激活/替换回归；新旧平台各 18 项贡献/产物/宿主契约测试通过。真实账户与厂商接口不属于本次兼容性测试，余额使用本地 fixture。
+
 ## [0.4.6] - 2026-10-14
 
 ### Fixed
@@ -115,7 +127,8 @@
 
 0.4.5起建立版本tag/Release；更早发布没有保存这些引用。0.3.0至0.4.4的比较端点来自各npm版本的gitHead；0.2系列引用对应实现提交，不能替代当时没有保存的正式发布产物。早期日期沿用历史版本记录。今后版本应按发布流程建立稳定引用。
 
-[Unreleased]: https://github.com/takboo/dsh-usage-state/compare/v0.4.6...HEAD
+[Unreleased]: https://github.com/takboo/dsh-usage-state/compare/v0.4.7...HEAD
+[0.4.7]: https://github.com/takboo/dsh-usage-state/compare/v0.4.6...v0.4.7
 [0.4.6]: https://github.com/takboo/dsh-usage-state/compare/v0.4.5...v0.4.6
 [0.4.5]: https://github.com/takboo/dsh-usage-state/compare/3ad9a71e2f7e4b9a05c69bc529e396a364ae6aeb...v0.4.5
 [0.4.4]: https://github.com/takboo/dsh-usage-state/compare/885541638ffa4da05b39bd1864085ba6d9acc288...3ad9a71e2f7e4b9a05c69bc529e396a364ae6aeb

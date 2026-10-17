@@ -125,20 +125,22 @@ export function createCredentialLookup(
   ctx: PluginContextLike,
   fallback: FallbackDeps | false = {},
 ): CredentialLookup {
-  const provider = ctx.get('credentials') as CredentialsProviderLike | undefined
-
   const platform: CredentialLookup = {
     resolve: async ref => {
-      if (provider === undefined) return undefined
       try {
+        // Credentials may activate after this timer-only plugin, or be replaced
+        // during reload. Resolve the current service instead of caching absence.
+        const provider = ctx.get('credentials') as CredentialsProviderLike | undefined
+        if (provider === undefined) return undefined
         return await provider.resolve(ref)
       } catch {
         return undefined
       }
     },
     describe: async ref => {
-      if (provider === undefined) return { configured: false, writable: false }
       try {
+        const provider = ctx.get('credentials') as CredentialsProviderLike | undefined
+        if (provider === undefined) return { configured: false, writable: false }
         return await provider.describe(ref)
       } catch {
         return { configured: false, writable: false }

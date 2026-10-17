@@ -1,8 +1,9 @@
 import { readFile } from 'node:fs/promises'
+import { pathToFileURL } from 'node:url'
 
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { validateTypertManifest } from '@deepseek-ai/dsh-typert-loader'
+import { platformRequire } from '../support/browser-face.mjs'
 
 import {
   credentialReportSchema,
@@ -12,6 +13,8 @@ import {
   TYPERT_SERVICE,
   usageStateViewSchema,
 } from '../../src/host/typert.ts'
+
+const { validateTypertManifest } = await import(pathToFileURL(platformRequire.resolve('@deepseek-ai/dsh-typert-loader')).href)
 
 const RESERVED_METHODS = new Set(['ctx', 'empty', 'invokeRemote', 'methods', 'name', 'namespace'])
 

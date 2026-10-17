@@ -1,5 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
+import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 /**
  * Load and drive the platform's **browser face** the way the shell does.
@@ -11,6 +13,12 @@ import { createRequire } from 'node:module'
  * contribution DSH 0.1.5 had accepted.
  */
 const require = createRequire(import.meta.url)
+
+// Compatibility runs resolve real platform packages from an isolated install;
+// ordinary tests retain the lockfile's minimum supported DSH baseline.
+export const platformRequire = process.env.DSH_PLATFORM_ROOT
+  ? createRequire(path.join(path.resolve(process.env.DSH_PLATFORM_ROOT), 'package.json'))
+  : require
 
 /**
  * Evaluate one browser-face bundle and return its exports.
@@ -62,8 +70,14 @@ export function shellModuleTable() {
  *   contribution step (validate, then install one `remote.<namespace>` service).
  */
 export async function realRegistry() {
-  const { Context } = await import('@deepseek-ai/cordis')
-  const registry = loadBrowserFace(require.resolve('@deepseek-ai/dsh-typert-registry/client'))
+  const { Context } = await import(pathToFileURL(platformRequire.resolve('@deepseek-ai/cordis')).href)
+  const manifestPath = platformRequire.resolve('@deepseek-ai/dsh-typert-registry/package.json')
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+  // DSH 0.2.1 ships separate Node and browser faces. Resolve the browser
+  // condition explicitly: require.resolve('./client') now selects Node ESM.
+  const client = manifest.exports['./client']
+  const browserPath = path.resolve(path.dirname(manifestPath), client.browser ?? client.default)
+  const registry = loadBrowserFace(browserPath, specifier => platformRequire(specifier))
   const ctx = new Context()
   await ctx.plugin(registry)
   return {
