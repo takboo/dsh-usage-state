@@ -65,6 +65,7 @@ const CONTROLS = { display: 'flex', alignItems: 'center', gap: '8px', flexShrink
 const MAX_MODELS_SHOWN = 6
 
 function modeLabel(mode: ProviderMode, t: Translate): string {
+  if (mode === 'account') return t('modeAccount')
   if (mode === 'api') return t('modeApi')
   if (mode === 'coding-plan') return t('modeCodingPlan')
   if (mode === 'hidden') return t('modeHidden')
@@ -273,6 +274,7 @@ function ProviderCard(props: {
   const refMode = row.resolution.mode ?? resolvedSource?.modes[0]
   const refs: string[] = refMode === undefined ? [] : [...(resolvedSource?.credentialRefs[refMode] ?? [])]
 
+  const accountMode = row.resolution.mode === 'account'
   const modelNames = row.models.map(model => model.name)
   const listed = modelNames.slice(0, MAX_MODELS_SHOWN).join(' · ')
   const suffix = modelNames.length > MAX_MODELS_SHOWN ? ', …' : ''
@@ -315,7 +317,7 @@ function ProviderCard(props: {
       <span style={MUTED}>{resolutionLabel(row, props.catalog, t)}</span>
       {props.failure === undefined ? null : (
         <span style={MUTED}>
-          ⚠ {t(`error.${props.failure.kind}`)}
+          ⚠ {t(accountMode && props.failure.kind === 'config' ? 'accountSignInRequired' : accountMode && props.failure.kind === 'auth' ? 'accountAuthFailed' : `error.${props.failure.kind}`)}
           {props.failure.detail === undefined ? '' : ` — ${props.failure.detail}`}
         </span>
       )}
@@ -323,6 +325,7 @@ function ProviderCard(props: {
         {modelNames.length === 0 ? t('noModels') : t('modelsPrefix', { list: `${listed}${suffix}` })}
       </span>
 
+      {accountMode ? <span style={MUTED}>{t(props.description?.configured ? 'accountConnected' : 'accountSignInRequired')}</span> : null}
       <details>
         <summary style={{ ...MUTED, cursor: 'pointer' }}>{t('advanced')}</summary>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '8px' }}>
@@ -346,49 +349,51 @@ function ProviderCard(props: {
             </select>
           </div>
 
-          <div style={ROW}>
-            <span style={MUTED}>{t('baseUrl')}</span>
-            <DraftInput
-              disabled={props.disabled}
-              value={entry?.baseUrl ?? ''}
-              placeholder={
-                row.resolution.mode === null
-                  ? t('baseUrlPlaceholder')
-                  : (resolvedSource?.defaultBaseUrl[row.resolution.mode] ?? t('baseUrlPlaceholder'))
-              }
-              width="320px"
-              onCommit={value => {
-                if (value === '') props.onClearField(['providers', row.provider, 'baseUrl'])
-                else props.onField(['providers', row.provider, 'baseUrl'], value)
-              }}
-            />
-            {resolvedSource?.requiresBaseUrl === true && entry?.baseUrl === undefined ? (
-              <Tag tone="warning">{t('baseUrlRequired')}</Tag>
-            ) : null}
-          </div>
+          {accountMode ? <span style={MUTED}>{t('accountHint')}</span> : (<>
+            <div style={ROW}>
+              <span style={MUTED}>{t('baseUrl')}</span>
+              <DraftInput
+                disabled={props.disabled}
+                value={entry?.baseUrl ?? ''}
+                placeholder={
+                  row.resolution.mode === null
+                    ? t('baseUrlPlaceholder')
+                    : (resolvedSource?.defaultBaseUrl[row.resolution.mode] ?? t('baseUrlPlaceholder'))
+                }
+                width="320px"
+                onCommit={value => {
+                  if (value === '') props.onClearField(['providers', row.provider, 'baseUrl'])
+                  else props.onField(['providers', row.provider, 'baseUrl'], value)
+                }}
+              />
+              {resolvedSource?.requiresBaseUrl === true && entry?.baseUrl === undefined ? (
+                <Tag tone="warning">{t('baseUrlRequired')}</Tag>
+              ) : null}
+            </div>
 
-          <div style={ROW}>
-            <span style={MUTED}>{t('apiKeyRef')}</span>
-            <DraftInput
-              disabled={props.disabled}
-              value={entry?.apiKeyRef ?? ''}
-              width="220px"
-              onCommit={value => {
-                if (value === '') props.onClearField(['providers', row.provider, 'apiKeyRef'])
-                else props.onField(['providers', row.provider, 'apiKeyRef'], value)
-              }}
-            />
-            <span style={MUTED}>{t('apiKeyRefHint')}</span>
-          </div>
+            <div style={ROW}>
+              <span style={MUTED}>{t('apiKeyRef')}</span>
+              <DraftInput
+                disabled={props.disabled}
+                value={entry?.apiKeyRef ?? ''}
+                width="220px"
+                onCommit={value => {
+                  if (value === '') props.onClearField(['providers', row.provider, 'apiKeyRef'])
+                  else props.onField(['providers', row.provider, 'apiKeyRef'], value)
+                }}
+              />
+              <span style={MUTED}>{t('apiKeyRefHint')}</span>
+            </div>
 
-          <CredentialPanel
-            t={t}
-            refs={refs}
-            refOverride={row.resolution.apiKeyRef}
-            description={props.description}
-            credentials={props.credentials}
-            onChanged={props.onCredentialChanged}
-          />
+            <CredentialPanel
+              t={t}
+              refs={refs}
+              refOverride={row.resolution.apiKeyRef}
+              description={props.description}
+              credentials={props.credentials}
+              onChanged={props.onCredentialChanged}
+            />
+          </>)}
         </div>
       </details>
     </div>

@@ -13,10 +13,10 @@ test('toSourceCatalog turns adapters into plain JSON the browser can consume', (
   assert.deepEqual(deepseek, {
     id: 'deepseek',
     displayName: 'DeepSeek',
-    modes: ['api'],
+    modes: ['api', 'account'],
     requiresBaseUrl: false,
-    defaultBaseUrl: { api: 'https://api.deepseek.com' },
-    credentialRefs: { api: ['DEEPSEEK_API_KEY'] },
+    defaultBaseUrl: { api: 'https://api.deepseek.com', account: 'https://platform.deepseek.com' },
+    credentialRefs: { api: ['DEEPSEEK_API_KEY'], account: [] },
   })
 
   assert.deepEqual(kimi?.credentialRefs, {

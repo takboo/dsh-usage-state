@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/dsh-usage-state)](https://www.npmjs.com/package/dsh-usage-state)
 
-> **发布状态**：当前版本 **0.4.8**，已验证 DSH **0.2.1-rc.2** 兼容性；运行代码沿用0.4.7的凭据启动顺序修复。安装包及校验文件见 [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.8)，详情见 [更新日志](CHANGELOG.md#048---2026-10-17)。
+> **0.4.9** 新增 DeepSeek Harness 账号登录余额，与 API Key 查询独立。安装包及校验文件见 [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.9)，详情见 [更新日志](CHANGELOG.md#049---2026-10-23)。
 
 在 [DSH（DeepSeek Harness）](https://github.com/deepseek-ai/deepseek-harness) 输入框上方显示当前模型供应商的**账户余额**或**套餐额度**。状态行与输入卡片同宽，保留原生统计行和上下文计量器。
 
@@ -47,21 +47,24 @@ DSH0.1使用历史版本0.3.2；该版本不适配0.2。0.4.0有RPC挂载缺陷�
 ## 快速开始
 
 1. 打开 **设置→用量状态**，查看供应商、模型和检测到的数据源。
-2. 对已识别供应商保留“自动”，或选择其支持的API、Coding Plan、隐藏。
+2. 对已识别供应商保留“自动”，或选择其支持的API Key余额、账号余额、Coding Plan、隐藏。
 3. 自建Sub2API在高级区填写实例地址；已配置模型的当前读数显示在输入框上方。
 4. “立即刷新”用于主动查询；出错先查看设置页原因及 [排查指南](https://github.com/takboo/dsh-usage-state/blob/main/docs/troubleshooting.md)。
 
-高级区提供数据源、端点、凭据名和密钥写入入口。显式provider覆盖优先于旧source默认；凭据描述与读取共用候选顺序，保存优先写显式ref。固定端点不试镜像，配置或凭据身份变化后清除旧身份读数。只读配置与凭据写入权限分别处理，保存/清除过程会显示失败并禁用重复操作。
+高级区提供数据源选择；API Key模式另有端点、凭据名和密钥写入入口。显式provider覆盖优先于旧source默认；凭据描述与读取共用候选顺序，保存优先写显式ref。固定端点不试镜像，配置或凭据身份变化后清除旧身份读数。只读配置与凭据写入权限分别处理，保存/清除过程会显示失败并禁用重复操作。
 
 ## 数据源
 
-| 来源 | API读数 | Coding Plan读数 | 主要凭据 |
+| 来源 | 余额读数 | Coding Plan读数 | 主要凭据 |
 |---|---|---|---|
-| DeepSeek官方 | CNY/USD余额 | — | DEEPSEEK_API_KEY |
+| DeepSeek官方 API Key | CNY/USD余额 | — | DEEPSEEK_API_KEY |
+| DeepSeek账号登录 | CNY/USD充值与赠送余额 | — | Harness当前登录账号 |
 | z.ai / 智谱GLM | — | 5h / 7d已用% | ZAI_API_KEY等 |
 | Kimi / Moonshot | 人民币余额 | Kimi Code订阅窗口 | MOONSHOT_API_KEY / KIMI_CODING_API_KEY |
 | OpenCode Zen Go | — | 5h / 7d / 30d已用% | OPENCODE_GO_API_KEY / OPENCODE_API_KEY |
 | Sub2API | 余额或key配额 | 按实例响应，如5h / 1d / 7d / 30d | SUB2API_API_KEY及实例地址 |
+
+**DeepSeek 桌面端账号登录**：`deepseek-account` 路由自动选择「账号余额」，通过 Harness 登录服务读取充值与赠送余额之和，无需 API Key；`deepseek-official` 路由选择「API Key 余额」。两者独立查询和缓存，账号模式不会探测或回退使用 `DEEPSEEK_API_KEY`。请在 Harness 账号设置中登录；账号模式要求宿主提供账号服务；旧宿主缺少该服务时需升级宿主。账号模式的端点与登录凭据由宿主管理，高级区不提供 API Key 输入。
 
 Kimi Code 的 `kimi-code`、`kimi-coding`、`kimi-for-coding` provider，以及声明 `api.kimi.com` / `api.kimi.ai` 的自定义 provider，会自动读取套餐用量。支持 5h、7d、月总额度及编程月用量，仅展示账户实际返回的窗口。Moonshot 国内/国际 API 继续显示人民币余额；可在设置中显式选择模式。
 
@@ -89,9 +92,8 @@ OpenCode Zen Go三个窗口，独立状态行位于输入框上方：
 
 完整整改状态及验证范围见 [待办清单](https://github.com/takboo/dsh-usage-state/blob/main/docs/backlog.md)。
 
-- **旧版npm0.4.4及更早版本**：仍有provider凭据覆盖、pin/缓存身份、legacy隐藏、默认排序和失败展示缺陷；Moonshot≥100元仍会被除以100，DeepSeek非法金额仍可能变0。这些已在0.4.5修复；使用旧版请升级。旧版金额应与 [官方接口](https://platform.kimi.com/docs/api/balance.md) 核对。
 - **账户范围**：仍按source+mode选择一个目标；配置身份隔离不等于新增独立多账户支持。
-- **未验证范围**：Kimi Code月额度真实账户、Sub2API真实账户、高阈值视觉、真实凭据写入和OpenCode非零路径仍缺活体验证；本地交互测试不代替这些验收。
+- **未验证范围**：本次账号模式的真实 Desktop 登录账户与视觉、Kimi Code月额度真实账户、Sub2API真实账户、高阈值视觉、真实凭据写入和OpenCode非零路径仍缺活体验证；本地交互测试不代替这些验收。
 - **范围**：无模型选择或隐藏时可以不显示；点击状态行不打开设置；不保存历史读数。
 
 ## 开发与文档
@@ -109,6 +111,6 @@ npm test
 
 ## 致谢与许可
 
-感谢 [dsh-cost-meter](https://github.com/Han-1413141/dsh-cost-meter)（Han-1413141，MIT）提供的数据源行为参考。本实现独立编写；端点、字段语义与兼容陷阱的溯源见 [上游分析](https://github.com/takboo/dsh-usage-state/blob/main/docs/research/dsh-cost-meter-analysis.md)。宿主平台为DSH，使用其设置、凭据、RPC、插槽和UI原语。
+感谢 [dsh-cost-meter](https://github.com/Han-1413141/dsh-cost-meter)（Han-1413141，MIT）提供的数据源行为参考。本实现独立编写；历史端点与行为溯源见 [归档上游分析](https://github.com/takboo/dsh-usage-state/blob/main/docs/archive/research/dsh-cost-meter-analysis.md)。宿主平台为DSH，使用其设置、凭据、RPC、插槽和UI原语。
 
 [MIT](LICENSE)。问题和署名建议通过 [Issues](https://github.com/takboo/dsh-usage-state/issues) 提交。

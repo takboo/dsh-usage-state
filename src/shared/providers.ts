@@ -115,7 +115,7 @@ export function resolveProvider(input: ResolveProviderInput): ProviderResolution
     return { ...base, sourceId, mode: null, reason: 'unknown-source' }
   }
 
-  if (entry?.mode === 'api' || entry?.mode === 'coding-plan') {
+  if (entry?.mode === 'api' || entry?.mode === 'account' || entry?.mode === 'coding-plan') {
     if (!source.modes.includes(entry.mode)) {
       return { ...base, sourceId, mode: null, reason: 'unsupported' }
     }
@@ -127,7 +127,8 @@ export function resolveProvider(input: ResolveProviderInput): ProviderResolution
   if (source.requiresBaseUrl && baseUrl === undefined) {
     return { ...base, sourceId, mode: null, reason: 'needs-endpoint' }
   }
-  const mode = sourceId === 'kimi' ? kimiMode(input.provider, baseUrl) : source.modes[0]
+  const mode = sourceId === 'deepseek' && input.provider === 'deepseek-account' ? 'account'
+    : sourceId === 'kimi' ? kimiMode(input.provider, baseUrl) : source.modes[0]
   if (mode === undefined || !source.modes.includes(mode)) {
     return { ...base, sourceId, mode: null, reason: 'unsupported' }
   }

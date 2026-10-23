@@ -1,7 +1,9 @@
+> 归档快照，2026-10-23 整理。仅供追溯标题所示历史基线；正文中的“当前”“待办”、本机路径和命令均为当时记录。接手工作从 [当前文档导航](../index.md) 开始，开放事项以 [当前待办](../backlog.md) 为准。
+
 # 设计修订记录（Design Changelog）
 
-> 初版共识是 grilling 的产物（见 [`design-consensus.md`](design-consensus.md)）；真机实施暴露了它不成立或不够好的地方。以下每条都记录了"原决策 → 现决策 → 原因"，避免后人误读正文。
-> **本文件是历史档案，按修订号追加，不回改旧条目**（发现旧条目与现状不符时，新写一条修订，不改动旧文）。当前有效的设计以 [`design-consensus.md`](design-consensus.md) 为准。
+> 初版共识是 grilling 的产物（见 [`design-consensus.md`](../design-consensus.md)）；真机实施暴露了它不成立或不够好的地方。以下每条都记录了"原决策 → 现决策 → 原因"，避免后人误读正文。
+> **本文件是历史档案，按修订号追加，不回改旧条目**（发现旧条目与现状不符时，新写一条修订，不改动旧文）。当前有效的设计以 [`design-consensus.md`](../design-consensus.md) 为准。
 
 ## 修订 1–23
 
@@ -45,7 +47,7 @@
     修订 8/9 的方向是"回合行显示该回合的固定值 + Δ"。第 0 步实验先否决了最省事的持久化路线（见修订 8），随后重新追问需求本身，得到的结论是**这个位置本身就不该存在**：余额/额度是**账户级**的，而一个回合是账户级读数无法诚实描述的坐标轴——同一份数字贴在每个历史回合下面，要么与 dock 同源（重复且误导：旧回合下方显示的是当前值），要么被读成"这一回合花了多少"（本插件明确不做的成本归因）。
     现决策：**移除该位置**，状态行只有一个家（当时定的是 `conversation.composer.dock`，后按修订 20 迁到 `conversation.input.dock`）。`src/client/slots.ts` 退化为单一挂载点 + 测试守卫（同时禁止 `conversation.chat.turnTail` 与 `conversation.chat.assistant-actions` 被重新加回），为动作条做的减法（`compactParts`、`ACTIONS_STYLE`、CSS `order: 1`、模型图标替代标签）全部删除。
     **代价（需知悉）**：翻旧回合时不再能看到"当时的读数"。若将来仍想要账户的历史轨迹，诚实的形态是**按时间**而不是按回合（例如 dock 行悬停给出最近几条带本地时间的读数）；那属于本插件"不做历史趋势图/面板"之外的新决定，需要单独讨论并新写一条修订，不能顺手加回。
-    **顺带沉淀的平台事实**：外部插件事件在 DSH 0.1.5-rc.2 **不可写**（见 [`platform-notes.md`](platform-notes.md) 第 11 条），这是"回合轨迹跟着会话走"这类需求的硬约束。
+    **顺带沉淀的平台事实**：外部插件事件在 DSH 0.1.5-rc.2 **不可写**（见 [`platform-notes.md`](../platform-notes.md) 第 11 条），这是"回合轨迹跟着会话走"这类需求的硬约束。
 
 14. **分发：发布 npm 包 + 收录进 dsh-market**（`cf1acdf`，0.3.0）
     原决策是"只从 GitHub 安装、不发布 npm"（`private: true`），理由是仓库自带预构建 `lib/`、`dsh plugin add github:` 已经够用。用户随后要求"能被 dsh-market 搜索和安装"，而市场只认精选列表，且卡片上的兼容徽标与下载量都来自 npm，于是改变：
@@ -55,7 +57,7 @@
     **代价与维护义务（需知悉）**：① 市场对 `engines` 判定是**硬**的（peer 的 caret/tilde 上限反而宽容），所以 DSH 出现新发布线时必须复核并放宽这个区间，否则新宿主上会被标成 incompatible（默认只是标注，可选筛选会隐藏）；② 改描述只能改自己那条 yml 再提 PR，**不要**手改对方 README（生成物）；③ 条目会被定期扫描，停更/归档会被移除。
 
 15. **移除 `peerDependencies.react`**（0.3.1）
-    起因是端到端安装验证（见 [`release.md`](release.md)）：把 `DSH_HOME` 指到 `/tmp` 后跑 `dsh plugin --profile smoke add dsh-usage-state`，pnpm 报 `✕ missing peer react`。原因是任何 profile 的依赖图里都没有 react——浏览器半边的 react 由平台在**运行时**注入（客户端产物是 CJS 工厂，靠平台模块表拿到 React），根本不走 node_modules；而我们从一开始就在 `peerDependencies` 里声明了 `react: ^18.2.0`（那是 React 库的惯例，不是 DSH 插件的惯例）。
+    起因是端到端安装验证（见 [`release.md`](../release.md)）：把 `DSH_HOME` 指到 `/tmp` 后跑 `dsh plugin --profile smoke add dsh-usage-state`，pnpm 报 `✕ missing peer react`。原因是任何 profile 的依赖图里都没有 react——浏览器半边的 react 由平台在**运行时**注入（客户端产物是 CJS 工厂，靠平台模块表拿到 React），根本不走 node_modules；而我们从一开始就在 `peerDependencies` 里声明了 `react: ^18.2.0`（那是 React 库的惯例，不是 DSH 插件的惯例）。
     现决策：**移除该 peer**，`react` 仍留在 `devDependencies` 供构建与类型检查使用。
     **代价（需知悉）**：几乎没有——市场只对 `@deepseek-ai/dsh*` 的 peer 做兼容评估（我们另有 `engines.dsh` 承担版本声明），安装照常成功，只是不再有那行警告；生态里 `dsh-better-sidebar` 等 UI 插件同样不声明 react peer。
 
@@ -93,7 +95,7 @@
     **验证（2026-10-05，宿主 `0.2.0-rc.2`）**：① `tsc --noEmit` 干净；② 272 条单测全绿，含新增的"平台契约"测试；③ 隔离 `DSH_HOME` + 独立端口，用**打包版 CLI** 装本地包并启动：宿主启动**零激活告警**，`--dump-config` 装配树里是 `- id: usage-state / config: {}`；④ 带 token 取首页解析 `__DSH_BOOT__`：入口在列、`client.js` 返回 200；⑤ **把这份真实产物放进 Node 假模块表跑起来**：`exports.inject = ["slots","locale","configForms","remote","remote.session","remote.credentials"]`，`apply()` 依次注册 effect、`configForms.get('usage-state')`、`remote.$mount(contribution)`，无异常。
     **未覆盖（需知悉）**：没有在真实浏览器里跑 0.2 的渲染与 typert RPC 往返（本机沙箱起不了浏览器）。③④⑤ 证明的是"宿主激活 + 产物可加载 + 服务名齐全 + `apply` 可执行"。
 
-    **流程教训（已写进 [`release.md`](release.md) 的六步复核）**：平台兼容复核必须断言"入口**激活**"，不能只断言"入口在列"。宿主侧的判据是启动 stderr 没有 `did not activate` 告警；客户端侧至少要把**真实产物**放进假模块表跑一遍 `apply`。
+    **流程教训（已写进 [`release.md`](../release.md) 的六步复核）**：平台兼容复核必须断言"入口**激活**"，不能只断言"入口在列"。宿主侧的判据是启动 stderr 没有 `did not activate` 告警；客户端侧至少要把**真实产物**放进假模块表跑一遍 `apply`。
 
 18. **0.4.0 的客户端 RPC 契约漏项：codec 必须带 `create()`**（0.4.1）
     0.4.0 把设置 API 迁到 0.2 之后，真机现象是"界面能启动、但**读数全缺**，状态行显示 **Mode not supported**"。这条修订记录第二个偏离，以及为什么上一轮的验证还是没抓住它。
@@ -121,7 +123,7 @@
 
     **验证（2026-10-05，宿主 `0.2.0-rc.2`，全部实跑）**：① 对照实验——同一份 contribution，去掉 `create` 被真实 registry 拒绝，补上后接受且 endpoint 可解析；② `tsc` 干净、278 条单测全绿；③ 从**真机宿主**取回它实际发出的 `client.js`，放进假模块表 + 真实 registry：`apply()` 完成、无 `console.error`；④ `npm pack` 出的 0.4.1 tarball 装进全新 profile 启动**零激活告警**。
 
-    **流程教训（已写进 [`release.md`](release.md) 六步复核的第 7 步）**：迁平台契约时，"入口激活"只覆盖了 **cordis 服务注入**；**RPC contribution 的挂载**是另一条独立契约，必须拿**真实 registry** 校验，而且**任何被静默吞掉的 rejection 都是不可接受的**——它把一个确定性失败变成一次长时间的猜测。
+    **流程教训（已写进 [`release.md`](../release.md) 六步复核的第 7 步）**：迁平台契约时，"入口激活"只覆盖了 **cordis 服务注入**；**RPC contribution 的挂载**是另一条独立契约，必须拿**真实 registry** 校验，而且**任何被静默吞掉的 rejection 都是不可接受的**——它把一个确定性失败变成一次长时间的猜测。
     **代价（需知悉）**：状态行多了一个 `loading` 态；"真的不支持该模式"只会在客户端确实拿到了数据源目录时才出现。
 
 19. **0.2 的 composer dock 变成"共享一排 pill"，状态行改成其中的一项**（0.4.1；该形态随后被修订 20 取代）
@@ -201,7 +203,7 @@
 
 本次更正的事实包括Node开发下限、watch/HMR前提、刷新实际频率、Moonshot人民币单位、0.4.4发布时间、市场AND兼容与日构建适用范围；并以npm gitHead替代不存在的版本标签链接。依据见 [规范补充核验](research/repository-release-standards-2026-10.md#documentation-recheck)。
 
-代价：已确认但未修的实现缺陷会在用户入口可见；正文更正不能消除这些缺陷。A01–A17后续进度维护在 [Backlog](backlog.md)，不把本次文档重构记成运行功能修复。此前修订中的六步流程、旧平台范围和已结案措辞仍按历史时点理解，当前操作以新发布/开发指南为准。
+代价：已确认但未修的实现缺陷会在用户入口可见；正文更正不能消除这些缺陷。A01–A17后续进度维护在 [Backlog](../backlog.md)，不把本次文档重构记成运行功能修复。此前修订中的六步流程、旧平台范围和已结案措辞仍按历史时点理解，当前操作以新发布/开发指南为准。
 
 ## 修订25：有效目标、身份代次与受控交付（2026-10-08，Unreleased）
 
@@ -213,7 +215,7 @@
 
 交付侧增加固定Node24.21.0/npm11.19.1、metadata/HEAD产物/真实tarball/稳定tag门禁；缺bundle硬失败。手动Release从可信main派发，默认verify，规范Node和Node20复用同一tgz；npm OIDC与GitHub附档分离任务/权限，附档失败可在保留期内恢复且不再publish。schema真实下界更正为3.18.3，不用polyfill掩盖3.18.2缺volatile。
 
-代价与限制：普通poll不再每分钟主动重试已有失败值，应由显式刷新、回合或idle调度重试；变更身份会清旧数值而非保留成新账户读数。HEAD门禁意味着新源码和bundle应一起提交，提交前的漂移是合理失败。尚无独立多账户/OAuth/history，也未新增真机账户/视觉/真实凭据写入验收。包号仍0.4.4，修复是Unreleased，已发布npm0.4.4不会因此变化；远端Actions、main保护、publisher与真正发版仍待后续。实现与最终证据维护在 [Backlog](backlog.md)，不改写修订1–24或研究快照。
+代价与限制：普通poll不再每分钟主动重试已有失败值，应由显式刷新、回合或idle调度重试；变更身份会清旧数值而非保留成新账户读数。HEAD门禁意味着新源码和bundle应一起提交，提交前的漂移是合理失败。尚无独立多账户/OAuth/history，也未新增真机账户/视觉/真实凭据写入验收。包号仍0.4.4，修复是Unreleased，已发布npm0.4.4不会因此变化；远端Actions、main保护、publisher与真正发版仍待后续。实现与最终证据维护在 [Backlog](../backlog.md)，不改写修订1–24或研究快照。
 
 ## 附录：初版实现顺序（历史，已全部执行完毕）
 
@@ -224,3 +226,8 @@
 3. 客户端状态行 + 中英词典。（原计划的"回合动作条"位置后按修订 13 移除。）
 4. z.ai / Kimi / sub2api 适配器 + 解析单测。
 5. 本地装入与验收 → 卸载 cost-meter → GitHub 发布。
+
+
+## 2026-10-23 · DeepSeek 账号余额
+
+原决策：DeepSeek 只有 API Key 余额，按厂商名推断均归为 `deepseek:api`。现决策：新增 `account` 模式，官方 `deepseek-account` 路由使用宿主账号服务，API Key 路由保持独立。原因：Desktop 已将账号拨款与 API Key 路由分开，登录 grant 不能作为 API Key 使用，二者不能共享账户读数。账号钱包以充值与赠送之和显示，签出/换号清除旧身份读数，设置页引导使用宿主登录。

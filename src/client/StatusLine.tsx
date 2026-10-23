@@ -243,11 +243,13 @@ export function StatusLine(props: StatusLineProps) {
 
   const fullParts = statusParts({
     segments,
-    t,
+    t: status.kind === 'ready' && status.mode === 'account'
+      ? (key, params) => t(key === 'error.config' ? 'accountSignInRequired' : key === 'error.auth' ? 'accountAuthFailed' : key, params)
+      : t,
     now,
     ...(sourceLabel === '' ? {} : { sourceLabel }),
     ...(status.kind === 'ready'
-      ? { modeLabel: status.mode === 'api' ? t('modeApi') : t('modeCodingPlan') }
+      ? { modeLabel: status.mode === 'account' ? t('modeAccount') : status.mode === 'api' ? t('modeApi') : t('modeCodingPlan') }
       : {}),
   })
   if (fullParts.length === 0) return null

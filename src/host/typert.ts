@@ -29,7 +29,7 @@ export function strictCodec(name: string, schema: z.ZodType): StrictCodec {
   return { mode: 'strict', typeSymbol: `${TYPERT_PACKAGE}#${name}`, schema, create: () => schema }
 }
 
-const usageModeSchema = z.enum(['api', 'coding-plan'])
+const usageModeSchema = z.enum(['api', 'account', 'coding-plan'])
 
 const balanceSchema = z.object({
   amount: z.number(),

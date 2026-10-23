@@ -239,3 +239,27 @@ test('the built browser bundle mounts its RPC contribution through the real 0.2 
   assert.notEqual(registry.lookup('usageState/describeCredentials'), undefined)
   assert.deepEqual(events, ['effect', 'configForms.get(usage-state)', 'effect', 'effect', 'mounted'])
 })
+
+test('the shipped bundle supports account login without an API key and encodes account mode over RPC', async () => {
+  requireBuilt()
+  const { createUsageState } = await import(HOST.href)
+  const { TYPERT: contract } = await import(TYPERT.href)
+  const account = {
+    getPlatformSession: async () => ({ origin: 'https://platform.deepseek.com', token: 'bundle-login' }),
+    getBalance: async () => ({ status: 'ready', value: [{ currency: 'CNY', balance: '100' }], bonusWallets: [{ currency: 'CNY', balance: '5' }] }),
+  }
+  const ctx = {
+    get: (name: string) => name === 'llm' ? { listProviders: () => [{ id: 'deepseek-account' }] }
+      : name === 'deepseekAccount' ? account : undefined,
+    on: () => () => {}, effect: (fn: () => void) => fn(), provide: () => {},
+    timeout: () => () => {}, interval: () => () => {},
+  }
+  const service = createUsageState(ctx, { config: { get: () => ({}) }, credentialFallback: false,
+    fetch: async () => { throw new Error('Account mode must not use API key HTTP transport') },
+  })
+  const state = await service.getState(false)
+  assert.deepEqual(state.snapshots['deepseek:account']?.balances, [{ amount: 105, currency: 'CNY', granted: 5, toppedUp: 100 }])
+  const wire = contract.invocations.find((entry: { method: string }) => entry.method === 'getState').result.schema.parse(state)
+  assert.equal(wire.snapshots['deepseek:account'].mode, 'account')
+  assert.doesNotMatch(JSON.stringify(wire), /bundle-login/)
+})

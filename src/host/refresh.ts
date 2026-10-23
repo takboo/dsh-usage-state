@@ -22,6 +22,8 @@ export interface RefreshPolicy {
 
 export interface ResolvedTargetCredential {
   apiKey: string
+  /** Host-only account identity digest; never sent over RPC. */
+  identity?: string
   ref: string
   origin: string
   /** Endpoint override (plugin setting, or the endpoint the provider declares). */
@@ -87,6 +89,11 @@ export class UsageStateStore {
     this.deps = deps
   }
 
+  /** Clear an account grant immediately when the host signs out. */
+  clear(key: string): void {
+    this.invalidate(key)
+  }
+
   private invalidate(key: string): void {
     this.generations.set(key, (this.generations.get(key) ?? 0) + 1)
     this.identities.delete(key)
@@ -139,7 +146,7 @@ export class UsageStateStore {
    */
   async refresh(key: string, options: { force?: boolean; onlyIfMissing?: boolean } = {}): Promise<UsageSnapshot> {
     if (this.stopped) return {
-      sourceId: key.split(':')[0] ?? '', mode: key.endsWith(':coding-plan') ? 'coding-plan' : 'api',
+      sourceId: key.split(':')[0] ?? '', mode: key.endsWith(':account') ? 'account' : key.endsWith(':coding-plan') ? 'coding-plan' : 'api',
       balances: [], windows: [], fetchedAt: this.deps.clock.now(),
       error: { kind: 'config', detail: 'refresh stopped' },
     }
@@ -147,7 +154,7 @@ export class UsageStateStore {
     if (target === undefined) {
       return {
         sourceId: key.split(':')[0] ?? '',
-        mode: key.endsWith(':coding-plan') ? 'coding-plan' : 'api',
+        mode: key.endsWith(':account') ? 'account' : key.endsWith(':coding-plan') ? 'coding-plan' : 'api',
         balances: [], windows: [], fetchedAt: this.deps.clock.now(),
         error: { kind: 'config', detail: `unknown target ${key}` },
       }
@@ -177,7 +184,7 @@ export class UsageStateStore {
       target.sourceId, target.mode,
       credential?.baseUrl ?? target.baseUrl ?? source.defaultBaseUrl(target.mode),
       credential?.baseUrlPinned === true || target.baseUrlPinned === true,
-      credential?.ref ?? target.apiKeyRef, credential?.apiKey,
+      credential?.ref ?? target.apiKeyRef, credential?.apiKey, credential?.identity,
     ])).digest('hex')
     if ((this.generations.get(key) ?? 0) !== generationAtLookup &&
       this.identities.get(key) !== identity) {
@@ -191,7 +198,7 @@ export class UsageStateStore {
       this.inflight.delete(key)
     }
     if (credential === undefined) {
-      return this.fail(target, { kind: 'config', detail: 'no credential configured' }, this.readings.get(key))
+      return this.fail(target, { kind: 'config', detail: target.mode === 'account' ? 'Sign in through Harness account settings' : 'no credential configured' }, this.readings.get(key))
     }
 
     const cached = this.readings.get(key)

@@ -1,9 +1,9 @@
 {
   "name": "dsh-usage-state",
-  "version": "0.4.8",
+  "version": "0.4.9",
   "packageManager": "npm@11.19.1",
   "type": "module",
-  "description": "DSH plugin: show account balance (API mode) or coding-plan quota (5h/7d/30d) for the model in use",
+  "description": "DSH plugin: show account sign-in or API key balances and coding-plan quotas for the model in use",
   "license": "MIT",
   "engines": {
     "node": ">=20",

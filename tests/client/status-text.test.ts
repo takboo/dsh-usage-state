@@ -83,16 +83,16 @@ test('state segments are translated and explain themselves in the tooltip', () =
     { kind: 'state', state: 'error', errorKind: 'auth', errorDetail: 'HTTP 401' },
   ]
 
-  const parts = statusParts({ segments: states, t, now: NOW, sourceLabel: 'DeepSeek', modeLabel: 'API balance' })
+  const parts = statusParts({ segments: states, t, now: NOW, sourceLabel: 'DeepSeek', modeLabel: 'API Key balance' })
 
   assert.deepEqual(
     parts.map(part => part.text),
     ['Not configured', 'Mode not supported', 'Reading…', 'Unavailable'],
   )
-  assert.deepEqual(parts[0]?.tooltip, 'Source DeepSeek · Mode API balance')
+  assert.deepEqual(parts[0]?.tooltip, 'Source DeepSeek · Mode API Key balance')
   // The real reason must survive into the tooltip, detail included.
   assert.equal(parts[3]?.kind === 'state' ? parts[3].errorKind : undefined, 'auth')
-  assert.equal(parts[3]?.tooltip, 'Key rejected: HTTP 401 · Source DeepSeek · Mode API balance')
+  assert.equal(parts[3]?.tooltip, 'Key rejected: HTTP 401 · Source DeepSeek · Mode API Key balance')
 })
 
 test('a balance tooltip carries the provider split when the endpoint reports one', () => {
@@ -101,8 +101,8 @@ test('a balance tooltip carries the provider split when the endpoint reports one
     t,
     now: NOW,
     sourceLabel: 'DeepSeek',
-    modeLabel: 'API balance',
+    modeLabel: 'API Key balance',
   })
 
-  assert.equal(parts[0]?.tooltip, 'Granted 0 · Topped up 58.13 · Source DeepSeek · Mode API balance')
+  assert.equal(parts[0]?.tooltip, 'Granted 0 · Topped up 58.13 · Source DeepSeek · Mode API Key balance')
 })

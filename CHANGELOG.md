@@ -1,10 +1,21 @@
 # 更新日志（Changelog）
 
-用户可见的变更按版本记录于此。设计取舍见 [设计修订](https://github.com/takboo/dsh-usage-state/blob/main/docs/design-changelog.md)，发布验证流程见 [发布与验收](https://github.com/takboo/dsh-usage-state/blob/main/docs/release.md)。
+用户可见的变更按版本记录于此。当前设计见 [设计共识](https://github.com/takboo/dsh-usage-state/blob/main/docs/design-consensus.md)，发布验证流程见 [发布与验收](https://github.com/takboo/dsh-usage-state/blob/main/docs/release.md)。
 
 格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循语义化版本。0.3.0起发布npm，之前仅GitHub分发。已发布日期按 [npm registry](https://registry.npmjs.org/dsh-usage-state) 的UTC记录；历史比较引用说明见文末。
 
 ## [Unreleased]
+
+## [0.4.9] - 2026-10-23
+
+### Added
+
+- DeepSeek 新增账号余额模式：`deepseek-account` 使用 Harness 登录服务读取充值与赠送钱包，`deepseek-official` 保持 API Key 余额；凭据、缓存及登录提示分别处理，账号模式无需 API Key。
+- 退出登录、换号与晚返回响应隔离；非法钱包不当成零，失败只保留同一登录身份的上次成功余额。
+
+### Documentation
+
+- 重写当前文档入口、架构、排查和待办，归档旧审计、研究与设计过程；删除重复研究索引和过时发布操作，集中保留真实验证边界。
 
 ## [0.4.8] - 2026-10-17
 
@@ -135,7 +146,8 @@
 
 0.4.5起建立版本tag/Release；更早发布没有保存这些引用。0.3.0至0.4.4的比较端点来自各npm版本的gitHead；0.2系列引用对应实现提交，不能替代当时没有保存的正式发布产物。早期日期沿用历史版本记录。今后版本应按发布流程建立稳定引用。
 
-[Unreleased]: https://github.com/takboo/dsh-usage-state/compare/v0.4.8...HEAD
+[Unreleased]: https://github.com/takboo/dsh-usage-state/compare/v0.4.9...HEAD
+[0.4.9]: https://github.com/takboo/dsh-usage-state/compare/v0.4.8...v0.4.9
 [0.4.8]: https://github.com/takboo/dsh-usage-state/compare/v0.4.7...v0.4.8
 [0.4.7]: https://github.com/takboo/dsh-usage-state/compare/v0.4.6...v0.4.7
 [0.4.6]: https://github.com/takboo/dsh-usage-state/compare/v0.4.5...v0.4.6

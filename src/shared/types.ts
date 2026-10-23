@@ -7,7 +7,7 @@
  */
 
 /** How the usage of a model's account is read. */
-export type UsageMode = 'api' | 'coding-plan'
+export type UsageMode = 'api' | 'account' | 'coding-plan'
 
 /** A monetary balance, already scaled to the provider's major unit (yuan, dollars). */
 export interface BalanceAmount {

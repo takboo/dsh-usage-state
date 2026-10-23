@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/dsh-usage-state)](https://www.npmjs.com/package/dsh-usage-state)
 
-> **Release status:** Current version **0.4.8** verifies compatibility with DSH **0.2.1-rc.2**, retaining the credential startup-order fix from 0.4.7. See the [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.8) for the tarball and checksum and the [Changelog](CHANGELOG.md#048---2026-10-17) for details.
+> **0.4.9** adds DeepSeek Harness account sign-in balances, separate from API Key queries. See the [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.9) for the tarball and checksum and the [Changelog](CHANGELOG.md#049---2026-10-23) for details.
 
 Show the current model provider's **account balance** or **coding-plan quota** above the composer input in [DSH (DeepSeek Harness)](https://github.com/deepseek-ai/deepseek-harness). The line matches the input card's width and preserves the native statistics and context meter.
 
@@ -47,21 +47,24 @@ Use historical version 0.3.2 on DSH 0.1; it does not work on 0.2. Version 0.4.0 
 ## Quick start
 
 1. Open **Settings → Usage state** to inspect providers, models and the detected source.
-2. Keep Auto for recognized providers, or choose a supported API, Coding Plan or Hidden option.
+2. Keep Auto for recognized providers, or choose a supported API Key balance, Account balance, Coding Plan or Hidden option.
 3. Set your instance URL for a self-hosted Sub2API source. The current model's reading appears above the input.
 4. Use Refresh now for an explicit query. Check the settings error and the [troubleshooting guide (Chinese)](https://github.com/takboo/dsh-usage-state/blob/main/docs/troubleshooting.md) if it fails.
 
-Advanced controls offer source, endpoint, credential name and key writes. Explicit provider overrides take precedence over legacy source defaults. Descriptions and requests share the candidate order; saves prioritize the explicit ref. Pinned endpoints do not try mirrors, and account configuration/key changes discard previous-identity readings. Configuration and credential write permissions are separate; saves/clears report failure and prevent repeated in-flight operations.
+Advanced controls offer source selection; API Key mode also provides endpoint, credential name and key writes. Explicit provider overrides take precedence over legacy source defaults. Descriptions and requests share the candidate order; saves prioritize the explicit ref. Pinned endpoints do not try mirrors, and account configuration/key changes discard previous-identity readings. Configuration and credential write permissions are separate; saves/clears report failure and prevent repeated in-flight operations.
 
 ## Sources
 
-| Source | API reading | Coding-plan reading | Main credential |
+| Source | Balance reading | Coding-plan reading | Main credential |
 |---|---|---|---|
-| DeepSeek official | CNY/USD balance | — | DEEPSEEK_API_KEY |
+| DeepSeek official API Key | CNY/USD balance | — | DEEPSEEK_API_KEY |
+| DeepSeek account sign-in | CNY/USD recharge and bonus balance | — | Current Harness login |
 | z.ai / Zhipu GLM | — | 5h / 7d used % | ZAI_API_KEY and related refs |
 | Kimi / Moonshot | CNY balance | Kimi Code subscription windows | MOONSHOT_API_KEY / KIMI_CODING_API_KEY |
 | OpenCode Zen Go | — | 5h / 7d / 30d used % | OPENCODE_GO_API_KEY / OPENCODE_API_KEY |
 | Sub2API | Balance or key allowance | Depends on the instance, e.g. 5h / 1d / 7d / 30d | SUB2API_API_KEY and instance URL |
+
+**DeepSeek Desktop account sign-in:** `deepseek-account` automatically uses “Account balance” through the Harness account service, adding recharge and bonus wallets. `deepseek-official` uses “API Key balance”. Queries and caches are separate; account mode never probes or falls back to `DEEPSEEK_API_KEY`. Sign in through Harness account settings. Account mode requires the host account service; older hosts without it need an upgrade. Harness owns the endpoint and login grant; account mode has no API key fields.
 
 Kimi Code routes `kimi-code`, `kimi-coding`, and `kimi-for-coding`, plus custom providers declaring `api.kimi.com` / `api.kimi.ai`, automatically read subscription usage. The plugin displays only returned windows: 5h, 7d, monthly total, and monthly code usage. Moonshot regional APIs retain CNY balance mode. Explicit settings take precedence.
 
@@ -89,9 +92,8 @@ The plugin queries balances/quotas and reads the selected model and provider cat
 
 See the [Backlog (Chinese)](https://github.com/takboo/dsh-usage-state/blob/main/docs/backlog.md) for remediation status and verification scope.
 
-- **Older npm 0.4.4 and earlier:** still has credential override, pin/cache identity, legacy hiding, default ordering and failure-display defects. It still divides Moonshot balances ≥100 yuan by 100 and may turn invalid DeepSeek amounts into zero. These are fixed in 0.4.5; upgrade if you use an older version. Cross-check old-version amounts against the [official API](https://platform.kimi.com/docs/api/balance.md).
 - **Account scope:** one target is still selected per source and mode. Identity isolation does not add independent multi-account support.
-- **Live verification:** Kimi Code monthly quotas, Sub2API accounts, high-threshold colors, real credential writes and nonzero OpenCode readings still lack live coverage. Local interaction tests do not replace that acceptance.
+- **Live verification:** this release’s real Desktop account login and visuals, Kimi Code monthly quotas, Sub2API accounts, high-threshold colors, real credential writes and nonzero OpenCode readings still lack live coverage. Local interaction tests do not replace that acceptance.
 - **Scope:** the line can be absent without a selected model or when hidden; clicking it does not open settings; readings are not saved as history.
 
 ## Development and docs
@@ -109,6 +111,6 @@ See the [development guide (Chinese)](https://github.com/takboo/dsh-usage-state/
 
 ## Acknowledgements and license
 
-Thanks to [dsh-cost-meter](https://github.com/Han-1413141/dsh-cost-meter) by Han-1413141 (MIT) for data-source behavior references. This TypeScript implementation was written independently; endpoint, field and compatibility provenance is recorded in the [upstream analysis](https://github.com/takboo/dsh-usage-state/blob/main/docs/research/dsh-cost-meter-analysis.md). DSH provides the settings, credentials, RPC, slots and UI primitives.
+Thanks to [dsh-cost-meter](https://github.com/Han-1413141/dsh-cost-meter) by Han-1413141 (MIT) for data-source behavior references. This TypeScript implementation was written independently; endpoint, field and compatibility provenance is recorded in the [upstream analysis](https://github.com/takboo/dsh-usage-state/blob/main/docs/archive/research/dsh-cost-meter-analysis.md). DSH provides the settings, credentials, RPC, slots and UI primitives.
 
 [MIT](LICENSE). Report problems or attribution suggestions through [Issues](https://github.com/takboo/dsh-usage-state/issues).

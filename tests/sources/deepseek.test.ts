@@ -16,8 +16,10 @@ const officialPayload = {
   ],
 }
 
-test('deepseek declares API mode only (the official API has no coding plan)', () => {
-  assert.deepEqual([...deepseek.modes], ['api'])
+test('deepseek separates API keys from Harness account login (no coding plan)', () => {
+  assert.deepEqual([...deepseek.modes], ['api', 'account'])
+  assert.deepEqual(deepseek.credentialRefs('account'), [])
+  assert.throws(() => deepseek.request({ mode: 'account', apiKey: 'unrelated-key' }), SourceError)
   assert.deepEqual([...deepseek.credentialRefs('api')], ['DEEPSEEK_API_KEY'])
   assert.equal(deepseek.defaultBaseUrl('api'), 'https://api.deepseek.com')
 })
@@ -123,4 +125,15 @@ test('deepseek ignores blank currency codes without throwing', () => {
   const reading = deepseek.parse({ balance_infos: [{ total_balance: '1.5' }] }, 'api')
 
   assert.deepEqual(reading.balances, [{ amount: 1.5, currency: '' }])
+})
+
+
+test('account wallets keep CNY selection, bonus-only balances and real zero in major units', () => {
+  assert.deepEqual(deepseek.parse({ status: 'ready', value: [{ currency: 'USD', balance: '0' }], bonusWallets: [{ currency: 'CNY', balance: '100.25' }] }, 'account').balances,
+    [{ amount: 100.25, currency: 'CNY', granted: 100.25, toppedUp: 0 }])
+  assert.deepEqual(deepseek.parse({ status: 'ready', value: [{ currency: 'CNY', balance: '0' }], bonusWallets: [] }, 'account').balances,
+    [{ amount: 0, currency: 'CNY', granted: 0, toppedUp: 0 }])
+  for (const payload of [null, {}, { status: 'ready', value: [], bonusWallets: [] }, { status: 'ready', value: [{ currency: 'CNY', balance: 'Infinity' }], bonusWallets: [] }]) {
+    assert.throws(() => deepseek.parse(payload, 'account'), SourceError)
+  }
 })

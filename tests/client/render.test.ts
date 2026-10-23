@@ -136,7 +136,7 @@ test('a provider recognized by the host endpoint renders consistently in the lin
   const page = renderToStaticMarkup(h(SettingsSection, { t, usageState: store, settings, credentials: CREDENTIALS, close: () => {} }))
 
   assert.match(line, /¥66\.28/)
-  assert.match(page, /Detected DeepSeek · API balance/)
+  assert.match(page, /Detected DeepSeek · API Key balance/)
 })
 
 test('the status line renders a balance for the session model', () => {
@@ -167,7 +167,7 @@ test('the status line renders a balance for the session model', () => {
   assert.match(html, /DeepSeek/)
   assert.match(html, /¥66\.28/)
   // Hovering the line explains where the number comes from.
-  assert.match(html, /data-tooltip="Source DeepSeek · Mode API balance"/)
+  assert.match(html, /data-tooltip="Source DeepSeek · Mode API Key balance"/)
 })
 
 test('the dock line is a full-width block of its own, aligned with the input card', () => {
@@ -364,12 +364,12 @@ test('the settings page shows one row per provider with its models and resolved 
   assert.match(html, /DeepSeek/)
   // Models are listed once per provider, not once per row of controls.
   assert.match(html, /Models: DeepSeek V4 Flash · DeepSeek V4 Pro/)
-  assert.match(html, /Detected DeepSeek · API balance/)
+  assert.match(html, /Detected DeepSeek · API Key balance/)
   assert.match(html, /z\.ai \/ GLM/)
   assert.match(html, /Detected z\.ai \/ GLM · Coding plan/)
   // Auto is offered everywhere; only the source's own modes otherwise.
   assert.match(html, /Auto/)
-  assert.match(html, /API balance/)
+  assert.match(html, /API Key balance/)
   assert.match(html, /Coding plan/)
   assert.match(html, /Hidden/)
   assert.match(html, /DEEPSEEK_API_KEY/)
@@ -557,7 +557,7 @@ test('the settings page reports an unavailable settings transport instead of ren
   )
 
   assert.match(html, /does not serve settings/)
-  assert.doesNotMatch(html, /API balance/)
+  assert.doesNotMatch(html, /API Key balance/)
 })
 
 test('the dock line matches the typography of the platform stats row', () => {
@@ -679,4 +679,39 @@ test('Kimi auto mode renders subscription windows and localized monthly labels',
   assert.match(html, /Monthly total 50%/)
   assert.match(html, /Monthly code 10%/)
   assert.doesNotMatch(html, /Not configured|Mode not supported|window\.month/)
+})
+
+test('account login UI shows account balance and sign-in guidance without key or endpoint fields', () => {
+  const catalog = toSourceCatalog()
+  const store = storeWith({
+    catalog,
+    models: [{ provider: 'deepseek-account', providerName: 'DeepSeek Account', model: 'm', name: 'Model' }],
+    credentials: { 'deepseek:account': { candidates: [], configured: false, source: 'account', writable: false } },
+    snapshots: { 'deepseek:account': {
+      sourceId: 'deepseek', mode: 'account', balances: [], windows: [], fetchedAt: 1000, error: { kind: 'config' },
+    } },
+  })
+  const settings = settingsWith(configWith())
+  const line = renderToStaticMarkup(h(StatusLine, {
+    t, usageState: store, settings, useProjection: projectionOf({ provider: 'deepseek-account', model: 'm' }),
+  }))
+  const page = renderToStaticMarkup(h(SettingsSection, { t, usageState: store, settings, credentials: CREDENTIALS, close: () => {} }))
+  assert.match(page, /Detected DeepSeek · Account balance/)
+  assert.match(page, /Sign in through Harness account settings/)
+  assert.doesNotMatch(page, /DEEPSEEK_API_KEY|type="password"|Credential name|Paste the key|https:\/\/platform.deepseek.com/)
+  assert.match(line, /Sign in through Harness account settings/)
+  assert.doesNotMatch(line, /Missing key|Key rejected/)
+})
+
+test('account and API key routes select separate balances in the status line', () => {
+  const store = storeWith({ catalog: toSourceCatalog(), snapshots: {
+    'deepseek:api': { sourceId: 'deepseek', mode: 'api', balances: [{ amount: 99, currency: 'CNY' }], windows: [], fetchedAt: 1000 },
+    'deepseek:account': { sourceId: 'deepseek', mode: 'account', balances: [{ amount: 12, currency: 'CNY' }], windows: [], fetchedAt: 1000 },
+  } })
+  const settings = settingsWith(configWith())
+  for (const [provider, amount, mode] of [['deepseek-account', '12.00', 'Account balance'], ['deepseek-official', '99.00', 'API Key balance']]) {
+    const line = renderToStaticMarkup(h(StatusLine, { t, usageState: store, settings, useProjection: projectionOf({ provider: provider!, model: 'm' }) }))
+    assert.ok(line.includes(`¥${amount}`))
+    assert.ok(line.includes(`Mode ${mode}`))
+  }
 })

@@ -1,3 +1,5 @@
+> 归档快照，2026-10-23 整理。仅供追溯标题所示历史基线；正文中的“当前”“待办”、本机路径和命令均为当时记录。接手工作从 [当前文档导航](../../index.md) 开始，开放事项以 [当前待办](../../backlog.md) 为准。
+
 # 仓库发布与市场规范研究（2026-10）
 
 研究日期：2026-10-08（本次运行环境时间）。对象：`dsh-usage-state@0.4.4`。
@@ -16,8 +18,8 @@
 | Git 发版引用 | tags、GitHub Releases 均为空 | [tags API](https://api.github.com/repos/takboo/dsh-usage-state/tags)、[Releases API](https://api.github.com/repos/takboo/dsh-usage-state/releases)；主审计本轮结果 |
 | npm latest | 0.4.4，`gitHead=3ad9a71e2f7e4b9a05c69bc529e396a364ae6aeb` | [registry latest](https://registry.npmjs.org/dsh-usage-state/latest) |
 | 兼容声明 | Node `>=20`；DSH `>=0.2.0-rc.2 <0.3.0-0` | [包清单](https://github.com/takboo/dsh-usage-state/blob/3ad9a71e2f7e4b9a05c69bc529e396a364ae6aeb/package.json#L7) |
-| npm 元数据 | repository、homepage、bugs、MIT、files、exports 已声明 | [包清单](../../package.json) |
-| 市场截图 | 声明 3 张相对路径截图 | [截图清单](../../screenshots.json) |
+| npm 元数据 | repository、homepage、bugs、MIT、files、exports 已声明 | [包清单](../../../package.json) |
+| 市场截图 | 声明 3 张相对路径截图 | [截图清单](../../../screenshots.json) |
 | 市场描述 | 仍写 `under the composer`／输入框统计行下方 | [官方条目](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/blob/main/data/plugins/takboo__dsh-usage-state.yml) |
 | 描述更正 | PR #6622 已提交，本次主审计读取为 open、未合并 | [PR #6622](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/6622) |
 
@@ -72,7 +74,7 @@ Actions artifact 有自动到期机制，不应成为正式版本的唯一长期
 6. 验证 package／lockfile 根版本、CHANGELOG、tag 和 tarball 一致性。
 
 本仓库已有对应脚本与产物测试，可直接迁入 PR／`main` push CI。
-证据：[脚本](https://github.com/takboo/dsh-usage-state/blob/3ad9a71e2f7e4b9a05c69bc529e396a364ae6aeb/package.json#L11)、[产物测试](../../tests/build/bundle.test.ts)、[发布流程](../release.md)。
+证据：[脚本](https://github.com/takboo/dsh-usage-state/blob/3ad9a71e2f7e4b9a05c69bc529e396a364ae6aeb/package.json#L11)、[产物测试](../../../tests/build/bundle.test.ts)、[发布流程](../../release.md)。
 定期依赖检查补充维护即可，无需先引入大型发版框架。
 
 ## 3. Node：运行、开发和发布要求不同
@@ -114,7 +116,7 @@ Node 官方计划：20 的 EOL 为 2026-04-30；22 为 2027-04-30；24 为 2028-
 普通 npm 包不带 package-lock；它服务仓库开发／CI。运行所需第三方依赖放 dependencies。
 来源：[package.json 官方文档](https://github.com/npm/cli/blob/v11.19.1/docs/lib/content/configuring-npm/package-json.md)。
 本仓库白名单和 zod 运行依赖方向正确；运行型插件缺 `.d.ts` 不是 npm 硬性缺陷。
-证据：[包清单](https://github.com/takboo/dsh-usage-state/blob/3ad9a71e2f7e4b9a05c69bc529e396a364ae6aeb/package.json#L53)、[构建配置](../../tsdown.config.ts)。
+证据：[包清单](https://github.com/takboo/dsh-usage-state/blob/3ad9a71e2f7e4b9a05c69bc529e396a364ae6aeb/package.json#L53)、[构建配置](../../../tsdown.config.ts)。
 
 **本仓库建议**：发版验证版本、lockfile 根元数据和 CHANGELOG 状态，并产生可追溯 tag。
 当前 [CHANGELOG](https://github.com/takboo/dsh-usage-state/blob/3ad9a71e2f7e4b9a05c69bc529e396a364ae6aeb/CHANGELOG.md#L7)仍将 0.4.4 写在 Unreleased／待发布，registry latest 却已是 0.4.4。
@@ -163,7 +165,7 @@ npm 自身的 Git URL 规则中，build、prepare、prepack 等脚本可触发�
 不要未经验证就增加 prepare／prepack，避免让预构建直装路径出现额外构建和授权要求。
 
 固定官方文档对外部 link 的模块查找、peer 回落有详细位置规则，比“link 均无回落”表述细。
-[平台实测记录](../platform-notes.md)只代表其标注宿主版本；本轮未复验历史宿主，不能擅自推翻或永久泛化。
+[平台实测记录](../../platform-notes.md)只代表其标注宿主版本；本轮未复验历史宿主，不能擅自推翻或永久泛化。
 
 ## 6. awesome-dsh-plugin／dsh-market
 
@@ -177,7 +179,7 @@ npm 自身的 Git URL 规则中，build、prepare、prepack 等脚本可触发�
 
 npm 发布、截图为推荐项，不是收录必需。
 npm repository 必须指回收录仓库才能自动关联；条目手写 npm 字段会被拒绝。
-本仓库 [截图清单](../../screenshots.json)的 1–8 张图片规则：相对路径不得越界，绝对 URL 限 GitHub 托管 HTTPS。
+本仓库 [截图清单](../../../screenshots.json)的 1–8 张图片规则：相对路径不得越界，绝对 URL 限 GitHub 托管 HTTPS。
 不声明截图可从 README 提取；更新自己截图不需要再次向精选库提 PR。同一来源。
 
 不发 npm 且根本不能从源码安装时，官方要求 GitHub Release HTTPS `.tgz` 和 tarball 声明。
@@ -263,7 +265,7 @@ schedule 可延迟，足够高负载时排队作业也可能丢弃。
 - 成功热替换会重执行并重挂载受影响插件，插件本地 React 状态会丢失。宿主入口或配置层的改动不属于浏览器 bundle 热替换，应按实际宿主生命周期重新加载／重启；Web shell 的改动也不能靠此插件替换链生效。
 
 [DSH 开发指南](https://github.com/deepseek-ai/deepseek-harness/blob/5badb15009ae1756c3afe0ae0cef1faafc290ccc/docs/development.md#application-commands) 区分 `start:web` 使用已有产物与 `dev:web` 构建并持续重建。
-本仓库 [tsdown 配置](../../tsdown.config.ts) 同时包含宿主 index／typert 和客户端两组入口，故“`npm run watch` 只重建 client.js”并非准确的脚本说明；源码 watch 与哪些改动需要宿主重启应分开描述。
+本仓库 [tsdown 配置](../../../tsdown.config.ts) 同时包含宿主 index／typert 和客户端两组入口，故“`npm run watch` 只重建 client.js”并非准确的脚本说明；源码 watch 与哪些改动需要宿主重启应分开描述。
 这些是规范与源码核验，没有启动 server 或宣称本机 HMR 已现场验证。
 
 ### Moonshot 余额单位的明确勘误

@@ -1,8 +1,10 @@
+> 归档快照，2026-10-23 整理。仅供追溯标题所示历史基线；正文中的“当前”“待办”、本机路径和命令均为当时记录。接手工作从 [当前文档导航](../../index.md) 开始，开放事项以 [当前待办](../../backlog.md) 为准。
+
 # 仓库审计：dsh-usage-state
 
-本报告是审计快照，不替代现有 [Backlog](../backlog.md)。基线为 `3ad9a71`、包版本 `0.4.4`；开始时工作区干净。核验日期采用宿主 UTC 时钟：2026-10-08。外部规范与时效说明见 [官方规范研究](repository-release-standards-2026-10.md)。
+本报告是审计快照，不替代现有 [Backlog](../../backlog.md)。基线为 `3ad9a71`、包版本 `0.4.4`；开始时工作区干净。核验日期采用宿主 UTC 时钟：2026-10-08。外部规范与时效说明见 [官方规范研究](repository-release-standards-2026-10.md)。
 
-> 后续说明：本轮已按此审计重构常青文档，文档/版本记录部分的状态发生变化；原发现、验证数字和行号保留审计基线含义。当前进度见Backlog的A01–A17，文档入口见 [导航](../index.md)。下文不是新的待办状态清单，也不表示实现缺陷已修。
+> 后续说明：本轮已按此审计重构常青文档，文档/版本记录部分的状态发生变化；原发现、验证数字和行号保留审计基线含义。当前进度见Backlog的A01–A17，文档入口见 [导航](../../index.md)。下文不是新的待办状态清单，也不表示实现缺陷已修。
 
 ## 结论
 
@@ -33,15 +35,15 @@
 
 ## 架构与文件组织
 
-[宿主入口](../../src/index.ts)、[目标解析](../../src/host/targets.ts)、[客户端入口](../../src/client/index.tsx) 和 [共享配置](../../src/shared/config.ts) 形成清晰的宿主 / 浏览器 / 共享三层；测试基本与实现对应。[构建配置](../../tsdown.config.ts) 明确区分宿主 ESM 与浏览器模块工厂。提交预构建产物适配 GitHub 直接安装路径，不能照搬普通 Node 库“所有 dist 应忽略”的惯例。
+[宿主入口](../../../src/index.ts)、[目标解析](../../../src/host/targets.ts)、[客户端入口](../../../src/client/index.tsx) 和 [共享配置](../../../src/shared/config.ts) 形成清晰的宿主 / 浏览器 / 共享三层；测试基本与实现对应。[构建配置](../../../tsdown.config.ts) 明确区分宿主 ESM 与浏览器模块工厂。提交预构建产物适配 GitHub 直接安装路径，不能照搬普通 Node 库“所有 dist 应忽略”的惯例。
 
 值得保留：
 
-- [适配器契约](../../src/host/sources/types.ts) 分开 request 与 parse，已有五个 Adapter，Seam 有实际变化支撑。
-- [HTTP Module](../../src/host/read.ts) 集中请求、超时、镜像和错误分类；[调度 Module](../../src/host/refresh.ts) 集中成功间隔、去重和失败保留旧值。Interface 可注入 fetch、时钟和凭据，具有 Depth。
-- [RPC Module](../../src/host/service.ts) 仅两个方法，隐藏内部调度；allSettled 隔离单源失败。
-- [宿主清单](../../src/host/typert.ts)、[客户端 contribution](../../src/client/contribution.ts) 和 [产物测试](../../tests/build/bundle.test.ts) 使用真实平台校验器/registry。
-- [配置归一化](../../src/shared/config.ts) 集中旧文档迁移、非法字段降级和范围约束，避免脏配置阻断启动。
+- [适配器契约](../../../src/host/sources/types.ts) 分开 request 与 parse，已有五个 Adapter，Seam 有实际变化支撑。
+- [HTTP Module](../../../src/host/read.ts) 集中请求、超时、镜像和错误分类；[调度 Module](../../../src/host/refresh.ts) 集中成功间隔、去重和失败保留旧值。Interface 可注入 fetch、时钟和凭据，具有 Depth。
+- [RPC Module](../../../src/host/service.ts) 仅两个方法，隐藏内部调度；allSettled 隔离单源失败。
+- [宿主清单](../../../src/host/typert.ts)、[客户端 contribution](../../../src/client/contribution.ts) 和 [产物测试](../../../tests/build/bundle.test.ts) 使用真实平台校验器/registry。
+- [配置归一化](../../../src/shared/config.ts) 集中旧文档迁移、非法字段降级和范围约束，避免脏配置阻断启动。
 
 最需要加深的 Module 是**有效轮询目标解析**。客户端、targets、入口、凭据候选和缓存各掌握一部分“provider 查询哪个账户”的知识；多个 Interface 逐次转抄字段，造成 apiKeyRef/pinned 丢失，客户端又独立猜测 source。
 
@@ -49,7 +51,7 @@
 
 `source:mode` 是**数据源级单账户假设**，不等同于账户身份。两条 OpenCode 路由共享账户时去重合理；不同实例/不同密钥不能仅因 source 相同就被认定同一账户。本报告不要求新增多账户功能，但应明确限制或提示冲突，并保证重新配置后不把旧值当成新身份有效值。
 
-无需大改目录。贡献说明、问题模板、安全报告入口和格式检查是轻量协作改善，不是 npm/市场普遍硬要求。[shared RPC](../../src/shared/rpc.ts) 与 [host service](../../src/host/service.ts) 重复的线上类型宜集中以改善 Locality。结构化平台类型镜像不自动证明平台兼容，仍须真实契约/安装验证。
+无需大改目录。贡献说明、问题模板、安全报告入口和格式检查是轻量协作改善，不是 npm/市场普遍硬要求。[shared RPC](../../../src/shared/rpc.ts) 与 [host service](../../../src/host/service.ts) 重复的线上类型宜集中以改善 Locality。结构化平台类型镜像不自动证明平台兼容，仍须真实契约/安装验证。
 
 ## 逐项发现
 
@@ -229,7 +231,7 @@ set/unset处理ok:false但不捕获rejection；无pending防重复。writable=fa
 | DSH兼容 | engines限定0.2且peer对应，有依据；应测真实下界/当前线，不因新版本自动扩大范围 |
 | 发版 | 版本/日志/锁文件/产物须同步；OIDC/provenance是推荐，不是当前发布硬门槛 |
 | 市场硬项 | 公开、满1天、dsh-plugin topic、dsh.bundle、有效条目，已核验项满足 |
-| 截图 | [声明](../../screenshots.json)为3张本仓库路径，数量/形式合理；高级截图无密钥值 |
+| 截图 | [声明](../../../screenshots.json)为3张本仓库路径，数量/形式合理；高级截图无密钥值 |
 | 市场描述 | 已确认欠账为旧位置描述；已有PR仍未合并 |
 | author/types/Release | 缺失不一概当npm/市场违规；types取决于第三方复用，Release改善追溯 |
 
@@ -240,8 +242,8 @@ set/unset处理ok:false但不捕获rejection；无pending防重复。writable=fa
 - 本地文件链接扫描通过，但tarball只发适配器文档，其内部指向未随包的Backlog/Research，Changelog也指向未随包的Release。离线安装目录导航不完整，可改仓库URL或说明主要在GitHub阅读，无需把全部研究材料装进包。
 - README版本细节重复且过长，宜保留安装、当前行为、限制，历史链接Changelog；中英关键事实一起更新。
 - 高级设置相邻span缺显式label关联；后续UI改动补无障碍命名、键盘和写入状态。固定CSS字符串的测试不等同所有字体/窄屏视觉验证。
-- [外部状态hooks](../../src/client/hooks.ts)可改React原生useSyncExternalStore，处理快照读取与订阅之间竞争及store更换一致性。这是建议，未计入已复现缺陷。
-- [开发脚本](../../scripts/dev-local.sh)默认一次性profile，但已设置DSH_HOME时会复用该home。“默认隔离”比“真实profile永远不受影响”准确；可用开发专用变量、路径检查/标记强化隔离。本轮未启动替代宿主。
+- [外部状态hooks](../../../src/client/hooks.ts)可改React原生useSyncExternalStore，处理快照读取与订阅之间竞争及store更换一致性。这是建议，未计入已复现缺陷。
+- [开发脚本](../../../scripts/dev-local.sh)默认一次性profile，但已设置DSH_HOME时会复用该home。“默认隔离”比“真实profile永远不受影响”准确；可用开发专用变量、路径检查/标记强化隔离。本轮未启动替代宿主。
 - 历史本机路径可留作证据，常青流程应独立于某人的home、cache权限和安装位置；研究附日期、commit、verified/unverified级别。
 
 ## 实施顺序与验收

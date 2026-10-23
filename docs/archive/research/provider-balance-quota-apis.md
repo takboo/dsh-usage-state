@@ -1,6 +1,8 @@
+> 归档快照，2026-10-23 整理。仅供追溯标题所示历史基线；正文中的“当前”“待办”、本机路径和命令均为当时记录。接手工作从 [当前文档导航](../../index.md) 开始，开放事项以 [当前待办](../../backlog.md) 为准。
+
 # Provider balance / quota APIs for a DSH usage-state plugin
 
-> Historical snapshot (2026-09-20). Current implemented field semantics are in the [adapter guide](../adapters.md); active work is tracked in the [Backlog](../backlog.md). Undocumented endpoints and authorization policies require fresh verification. The later [official-source correction](repository-release-standards-2026-10.md#documentation-recheck) confirms Moonshot balances are in yuan; numeric size is not a unit discriminator. Original observations below are preserved.
+> Historical snapshot (2026-09-20). Current implemented field semantics are in the [adapter guide](../../adapters.md); active work is tracked in the [Backlog](../../backlog.md). Undocumented endpoints and authorization policies require fresh verification. The later [official-source correction](repository-release-standards-2026-10.md#documentation-recheck) confirms Moonshot balances are in yuan; numeric size is not a unit discriminator. Original observations below are preserved.
 
 Researched 2026-09-20. Sources linked inline; "unverified" marks what I could not confirm from an
 official doc or live/verbatim-backed source. Read-only inspection of this machine's config is at the end.

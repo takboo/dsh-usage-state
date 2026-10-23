@@ -1,6 +1,8 @@
+> 归档快照，2026-10-23 整理。仅供追溯标题所示历史基线；正文中的“当前”“待办”、本机路径和命令均为当时记录。接手工作从 [当前文档导航](../../index.md) 开始，开放事项以 [当前待办](../../backlog.md) 为准。
+
 # dsh-cost-meter v1.7.28 — technical analysis for a simplified rewrite
 
-> Historical analysis of the installed upstream version named in this title. Upstream heuristics and local paths are not this project's current contract. Use the [adapter guide](../adapters.md) and [official-source corrections](repository-release-standards-2026-10.md#documentation-recheck), especially the documented Moonshot yuan unit; implementation defects remain tracked in the [Backlog](../backlog.md). The original analysis below is preserved.
+> Historical analysis of the installed upstream version named in this title. Upstream heuristics and local paths are not this project's current contract. Use the [adapter guide](../../adapters.md) and [official-source corrections](repository-release-standards-2026-10.md#documentation-recheck), especially the documented Moonshot yuan unit; implementation defects remain tracked in the [Backlog](../../backlog.md). The original analysis below is preserved.
 
 Read-only analysis. Nothing was modified. All paths below are under:
 

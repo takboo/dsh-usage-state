@@ -736,3 +736,143 @@ test('Kimi and Moonshot auto discovery reads separate credentials, crosses RPC, 
   for (const secret of ['fake-code', 'fake-wallet']) assert.equal(JSON.stringify({ state, report }).includes(secret), false)
   host.dispose()
 })
+
+test('desktop account login reads its wallets without resolving or using an API key', async () => {
+  const host = contextStub({ credentials: { DEEPSEEK_API_KEY: 'unrelated-api-key' } })
+  const get = host.ctx.get.bind(host.ctx)
+  let accountReads = 0
+  const account = {
+    getPlatformSession: async () => ({ origin: 'https://platform.deepseek.com', token: 'account-token' }),
+    getBalance: async () => {
+      accountReads++
+      return { status: 'ready', value: [{ currency: 'CNY', balance: '12.50' }], bonusWallets: [{ currency: 'CNY', balance: '3.25' }] }
+    },
+  }
+  host.ctx.get = name => name === 'deepseekAccount' ? account
+    : name === 'llm' ? { listProviders: () => [{ id: 'deepseek-account' }, { id: 'deepseek-official' }] } : get(name)
+  const http = fetchStub()
+  const service = createUsageState(host.ctx, deps(host, { fetch: http.fetch }))
+  const state = await service.getState(false)
+  assert.deepEqual(state.snapshots['deepseek:account']?.balances, [{ amount: 15.75, currency: 'CNY', granted: 3.25, toppedUp: 12.5 }])
+  assert.deepEqual(state.snapshots['deepseek:api']?.balances, [{ amount: 66.28, currency: 'CNY' }])
+  assert.equal(accountReads, 1)
+  assert.deepEqual(http.urls, ['https://api.deepseek.com/user/balance'])
+  const report = await service.describeCredentials()
+  assert.deepEqual(report.credentials['deepseek:account'], { candidates: [], configured: true, source: 'account', writable: false })
+  assert.doesNotMatch(JSON.stringify({ state, report }), /account-token|unrelated-api-key/)
+})
+
+function accountHarness(options: { present?: boolean; apiKey?: string } = {}) {
+  const host = contextStub({
+    // Account mode must ignore both inherited and explicit API credentials/endpoints.
+    settings: { 'usage-state': { providers: { 'deepseek-account': {
+      mode: 'account', apiKeyRef: 'UNRELATED_KEY', baseUrl: 'https://unrelated.example',
+    } } } },
+    credentials: { DEEPSEEK_API_KEY: options.apiKey ?? 'other-account-key', UNRELATED_KEY: 'override-key' },
+  })
+  let token: string | undefined = 'first-login'
+  let balance: unknown = { status: 'ready', value: [{ currency: 'CNY', balance: '9' }], bonusWallets: [] }
+  let read = async () => balance
+  let reads = 0
+  const account = {
+    getPlatformSession: async () => token === undefined ? null : { token, origin: 'https://platform.deepseek.com' },
+    getBalance: async () => { reads++; return read() },
+  }
+  const get = host.ctx.get.bind(host.ctx)
+  const lookedUp: string[] = []
+  host.ctx.get = name => name === 'deepseekAccount' ? (options.present === false ? undefined : account)
+    : name === 'llm' ? { listProviders: () => [{ id: 'deepseek-account' }] }
+    : name === 'credentials' ? { resolve: async (ref: string) => { lookedUp.push(ref); return undefined } } : get(name)
+  const http = fetchStub()
+  const service = createUsageState(host.ctx, deps(host, { fetch: http.fetch }))
+  return { host, service, http, lookedUp, reads: () => reads,
+    setToken(value: string | undefined) { token = value },
+    setBalance(value: unknown) { balance = value },
+    setRead(value: () => Promise<unknown>) { read = value },
+  }
+}
+
+test('account mode without the host service never falls back to API credentials or endpoint overrides', async () => {
+  const h = accountHarness({ present: false })
+  const state = await h.service.getState(false)
+  assert.deepEqual(h.http.urls, [])
+  assert.deepEqual(h.lookedUp, [])
+  assert.equal(state.snapshots['deepseek:account']?.error?.kind, 'config')
+  assert.deepEqual((await h.service.describeCredentials()).credentials['deepseek:account'], {
+    candidates: [], configured: false, source: 'account', writable: false,
+  })
+})
+
+test('account sign-out and replacement login clear cached balances even during the success throttle', async () => {
+  const h = accountHarness()
+  assert.equal((await h.service.getState(false)).snapshots['deepseek:account']?.balances[0]?.amount, 9)
+  h.setToken(undefined)
+  const signedOut = await h.service.getState(false)
+  assert.deepEqual(signedOut.snapshots['deepseek:account']?.balances, [])
+  assert.equal(signedOut.snapshots['deepseek:account']?.stale, undefined)
+  assert.equal(signedOut.snapshots['deepseek:account']?.error?.kind, 'config')
+  h.setToken('replacement-login')
+  h.setBalance({ status: 'ready', value: [{ currency: 'USD', balance: '0' }], bonusWallets: [] })
+  assert.deepEqual((await h.service.getState(false)).snapshots['deepseek:account']?.balances, [
+    { amount: 0, currency: 'USD', toppedUp: 0, granted: 0 },
+  ])
+  assert.equal(h.reads(), 2)
+  assert.deepEqual(h.lookedUp, [])
+  assert.deepEqual(h.http.urls, [])
+})
+
+test('failed or invalid account wallets retain only the same login success as stale', async () => {
+  const h = accountHarness()
+  await h.service.getState(false)
+  for (const [body, kind] of [[{ status: 'failed' }, 'http'], [{ status: 'ready', value: [{ currency: 'CNY', balance: 'NaN' }], bonusWallets: [] }, 'parse']] as const) {
+    h.setBalance(body)
+    const snapshot = (await h.service.getState(true)).snapshots['deepseek:account']
+    assert.equal(snapshot?.balances[0]?.amount, 9)
+    assert.equal(snapshot?.stale, true)
+    assert.equal(snapshot?.error?.kind, kind)
+  }
+  h.setToken('new-account')
+  const snapshot = (await h.service.getState(false)).snapshots['deepseek:account']
+  assert.deepEqual(snapshot?.balances, [])
+  assert.equal(snapshot?.stale, undefined)
+})
+
+test('late account balance cannot populate the cache after login changes', async () => {
+  const h = accountHarness()
+  let release!: (value: unknown) => void
+  let started!: () => void
+  const start = new Promise<void>(resolve => { started = resolve })
+  h.setRead(() => { started(); return new Promise(resolve => { release = resolve }) })
+  const pending = h.service.getState(false)
+  await start
+  h.setToken('second-account')
+  h.setRead(async () => ({ status: 'ready', value: [{ currency: 'CNY', balance: '22' }], bonusWallets: [] }))
+  release({ status: 'ready', value: [{ currency: 'CNY', balance: '999' }], bonusWallets: [] })
+  assert.equal((await pending).snapshots['deepseek:account']?.balances[0]?.amount, 22)
+  assert.equal((await h.service.getState(false)).snapshots['deepseek:account']?.balances[0]?.amount, 22)
+})
+
+test('host sign-out event clears an account read and rejects its late result', async () => {
+  const h = accountHarness()
+  await h.service.getState(false)
+  let release!: (value: unknown) => void
+  let started!: () => void
+  const start = new Promise<void>(resolve => { started = resolve })
+  h.setRead(() => { started(); return new Promise(resolve => { release = resolve }) })
+  const pending = h.service.getState(true)
+  await start
+  h.setToken(undefined)
+  h.host.emit('deepseek-account/signed-out')
+  release({ status: 'ready', value: [{ currency: 'CNY', balance: '999' }], bonusWallets: [] })
+  const snapshot = (await pending).snapshots['deepseek:account']
+  assert.deepEqual(snapshot?.balances, [])
+  assert.equal(snapshot?.error?.kind, 'config')
+})
+
+test('arbitrary account service errors never expose grants in RPC failures', async () => {
+  const h = accountHarness()
+  h.setRead(async () => { throw new Error('authorization first-login private details') })
+  const state = await h.service.getState(false)
+  assert.equal(state.snapshots['deepseek:account']?.error?.kind, 'http')
+  assert.doesNotMatch(JSON.stringify(state), /first-login|private details/)
+})

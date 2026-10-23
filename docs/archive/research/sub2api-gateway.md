@@ -1,6 +1,8 @@
+> 归档快照，2026-10-23 整理。仅供追溯标题所示历史基线；正文中的“当前”“待办”、本机路径和命令均为当时记录。接手工作从 [当前文档导航](../../index.md) 开始，开放事项以 [当前待办](../../backlog.md) 为准。
+
 # Sub2API — what it is and how a plugin can query balance / quota
 
-> Historical snapshot (2026-09-20, pinned revision below). It does not guarantee current endpoints, fields, licenses or live responses for every instance. Current parsing and verification status are documented in the [adapter guide](../adapters.md) and [Backlog](../backlog.md). Original investigation and local paths are retained as evidence.
+> Historical snapshot (2026-09-20, pinned revision below). It does not guarantee current endpoints, fields, licenses or live responses for every instance. Current parsing and verification status are documented in the [adapter guide](../../adapters.md) and [Backlog](../../backlog.md). Original investigation and local paths are retained as evidence.
 
 Researched 2026-09-20. Method: read-only. Web search + `web_fetch`, plus a shallow clone of the
 canonical repo into `/tmp/sub2api-src` for verbatim source inspection, plus read-only inspection of

@@ -1,72 +1,41 @@
-# 适配器指南
+# 数据源适配器
 
-适用于扩展或调整余额/额度来源。当前代码支持DeepSeek、z.ai、Kimi、OpenCode和Sub2API。用户安装排查请读 [排查指南](https://github.com/takboo/dsh-usage-state/blob/main/docs/troubleshooting.md)，候选和整改状态见 [Backlog](https://github.com/takboo/dsh-usage-state/blob/main/docs/backlog.md)。本文件随npm包发布，代码和其他文档链接指向GitHub。下文描述0.4.6实现。
+当前支持DeepSeek、z.ai、Kimi/Moonshot、OpenCode和Sub2API。用户排查见 [指南](https://github.com/takboo/dsh-usage-state/blob/main/docs/troubleshooting.md)，代码入口见 [架构](https://github.com/takboo/dsh-usage-state/blob/main/docs/architecture.md)，未验证项见 [待办](https://github.com/takboo/dsh-usage-state/blob/main/docs/backlog.md)。本文随npm分发。
 
-## Interface
+## HTTP来源契约
 
-完整定义以 [sources/types](https://github.com/takboo/dsh-usage-state/blob/main/src/host/sources/types.ts) 为准。下列是主要字段：
+[UsageSource](https://github.com/takboo/dsh-usage-state/blob/main/src/host/sources/types.ts) 定义id、modes、credentialRefs、defaultBaseUrl、request、可选fallbackRequests及parse。request纯构造url/headers，parse纯解析；网络由 [read.ts](https://github.com/takboo/dsh-usage-state/blob/main/src/host/read.ts) 执行，单请求默认15秒超时。
 
-```ts
-interface UsageSource {
-  id: string
-  displayName: string
-  modes: readonly UsageMode[]
-  credentialRefs(mode: UsageMode): readonly string[]
-  defaultBaseUrl(mode: UsageMode): string | undefined
-  requiresBaseUrl?: boolean
-  requiresApiKey?: boolean
-  request(input: RequestInput): UsageRequest
-  fallbackRequests?(input: RequestInput): readonly UsageRequest[]
-  parse(payload: unknown, mode: UsageMode): UsageReading
-}
-```
+HTTP401/403归auth；JSON语法错归parse，响应体超时/中断归network。仅未固定端点时按Adapter声明尝试镜像。无有效金额/窗口抛SourceError，不以伪造零覆盖成功值。金额必须根据官方字段主单位解析，百分比与计数按明确口径转换。
 
-request纯构造url和headers；parse只处理payload，不访问网络、凭据或当前时钟。RequestInput提供mode/apiKey及可选baseUrl/pinnedBaseUrl；读取Module负责执行、15s单次超时、HTTP错误分类和按序镜像。模板见 [新源骨架](https://github.com/takboo/dsh-usage-state/blob/main/src/host/sources/_template.ts)。
+`requiresApiKey`字段本身不会增加免密钥读取能力。HTTP来源仍需完成凭据解析；DeepSeek账号模式使用下面单独的宿主服务通道。
 
-requiresApiKey在类型中存在，但当前宿主装配仍要求解析到凭据。不能只设置false就宣称已支持无key数据源；若要支持需补完整链路测试。
+## 字段语义
 
-## 增加数据源
-
-1. 用官方文档或固定commit接口定义查清端点、鉴权、单位、百分比口径、重置时刻及错误信封；没有官方资料时明确标社区观察/未验证。fixture去除key和账户信息。
-2. 新建Adapter和源测试，覆盖正常余额/窗口、真实0、非法/缺失字段、数字串、不同时间形态，以及HTTP200错误信封。无有效读数应抛SourceError，不填伪造0。
-3. 在 [注册表](https://github.com/takboo/dsh-usage-state/blob/main/src/host/sources/index.ts) 注册；用目录测试验证元数据可JSON传输。基础设置选项可从该注册表派生。
-4. 若需要自动发现provider，在 [共享hints](https://github.com/takboo/dsh-usage-state/blob/main/src/shared/config.ts) 维护路由名/host规则并加冲突测试。注册Adapter不会自动识别新provider；宿主会将可用端点的origin提示经RPC传到两UI，扩展时校验不含userinfo/query/key。
-5. 若新增窗口id或用户文案，同步 [中英词典](https://github.com/takboo/dsh-usage-state/blob/main/src/client/locales.ts)。窗口顺序由Adapter决定，展示层按返回顺序显示。
-6. 补provider配置到fake fetch和RPC/显示的装配用例，再执行typecheck→build→test→pack。更新两份README、此文字段语义、Backlog验证状态和Unreleased。
-
-开发命令和toolchain见 [开发指南](https://github.com/takboo/dsh-usage-state/blob/main/docs/development.md)。新Adapter不应引入成本计算或历史记录。
-
-## 归一化和错误约定
-
-- 金额保留明确币种/单位，使用来源契约换算，不按数值大小猜“元或分”。数值必须有限；缺失与真实0分别处理。
-- percentage已是0..100时用clampPercent。normalizePercent把0..1视为比例，因此1的解释有歧义；只在来源确需这种兼容时使用并注明。不得拿它解析明确的1%。
-- used/limit只在limit有效且>0时换算；remaining需按来源说明反转。unlimited哨兵不能展示成负余额/负额度。
-- normalizeResetAt支持unix秒、毫秒及ISO。不存在的重置时间保持undefined，不猜一个日期。
-- normalizeBaseUrl去尾斜杠和/vN；provider声明端点目前先取origin。若来源路径有额外前缀，必须测试请求路径，不能假定都从根目录挂载。
-- SourceError区分config/auth/http/network/parse；detail不得主动包含密钥。401/403由读取层归auth，JSON语法错归parse、body中断归network；HTTP200错误信封由Adapter识别。宿主快照边界精确替换本次已解析key的原文回显，不可依赖猜测key形状的正则。
-- source+mode仍只选择一个目标，宿主用有效签名、私有凭据摘要和generation隔离身份/在途；不表示新增多账户，也不在Adapter另建缓存。
-- 共享平台实例按DSH指南声明peer+dev，独立第三方依赖放dependencies；不要将旧宿主link解析经验写成所有平台包都不能import的规则。
-
-归一化实现见 [normalize](https://github.com/takboo/dsh-usage-state/blob/main/src/host/sources/normalize.ts)，网络实现见 [read](https://github.com/takboo/dsh-usage-state/blob/main/src/host/read.ts)。
-
-## 当前端点和字段语义
-
-| 来源 | 请求及鉴权 | 读数语义与证据 |
+| 来源/模式 | 请求与鉴权 | 归一化语义 |
 |---|---|---|
-| DeepSeek API | GET {base}/user/balance，Bearer | balance_infos多币种；优先有余额/CNY并保留granted/topped_up。有限真实0合法，非法total_balance跳过；无有效行抛parse |
-| z.ai Coding Plan | GET {base}/api/monitor/usage/quota/limit，Bearer；默认open.bigmodel.cn，镜像api.z.ai | unit3→5h、6→7d；TOKENS_LIMIT/CREDIT_LIMIT读percentage，不将TIME_LIMIT混为编码额度；兼容plans/flat形态。HTTP200 success:false/code1000归auth；属社区接口观察，已有历史真机证据 |
-| Moonshot API | GET api.moonshot.cn/v1/users/me/balance，Bearer | 官方data.available_balance以人民币元计，voucher/cash也为元，cash可为负；当前余额不按大小换单位，保留已有两位小数舍入及兼容字段，不新增负available_balance支持 |
-| Kimi Code | GET api.kimi.com/coding/v1/usages，Bearer及KimiCLI/1.6 UA | usages.limit_5h/limit_7d/limit_month_total/limit_month_code的used_ratio×100，reset_time归一；兼容usage周计数及limits[].detail/window，枚举分钟归一到小时；国内5h/7d已真实账户验证，月额度仅fixture验证 |
-| OpenCode Zen Go | GET opencode.ai/zen/go/v1/usage，Bearer及浏览器UA | usage或data.usage；rolling/weekly/monthly→5h/7d/30d；percent为0..100；resetsAt归一。历史真机观察UA缺失触发Cloudflare；非零/status非ok未验证 |
-| Sub2API | GET {instance}/v1/usage，Bearer；必须实例地址 | quota.remaining或wallet balance、rate_limits窗口；subscription.daily/weekly/monthly→1d/7d/30d。单位缺失默认USD；parse目前未按mode过滤，可能同时返回余额和窗口；接口字段随实例版本变化 |
+| DeepSeek账号 | `deepseekAccount.getBalance(client)`；不构造HTTP、不读取API Key | `value`为充值钱包，`bonusWallets`为赠送钱包；同币种求和，保留toppedUp/granted，优先有余额/CNY |
+| DeepSeek API Key | GET `{base}/user/balance`，Bearer | 多币种balance_infos；优先有余额/CNY，保留赠送/充值拆分；非法total跳过，无有效行报parse |
+| z.ai Coding Plan | `/api/monitor/usage/quota/limit`，Key | 国内/国际端点与错误信封；保留5h/7d已用百分比，跳过无效窗口 |
+| Kimi Code | GET `https://api.kimi.com/coding/v1/usages`，Bearer；区域镜像 | usages比例池或旧usage/limits计数；支持5h/7d/月总/编程月；仅显示实际返回窗口 |
+| Moonshot | GET `{base}/v1/users/me/balance`，Bearer | available_balance单位为人民币元，不按数值大小推测分/元 |
+| OpenCode Zen Go | GET `{base}/zen/go/usage`，Bearer及浏览器UA | rolling/weekly/monthly归一为5h/7d/30d；percent已是0–100 |
+| Sub2API | GET `{base}/v1/usage`，Bearer；需实例地址 | Key配额/余额与实例实际返回的订阅窗口；不把无限值当可用金额 |
 
-[Moonshot官方余额定义](https://platform.kimi.com/docs/api/balance.md)优先于早期社区“分/元不明”的研究。[DeepSeek官方余额接口](https://api-docs.deepseek.com/api/get-user-balance)提供字段契约。其余社区/历史证据见 [研究索引](https://github.com/takboo/dsh-usage-state/blob/main/docs/research/README.md) 和 [上游分析](https://github.com/takboo/dsh-usage-state/blob/main/docs/research/dsh-cost-meter-analysis.md)，不能把逆向观察称为厂商保证。
+厂商语义优先依 [DeepSeek官方余额接口](https://api-docs.deepseek.com/api/get-user-balance) 与 [Moonshot官方余额定义](https://platform.kimi.com/docs/api/balance.md)。Kimi契约与兼容样本见 [实现](https://github.com/takboo/dsh-usage-state/blob/main/src/host/sources/kimi.ts) 和 [源测试](https://github.com/takboo/dsh-usage-state/blob/main/tests/sources/kimi.test.ts)。社区接口与历史逆向证据在 [归档](https://github.com/takboo/dsh-usage-state/blob/main/docs/archive/README.md)，使用前重新核验。
 
-## 端点策略和测试缺口
+## DeepSeek Harness 账号与 API Key
 
-当前共享解析以显式provider覆盖→legacy source默认→provider声明origin/Adapter默认确定有效目标。ref和pin贯通读取/凭据描述；显式pin使fallbackRequests返回空列表。相关回归见 [A01](https://github.com/takboo/dsh-usage-state/blob/main/docs/backlog.md#a01)、[A03](https://github.com/takboo/dsh-usage-state/blob/main/docs/backlog.md#a03)。
+自动识别 `deepseek-account → deepseek:account`，`deepseek-official → deepseek:api`。账号模式忽略API Key ref与余额端点覆盖，无服务或无登录时不回退。Host通过 `getPlatformSession()` 的issuer/token摘要隔离身份，原始token不进入通用Key字段、RPC、配置或错误详情；读取前后复核身份，签出事件清缓存。
 
-无pin时首站失败仍按序尝试fallback，不仅在未配置端点时发生。扩展必须同时测Adapter、读取层和入口，覆盖真实HTTP、凭据选择、配置切换及错误边界，不能只证明一个模块接受参数。以上是Unreleased行为，npm0.4.4仍旧实现。
+账号服务负责目的地址、登录协议、超时和grant失效。client元数据使用Host包版本、Host locale与时区；无可解析版本时留空。`getBalance()` 返回安全投影：`status: ready`、充值钱包数组value、赠送钱包数组bonusWallets；每行含CNY/USD及主单位balance。金额/数组非法报parse，真实零保留；同币种充值与赠送合计为显示余额。
 
+`status: failed`保守归http，因为Host已折叠底层失败；插件无法再细分网络与协议错误。null表示登录不可用。失败只保留同一登录身份的上次成功值；身份改变后清除。契约核对来源为2026-10-23安装的Desktop包 `dsh-deepseek-account-platform` 和 `dsh-llm-deepseek-account`，以及 [官方账号服务文档](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/credentials/deepseek-account-platform/README.md)。真实账户验收范围见待办，不由契约核对代替。
 
-Kimi当前响应和国际端点依据[官方客户端固定源码](https://github.com/MoonshotAI/kimi-code/blob/b510fa9aec85f02849f64121550be2c3fbd4294d/packages/oauth/src/managed-usage.ts)。比例池优先于同名旧计数，缺失周额度不补0；月总额度和编程月用量分别显示，不相加。官方客户端源码是接口观察依据，不视为稳定公开API保证。2026-10-14使用本机既有Kimi Code凭据对api.kimi.com完成只读查询，5h/7d均可解析；未验证国际区域账户和月额度活体响应。
+## 增加或修改来源
+
+1. 核对官方接口、鉴权、单位和错误形状；未文档化契约标明来源、日期及不确定性，fixture去除账户信息。
+2. 在 [sources](https://github.com/takboo/dsh-usage-state/blob/main/src/host/sources/index.ts) 注册，使用 [模板](https://github.com/takboo/dsh-usage-state/blob/main/src/host/sources/_template.ts)；模式必须是来源确实支持的读数。
+3. 如需自动发现，更新共享provider/source规则并测命名冲突；新模式同步线上类型、Host codec、两UI及目录。
+4. 覆盖实际装配链、非法字段/真实0、身份切换与失败；保证凭据描述和读取采用同一有效选择。
+5. 按 [开发流程](https://github.com/takboo/dsh-usage-state/blob/main/docs/development.md) 完成typecheck、build、test、pack；更新双语README、当前文档与Changelog，未做的真实验收留在待办。

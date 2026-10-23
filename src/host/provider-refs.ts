@@ -31,6 +31,7 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
  * extra configuration in this plugin.
  */
 export function providerCredentialRefs(input: ProviderCredentialRefsInput): string[] {
+  if (input.mode === 'account') return []
   const suggest = input.suggest ?? suggestSourceId
   const refs: string[] = []
   const push = (value: unknown): void => {

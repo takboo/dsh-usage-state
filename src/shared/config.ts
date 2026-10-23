@@ -94,8 +94,8 @@ export const DEFAULT_CONFIG: UsageStateConfig = {
   },
 }
 
-const MODES: readonly ModelMode[] = ['api', 'coding-plan', 'hidden']
-const PROVIDER_MODES: readonly ProviderMode[] = ['api', 'coding-plan', 'hidden', 'auto']
+const MODES: readonly ModelMode[] = ['api', 'account', 'coding-plan', 'hidden']
+const PROVIDER_MODES: readonly ProviderMode[] = ['api', 'account', 'coding-plan', 'hidden', 'auto']
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
   return value !== null && typeof value === 'object' && !Array.isArray(value)

@@ -1,3 +1,4 @@
+import { describeAccount, readAccountBalance, resolveAccountCredential, type DeepSeekAccountLike } from './host/deepseek-account.ts'
 import { DEFAULT_CONFIG, type UsageStateConfig } from './shared/config.ts'
 import { originOf } from './shared/providers.ts'
 import { toSourceCatalog } from './host/catalog.ts'
@@ -228,7 +229,7 @@ export function createUsageState(ctx: PluginContextLike, deps: UsageStateDeps = 
         sourceId: target.sourceId,
         mode: target.mode,
         config,
-        deepseekSettings: readNamespace(ctx, 'llm-deepseek'),
+        deepseekSettings: readNamespace(ctx, 'llm-deepseek') ?? readNamespace(ctx, 'llm-deepseek-api-key'),
         piAiSettings: readNamespace(ctx, 'llm-pi-ai'),
       }),
     }))
@@ -241,6 +242,8 @@ export function createUsageState(ctx: PluginContextLike, deps: UsageStateDeps = 
     }
   }
 
+  const account = () => ctx.get('deepseekAccount') as DeepSeekAccountLike | undefined
+  const httpReader = createTargetReader({ fetch: fetchImpl })
   const store = new UsageStateStore({
     clock: {
       now,
@@ -252,6 +255,7 @@ export function createUsageState(ctx: PluginContextLike, deps: UsageStateDeps = 
     findSource,
     credentials: {
       resolve: async target => {
+        if (target.sourceId === 'deepseek' && target.mode === 'account') return resolveAccountCredential(account())
         const source = findSource(target.sourceId)
         if (source === undefined) return undefined
         const resolved = await resolveApiKey(source, target.mode, optionsFor(target), lookup)
@@ -264,10 +268,13 @@ export function createUsageState(ctx: PluginContextLike, deps: UsageStateDeps = 
         }
       },
     },
-    read: createTargetReader({ fetch: fetchImpl }),
+    read: (target, credential, source) => target.sourceId === 'deepseek' && target.mode === 'account'
+      ? readAccountBalance(account(), credential, () => store.clear(target.key))
+      : httpReader(target, credential, source),
   })
 
   reconfigure = () => store.reconfigure()
+  ctx.on('deepseek-account/signed-out', () => store.clear('deepseek:account'))
 
   const service = new UsageStateService({
     store,
@@ -280,6 +287,7 @@ export function createUsageState(ctx: PluginContextLike, deps: UsageStateDeps = 
       }),
     ),
     describe: async target => {
+      if (target.sourceId === 'deepseek' && target.mode === 'account') return describeAccount(account())
       const source = findSource(target.sourceId)
       if (source === undefined) return { candidates: [], configured: false }
       return describeCredentials(source, target.mode, optionsFor(target), lookup)

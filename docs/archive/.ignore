@@ -1,0 +1,5 @@
+# Keep historical snapshots out of default ripgrep discovery.
+# For explicit historical research: rg --no-ignore <pattern> docs/archive
+*
+!README.md
+!.ignore

@@ -39,7 +39,10 @@ const ctx = {
   get: name => name === 'credentials' ? {
     resolve: async ref => ['DEEPSEEK_API_KEY', 'KIMI_CODING_API_KEY'].includes(ref) ? { value: 'runtime-smoke-fake-key', source: 'test' } : undefined,
     describe: async () => ({ configured: true, source: 'test', writable: true }),
-  } : name === 'llm' ? { listProviders: () => [{ id: 'deepseek-official' }, { id: 'kimi-code' }] } : undefined,
+  } : name === 'deepseekAccount' ? {
+    getPlatformSession: async () => ({ origin: 'https://platform.deepseek.com', token: 'runtime-smoke-fake-grant' }),
+    getBalance: async () => ({ status: 'ready', value: [{ currency: 'CNY', balance: '8' }], bonusWallets: [{ currency: 'CNY', balance: '2' }] }),
+  } : name === 'llm' ? { listProviders: () => [{ id: 'deepseek-official' }, { id: 'kimi-code' }, { id: 'deepseek-account' }] } : undefined,
   on: () => () => {}, effect: callback => callback(), provide: (key, value) => supplied.set(key, value),
   timeout: () => () => {}, interval: () => () => {},
 }
@@ -57,6 +60,8 @@ const view = await service.getState(false)
 assert.deepEqual(urls, ['https://api.deepseek.com/user/balance', 'https://api.kimi.com/coding/v1/usages'])
 assert.deepEqual(view.snapshots['kimi:coding-plan'].windows, [{ id: '5h', usedPercent: 25 }, { id: 'month', usedPercent: 50 }])
 assert.ok(Object.values(view.snapshots).some(snapshot => snapshot.balances.some(balance => balance.amount === 42.25 && balance.currency === 'CNY')))
+assert.deepEqual(view.snapshots['deepseek:account'].balances, [{ amount: 10, currency: 'CNY', granted: 2, toppedUp: 8 }])
+assert.doesNotMatch(JSON.stringify(view), /runtime-smoke-fake-grant/)
 assert.equal(supplied.get('usageState'), service)
 assert.equal(service.typertRemote.service, service)
 const getState = typert.TYPERT.invocations.find(invocation => invocation.method === 'getState')
