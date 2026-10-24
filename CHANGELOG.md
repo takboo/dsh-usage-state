@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+## [0.4.10] - 2026-10-24
+
+### Compatibility
+
+- 完成 DSH 0.2.1-rc.3 兼容性复验：实际 tarball 在隔离 Web 宿主安装并激活；设置页、getState/describeCredentials、文件凭据优先级、输入框上方状态行及隐藏/API配置往返均通过。
+- 新版 DeepSeek API Key 动态 `/models` 目录可在插件设置及模型选择器中显示，切换新目录模型仍显示同一供应商余额；账号服务的 `getPlatformSession()` / `getBalance(client)` 契约保留。
+- CI 兼容矩阵新增精确 0.2.1-rc.3，保留 rc.1/rc.2 和原锁定基线；344 项完整回归及 rc.3 的 19 项真实 Typert host/browser 与产物契约测试通过。
+- 未发现需要修改运行代码的兼容问题，三个预构建入口沿用0.4.9。现有 engines.dsh 与 dsh-settings peer 范围已覆盖rc.3，支持下界不变。浏览器余额与模型目录使用fixture；真实Desktop登录钱包、凭据落盘和完整视觉验收不计入本次验证。
+
 ## [0.4.9] - 2026-10-23
 
 ### Added
@@ -146,7 +155,8 @@
 
 0.4.5起建立版本tag/Release；更早发布没有保存这些引用。0.3.0至0.4.4的比较端点来自各npm版本的gitHead；0.2系列引用对应实现提交，不能替代当时没有保存的正式发布产物。早期日期沿用历史版本记录。今后版本应按发布流程建立稳定引用。
 
-[Unreleased]: https://github.com/takboo/dsh-usage-state/compare/v0.4.9...HEAD
+[Unreleased]: https://github.com/takboo/dsh-usage-state/compare/v0.4.10...HEAD
+[0.4.10]: https://github.com/takboo/dsh-usage-state/compare/v0.4.9...v0.4.10
 [0.4.9]: https://github.com/takboo/dsh-usage-state/compare/v0.4.8...v0.4.9
 [0.4.8]: https://github.com/takboo/dsh-usage-state/compare/v0.4.7...v0.4.8
 [0.4.7]: https://github.com/takboo/dsh-usage-state/compare/v0.4.6...v0.4.7

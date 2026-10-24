@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/dsh-usage-state)](https://www.npmjs.com/package/dsh-usage-state)
 
-> **0.4.9** adds DeepSeek Harness account sign-in balances, separate from API Key queries. See the [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.9) for the tarball and checksum and the [Changelog](CHANGELOG.md#049---2026-10-23) for details.
+> **0.4.10** verifies DSH **0.2.1-rc.3** compatibility, including its dynamic model catalog, while retaining separate account sign-in and API Key balances. See the [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.10) for the tarball and checksum and the [Changelog](CHANGELOG.md#0410---2026-10-24) for details.
 
 Show the current model provider's **account balance** or **coding-plan quota** above the composer input in [DSH (DeepSeek Harness)](https://github.com/deepseek-ai/deepseek-harness). The line matches the input card's width and preserves the native statistics and context meter.
 
@@ -23,7 +23,7 @@ DeepSeek · ¥58.13
 
 ## Install
 
-Requires DSH matching `^0.2.0-rc.2 || ^0.2.1-rc.1` (verified on 0.2.0-rc.2, 0.2.1-rc.1, and 0.2.1-rc.2). The prebuilt plugin declares Node ≥20. Install into the `web` profile you actually use.
+Requires DSH matching `^0.2.0-rc.2 || ^0.2.1-rc.1` (verified on 0.2.0-rc.2 and 0.2.1-rc.1/rc.2/rc.3). The prebuilt plugin declares Node ≥20. Install into the `web` profile you actually use.
 
 Install from npm:
 
@@ -86,7 +86,7 @@ Provider settings and advanced controls:
 
 The host schedules refreshes 2 seconds after a turn ends and has a 5-minute fallback timer. The browser reads the RPC mirror every 30 seconds. Ordinary polling initializes a missing or changed account identity, otherwise it does not shorten idle queries to once a minute. Successful requests have a default 60-second minimum; explicit refresh can bypass it, and active retries after failure are not throttled by that successful-request interval. Editing the idle interval reschedules the timer.
 
-The plugin queries balances/quotas and reads the selected model and provider catalog. It writes no session logs and reports no readings to third parties. The host does not return stored key values to the browser; a key the user actively pastes is sent through DSH's credential service to the credential file in the selected home. Credential precedence follows the host: DSH 0.2.1-rc.1/rc.2 Web/Desktop prefers saved credentials, with environment values as fallback; 0.2.0-rc.2 prefers the environment. The settings page reflects the host’s actual write permissions.
+The plugin queries balances/quotas and reads the selected model and provider catalog. It writes no session logs and reports no readings to third parties. The host does not return stored key values to the browser; a key the user actively pastes is sent through DSH's credential service to the credential file in the selected home. Credential precedence follows the host: DSH 0.2.1-rc.1/rc.2/rc.3 Web/Desktop prefers saved credentials, with environment values as fallback; 0.2.0-rc.2 prefers the environment. The settings page reflects the host’s actual write permissions.
 
 ## Known limitations
 

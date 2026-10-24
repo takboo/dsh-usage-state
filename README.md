@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/dsh-usage-state)](https://www.npmjs.com/package/dsh-usage-state)
 
-> **0.4.9** 新增 DeepSeek Harness 账号登录余额，与 API Key 查询独立。安装包及校验文件见 [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.9)，详情见 [更新日志](CHANGELOG.md#049---2026-10-23)。
+> **0.4.10** 已验证 DSH **0.2.1-rc.3** 兼容性，支持新版动态模型目录，保留账号登录与 API Key 独立余额查询。安装包及校验文件见 [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.10)，详情见 [更新日志](CHANGELOG.md#0410---2026-10-24)。
 
 在 [DSH（DeepSeek Harness）](https://github.com/deepseek-ai/deepseek-harness) 输入框上方显示当前模型供应商的**账户余额**或**套餐额度**。状态行与输入卡片同宽，保留原生统计行和上下文计量器。
 
@@ -23,7 +23,7 @@ DeepSeek · ¥58.13
 
 ## 安装
 
-要求：DSH版本满足 `^0.2.0-rc.2 || ^0.2.1-rc.1`（已验证0.2.0-rc.2、0.2.1-rc.1和0.2.1-rc.2），运行预构建插件声明Node≥20，安装到正在使用的 `web` profile。
+要求：DSH版本满足 `^0.2.0-rc.2 || ^0.2.1-rc.1`（已验证0.2.0-rc.2及0.2.1-rc.1/rc.2/rc.3），运行预构建插件声明Node≥20，安装到正在使用的 `web` profile。
 
 从npm安装：
 
@@ -86,7 +86,7 @@ OpenCode Zen Go三个窗口，独立状态行位于输入框上方：
 
 宿主默认在回合结束2秒后调度刷新，并有5分钟兜底定时器；浏览器每30秒拉取RPC镜像。普通轮询仅在读数缺失或有效身份变化时初始化查询，不把idle查询改成每分钟一次。成功请求的默认最小间隔为60秒，显式刷新可绕过，失败的主动重试不受该成功间隔限制；修改空闲间隔会重调定时器。
 
-插件查询余额/额度并读取当前模型及供应商目录，不写会话日志，也不向第三方上报这些读数。宿主不把已保存的密钥值返回浏览器；用户主动粘贴的草稿经DSH凭据服务写入所用home的凭据文件。凭据优先级跟随宿主：DSH 0.2.1-rc.1/rc.2 的 Web/桌面端优先使用已保存凭据，环境变量作为回退；0.2.0-rc.2 则优先使用环境变量。凭据权限以设置页实际返回为准。
+插件查询余额/额度并读取当前模型及供应商目录，不写会话日志，也不向第三方上报这些读数。宿主不把已保存的密钥值返回浏览器；用户主动粘贴的草稿经DSH凭据服务写入所用home的凭据文件。凭据优先级跟随宿主：DSH 0.2.1-rc.1/rc.2/rc.3 的 Web/桌面端优先使用已保存凭据，环境变量作为回退；0.2.0-rc.2 则优先使用环境变量。凭据权限以设置页实际返回为准。
 
 ## 已知限制
 
