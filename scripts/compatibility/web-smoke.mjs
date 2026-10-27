@@ -3,12 +3,13 @@ import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { isAbsolute, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { createRequire } from 'node:module'
-import { TAG } from './discover.mjs'
+import { exactVersion } from './state.mjs'
+import { inventory, verifyIntegrity } from './packages.mjs'
 import { browserAcceptance } from './browser-acceptance.mjs'
 
 const { DSH_VERSION: version, DSH_WEB_ROOT: root, DSH_REPORT_DIR: output } = process.env
 try {
-  if (!TAG.test(`dsh-v${version}`) || !root || !isAbsolute(root) || !output || !isAbsolute(output)) throw new Error('DSH_VERSION, DSH_WEB_ROOT and DSH_REPORT_DIR required')
+  if (!exactVersion(version) || !root || !isAbsolute(root) || !output || !isAbsolute(output)) throw new Error('DSH_VERSION, DSH_WEB_ROOT and DSH_REPORT_DIR required')
   mkdirSync(root, { recursive: true })
   if (readdirSync(root).length !== 0) throw new Error('Refusing a nonempty DSH_WEB_ROOT; choose a fresh temporary directory')
   mkdirSync(output, { recursive: true })
@@ -20,7 +21,7 @@ const home = join(root, 'home')
 const host = join(root, 'host')
 const state = join(root, 'dsh')
 const pack = join(root, 'pack')
-const env = { HOME: home, DSH_HOME: state, PATH: `${join(host, 'node_modules/.bin')}:${process.env.PATH}`, TMPDIR: root, npm_config_cache: join(root, 'npm-cache'), CI: 'true', LANG: 'en_US.UTF-8', PLAYWRIGHT_BROWSERS_PATH: join(root, 'browsers') }
+const env = { HOME: home, DSH_HOME: state, PATH: `${join(host, 'node_modules/.bin')}:${process.env.PATH}`, TMPDIR: root, npm_config_cache: join(root, 'npm-cache'), CI: 'true', LANG: 'en_US.UTF-8', PLAYWRIGHT_BROWSERS_PATH: join(root, 'browsers'), npm_config_registry: 'https://registry.npmjs.org', npm_config_ignore_scripts: 'true', npm_config_userconfig: join(root, '.npmrc'), npm_config_globalconfig: join(root, 'global-npmrc') }
 const log = []
 function command(label, cmd, args, opts = {}, cwd = process.cwd()) {
   const r = spawnSync(cmd, args, { encoding: 'utf8', env: { ...env, ...opts }, cwd, timeout: 8 * 60_000, maxBuffer: 10 * 1024 * 1024 })
@@ -33,7 +34,16 @@ let child
 let phase = 'setup'
 try {
   for (const dir of [home, host, state, pack]) mkdirSync(dir, { recursive: true })
-  command('install host', 'npm', ['install', '--prefix', host, '--ignore-scripts', '--no-audit', '--no-fund', `@deepseek-ai/dsh@${version}`, 'pnpm@11.28.5', 'playwright@1.62.1'])
+  writeFileSync(join(host, 'package.json'), JSON.stringify({ name: 'dsh-compat-host', private: true }))
+  // pnpm is also invoked internally by DSH's plugin manager. Enforce this for it too.
+  writeFileSync(join(root, '.npmrc'), 'ignore-scripts=true\nregistry=https://registry.npmjs.org/\n')
+  const tarball = process.env.DSH_TARBALL
+  if (tarball) verifyIntegrity(readFileSync(tarball), process.env.DSH_INTEGRITY)
+  command('install host', 'npm', ['install', '--prefix', host, '--save-exact', '--ignore-scripts', '--no-audit', '--no-fund', tarball || `@deepseek-ai/dsh@${version}`, 'pnpm@11.28.5', 'playwright@1.62.1'], {}, host)
+  const hostDependencies = inventory(host)
+  writeFileSync(join(output, 'web-dependencies.json'), JSON.stringify(hostDependencies, null, 2) + '\n')
+  const installed = JSON.parse(readFileSync(join(host, 'node_modules/@deepseek-ai/dsh/package.json'), 'utf8'))
+  if (installed.name !== '@deepseek-ai/dsh' || installed.version !== version) throw new Error('Installed host identity mismatch')
   const dsh = join(host, 'node_modules/.bin/dsh')
   if (!process.env.DSH_BROWSER_EXECUTABLE) command('install browser', join(host, 'node_modules/.bin/playwright'), ['install', ...(process.platform === 'linux' ? ['--with-deps'] : []), '--only-shell', 'chromium'])
   if (command('host version', dsh, ['--version']) !== version) throw new Error('DSH CLI version mismatch')
@@ -90,6 +100,9 @@ try {
   for (const endpoint of ['models', 'balance']) {
     if (!trace.some(item => item.endpoint === endpoint && item.source === 'file')) throw new Error(`Missing ${endpoint} fixture request with saved credential`)
   }
+  // The profile manager may resolve additional official dependencies; record those too.
+  const profileLock = join(state, 'profiles/compat/pnpm-lock.yaml')
+  writeFileSync(join(output, 'profile-dependencies.log'), readFileSync(profileLock, 'utf8'))
   log.push('Browser verified RPC results, model selection, status line placement and hide/API round trip using fake credentials and data.')
   writeFileSync(join(output, 'web-host.log'), log.join('\n'))
   console.log('Exact DSH tarball, browser RPC, model selection, status line and settings round trip passed with fixture data.')

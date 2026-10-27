@@ -14,6 +14,7 @@
 | 产品范围和有效设计决定 | [设计共识](design-consensus.md) |
 | 扩展来源、核对金额与字段 | [适配器指南](adapters.md) |
 | 宿主契约及版本边界 | [平台说明](platform-notes.md) |
+| 上游 GitHub/npm 发现、兼容性检查与机器人 Issue | [兼容性监测](compatibility-monitor.md) |
 | 提交、发版、跟进CI与恢复失败 | [发布与验收](release.md) |
 | 尚未验收与暂缓事项 | [待办清单](backlog.md) |
 | 核对正式版本CI与分发字节 | [0.4.10发布证据](releases/0.4.10.md) / [0.4.9](releases/0.4.9.md) |
