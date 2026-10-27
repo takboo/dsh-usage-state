@@ -1,0 +1,102 @@
+name: Monitor DSH releases
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Exact published upstream tag, e.g. dsh-v0.2.1-rc.3
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dsh-release-monitor
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: read
+    outputs:
+      matrix: ${{ steps.find.outputs.matrix }}
+      count: ${{ steps.find.outputs.count }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Discover published releases and existing bot reports
+        id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DSH_TAG: ${{ inputs.tag }}
+        run: node scripts/compatibility/discover.mjs
+
+  check:
+    needs: discover
+    if: needs.discover.outputs.count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.discover.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-toolchain
+        with:
+          cache: ''
+      - run: npm ci --ignore-scripts
+      - name: Check exact upstream contracts and baseline
+        env:
+          DSH_VERSION: ${{ matrix.version }}
+          DSH_PLATFORM_ROOT: ${{ runner.temp }}/dsh-platform
+          DSH_REPORT_DIR: ${{ runner.temp }}/dsh-report
+        run: node scripts/compatibility/check.mjs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: dsh-check-${{ matrix.tag }}
+          path: ${{ runner.temp }}/dsh-report/
+          retention-days: 90
+          if-no-files-found: warn
+
+  report:
+    needs: [discover, check]
+    if: always() && needs.discover.result == 'success' && needs.discover.outputs.count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.discover.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        continue-on-error: true
+        with:
+          name: dsh-check-${{ matrix.tag }}
+          path: ${{ runner.temp }}/dsh-report
+      - name: Create or update the durable report
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DSH_TAG: ${{ matrix.tag }}
+          RELEASE_ID: ${{ matrix.id }}
+          DSH_COMMIT: ${{ matrix.commit }}
+          DSH_PUBLISHED: ${{ matrix.published_at }}
+          ISSUE_NUMBER: ${{ matrix.issue }}
+          ATTEMPTS: ${{ matrix.attempts }}
+        run: node scripts/compatibility/report.mjs "$RUNNER_TEMP/dsh-report/report.json"
