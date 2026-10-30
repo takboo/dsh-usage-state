@@ -72,14 +72,28 @@ jobs:
           if-no-files-found: error
           compression-level: 0
 
+  dsh-targets:
+    name: Read exact DSH regression versions
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      versions: ${{ steps.matrix.outputs.versions }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: matrix
+        run: node scripts/compatibility/matrix.mjs
+
   dsh-compatibility:
     name: DSH ${{ matrix.dsh }} RPC contracts
+    needs: dsh-targets
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
-        dsh: [0.2.1-rc.1, 0.2.1-rc.2, 0.2.1-rc.3]
+        dsh: ${{ fromJSON(needs.dsh-targets.outputs.versions) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

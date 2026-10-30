@@ -9,6 +9,15 @@ on:
         description: Exact npm version or published GitHub tag, e.g. 0.2.1-rc.4
         required: true
         type: string
+      mode:
+        description: Run checks or backfill a Draft PR from an existing passed report
+        type: choice
+        default: check
+        options: [check, draft-pr]
+      pr_base:
+        description: Optional review base for testing an unmerged matrix-reader branch
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -19,6 +28,7 @@ concurrency:
 
 jobs:
   discover:
+    if: inputs.mode != 'draft-pr'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -104,3 +114,29 @@ jobs:
           DSH_ITEM: ${{ toJSON(matrix) }}
           REPORT_ARTIFACT_OK: ${{ steps.artifact.outcome }}
         run: node scripts/compatibility/report.mjs "$RUNNER_TEMP/dsh-report/report.json"
+
+  draft-pr:
+    needs: [discover, check, report]
+    if: >-
+      always() && !cancelled() &&
+      (inputs.mode == 'draft-pr' ||
+       (needs.discover.result == 'success' &&
+        (needs.report.result == 'success' || needs.report.result == 'skipped')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      issues: read
+      pull-requests: write
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Create or update Draft PRs from complete passed bot reports
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DSH_PR_VERSION: ${{ inputs.tag }}
+          DSH_PR_BASE: ${{ inputs.pr_base }}
+        run: node scripts/compatibility/draft-pr.mjs

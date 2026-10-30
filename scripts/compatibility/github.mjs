@@ -4,7 +4,11 @@ export async function api(path, token, options = {}) {
     headers: { accept: 'application/vnd.github+json', 'user-agent': 'dsh-usage-state-compatibility', ...(token ? { authorization: `Bearer ${token}` } : {}), ...(options.body ? { 'content-type': 'application/json' } : {}) },
     signal: AbortSignal.timeout(30000),
   })
-  if (!response.ok) throw new Error(`GitHub API ${path}: HTTP ${response.status}`)
+  if (!response.ok) {
+    const error = new Error(`GitHub API ${path}: HTTP ${response.status}`)
+    error.status = response.status
+    throw error
+  }
   return response.json()
 }
 export async function pages(path, token) {

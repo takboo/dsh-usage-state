@@ -25,6 +25,20 @@ Artifact 保留 **14 天**，按白名单只上传 JSON 报告/依赖清单、�
 
 检查 job 仅有 `contents: read`，无 Issue 写权限或持久 Git 凭据；上游 tag、说明、依赖元数据均作为数据，不拼接 shell 命令。报告 job 单独拥有 `issues: write`，只执行本仓库报告脚本并验证报告，不安装上游依赖或执行报告内容。Release 说明不送入模型，也不作为操作指令。
 
+## 通过结果与 Draft PR
+
+监测流程为 discover → check → report → draft-pr。独立的 `draft-pr` job 重新读取本仓库机器人 Issue，包括关闭的 Issue；只接受完整的精确版本 `passed` 证据，并核对原运行的插件提交、工作流、对应版本检查 job 及实际执行成功的检查步骤。旧版 legacy/partial、失败和未完成结果不会创建 PR。当前运行刚完成 check/report 时也可创建草稿，不必等待包含 writer 自身的整个 run 结束。
+
+定时执行会补查尚缺草稿的历史通过结果，即使本轮 discover 无新版本。手动精确版本执行只处理该版本。每个版本使用固定分支 `codex/dsh-compat-版本`，创建一个机器人 Draft PR，写入 `docs/compatibility/版本.md` 以及 `.github/dsh-compatibility.json` 的精确回归候选；常规 CI 从该 JSON 读取矩阵。自动分支不修改 workflow 文件，不运行上游代码，也不修改插件版本、README 支持声明或发布状态。
+
+证据文档保留实际检查时间、插件提交、固定包 integrity、原 Issue/Actions 链接、阶段和依赖版本。后续发现的源码元数据与检查时已知的源码基线分别记录；已有通过结果不会被描述为当前 PR 已通过。候选的 CI 仍需单独完成。真实 Desktop 与账号验收边界继续适用。
+
+重复执行复用原 PR；仅更新仍由机器人管理的草稿分支，ref 更新不使用 force。关闭、合并或转为 ready-for-review 后停止自动更新，不重新创建；人工提交、人工同名 PR/分支不会被覆盖。分支写入成功而 PR API 返回失败/未知时，后续执行可核对机器人提交来源后恢复。人工控制或冲突需要维护者处理，不会自动重开、合并、批准 review、打 tag 或发布。
+
+writer 使用 `contents: write`、`pull-requests: write`、`issues: read`、`actions: read`；check 继续保持只读。仓库 Actions 设置需允许 GitHub Actions 创建 PR，默认 token 权限仍可保持只读。这个 GitHub 设置同时包含 approve 能力，但本工作流不调用审批或合并接口。GitHub 使用 `GITHUB_TOKEN` 创建的 PR 检查可能等待 workflow approval；通过 GitHub 的 Approve workflows to run 或手动派发 CI 验证对应分支，保留实际运行记录。
+
+补建已有通过版本时，在 Actions → Monitor DSH releases → Run workflow 选择 `mode=draft-pr`，`tag=0.2.1-rc.5`。此模式跳过 discover/check/report，只读取已保存证据并创建或更新 PR，不消耗检查重试预算。`pr_base` 默认使用仓库默认分支；验证尚未合并的矩阵读取功能时，可明确选择对应功能分支作为 review base，生成依赖该功能分支的草稿。常态定时触发只在功能进入默认分支后生效。
+
 ## 启用与手动复验
 
 工作流必须位于默认分支，仓库启用 Actions、Issues，允许所用 actions，并允许报告 job 请求 `issues: write`；仓库默认 token 权限为只读可以保留，由 job 显式申请写权限。定时触发使用 UTC 的每小时第 17 分钟，可能延迟；公开仓库长期不活动时可能被 GitHub 禁用。网络需能访问 GitHub API、npm registry、Playwright 浏览器及其系统依赖源。Artifact 策略需允许 14 天。
