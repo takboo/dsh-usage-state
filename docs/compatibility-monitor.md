@@ -33,7 +33,7 @@ Artifact 保留 **14 天**，按白名单只上传 JSON 报告/依赖清单、�
 
 证据文档保留实际检查时间、插件提交、固定包 integrity、原 Issue/Actions 链接、阶段和依赖版本。后续发现的源码元数据与检查时已知的源码基线分别记录；已有通过结果不会被描述为当前 PR 已通过。候选的 CI 仍需单独完成。真实 Desktop 与账号验收边界继续适用。
 
-重复执行复用原 PR；仅更新仍由机器人管理的草稿分支，ref 更新不使用 force。关闭、合并或转为 ready-for-review 后停止自动更新，不重新创建；人工提交、人工同名 PR/分支不会被覆盖。分支写入成功而 PR API 返回失败/未知时，后续执行可核对机器人提交来源后恢复。人工控制或冲突需要维护者处理，不会自动重开、合并、批准 review、打 tag 或发布。
+重复执行复用原 PR；仅更新仍由机器人管理的草稿分支，ref 更新不使用 force。关闭、合并或转为 ready-for-review 后停止自动更新，不重新创建；人工提交、人工同名 PR/分支不会被覆盖。分支写入成功而 PR API 返回失败/未知时，恢复要求 GitHub 验证签名有效、作者与提交标记匹配，并且整个 tree 与当前证据生成的候选完全相同；仅有机器人名称或相同文件名不足以恢复。GitHub 对 Actions API 提交可能使用 `web-flow` committer，因此不能以 committer 登录名等于机器人作为条件。候选内容已变化时保留原分支，交由维护者检查，不会自动覆盖、重开、合并、批准 review、打 tag 或发布。
 
 writer 使用 `contents: write`、`pull-requests: write`、`issues: read`、`actions: read`；check 继续保持只读。仓库 Actions 设置需允许 GitHub Actions 创建 PR，默认 token 权限仍可保持只读。这个 GitHub 设置同时包含 approve 能力，但本工作流不调用审批或合并接口。GitHub 使用 `GITHUB_TOKEN` 创建的 PR 检查可能等待 workflow approval；通过 GitHub 的 Approve workflows to run 或手动派发 CI 验证对应分支，保留实际运行记录。
 

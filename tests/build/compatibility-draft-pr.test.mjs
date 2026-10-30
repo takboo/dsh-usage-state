@@ -15,7 +15,7 @@ const state = () => ({ version, issue: 13, status: 'passed', autoAttempts: 2, la
 const issue = s => ({ number: 13, user: { login: 'github-actions[bot]' }, body: marker(s) })
 const pr = (overrides = {}) => ({ number: 14, state: 'open', draft: true, user: { login: 'github-actions[bot]' }, body: `${prMarker}\n<!-- dsh-compat-head:${head} -->`, head: { ref: `codex/dsh-compat-${version}`, sha: head, repo: { full_name: repo } }, base: { ref: 'main' }, html_url: `https://github.com/${repo}/pull/14`, ...overrides })
 
-function mock({ prs = [], branch = null, passed = true, foundIssues = [issue(state())], runSha = sha, currentTree = 'd'.repeat(40), runStatus = 'completed', orphan = false } = {}) {
+function mock({ prs = [], branch = null, passed = true, foundIssues = [issue(state())], runSha = sha, currentTree = 'd'.repeat(40), runStatus = 'completed', orphan = false, committer = 'web-flow', verified = true } = {}) {
   const calls = []
   const request = async (path, options = {}) => {
     calls.push({ path, ...options, body: options.body ? JSON.parse(options.body) : undefined })
@@ -24,7 +24,7 @@ function mock({ prs = [], branch = null, passed = true, foundIssues = [issue(sta
     if (path.includes('/pulls?')) return prs
     if (path.endsWith('/actions/runs/123/jobs?per_page=100&page=1')) return { jobs: [{ name: `check (${version}, ...)`, conclusion: passed ? 'success' : 'failure', steps: [{ name: 'Check exact upstream contracts and baseline', conclusion: passed ? 'success' : 'skipped' }] }] }
     if (path.endsWith('/actions/runs/123')) return { status: runStatus, path: '.github/workflows/dsh-compatibility.yml', head_sha: runSha, event: 'schedule', head_repository: { full_name: repo } }
-    if (!path.includes('/git/') && /\/commits\/[a-f0-9]{40}$/.test(path)) return { author: { login: orphan ? 'github-actions[bot]' : 'someone' }, committer: { login: 'github-actions[bot]' }, commit: { message: `ci: track DSH ${version} compatibility\n\n${prMarker}` }, files: [{ filename: `.github/dsh-compatibility.json` }, { filename: `docs/compatibility/${version}.md` }], parents: [{ sha: sha }] }
+    if (!path.includes('/git/') && /\/commits\/[a-f0-9]{40}$/.test(path)) return { author: { login: orphan ? 'github-actions[bot]' : 'someone' }, committer: { login: committer }, commit: { message: `ci: track DSH ${version} compatibility\n\n${prMarker}`, verification: { verified, reason: verified ? 'valid' : 'unsigned' } }, files: [{ filename: `.github/dsh-compatibility.json` }, { filename: `docs/compatibility/${version}.md` }], parents: [{ sha: sha }] }
     if (path.endsWith('/git/ref/heads/main')) return { object: { sha } }
     if (path.includes('/git/ref/heads/codex%2F')) { if (branch) return { object: { sha: branch } }; const e = new Error('not found'); e.status = 404; throw e }
     if (path.endsWith(`/git/commits/${sha}`)) return { tree: { sha: tree } }
@@ -137,6 +137,39 @@ test('a bot-created branch survives a failed PR response and can be recovered wi
   const m = mock({ branch: head, orphan: true, currentTree: tree })
   assert.equal((await upsertDraft({ token: 'fixture', repo, state: state(), request: m.request })).status, 'created')
   assert.ok(!m.calls.some(x => x.path.endsWith('/git/refs') || x.path.endsWith('/git/commits')))
+})
+
+test('recovery refuses extra content even with a bot author, matching marker and allowed filenames', async () => {
+  const m = mock({ branch: head, orphan: true, currentTree: 'd'.repeat(40) })
+  await assert.rejects(upsertDraft({ token: 'fixture', repo, state: state(), request: m.request }), /content|changed/i)
+  assert.ok(!m.calls.some(x => x.path.endsWith('/git/commits') || x.path.endsWith('/git/refs') || x.path.endsWith('/pulls')))
+})
+
+test('recovery accepts the signed web-flow committer returned by real Actions API commits', async () => {
+  const m = mock({ branch: head, orphan: true, currentTree: tree, committer: 'web-flow' })
+  assert.equal((await upsertDraft({ token: 'fixture', repo, state: state(), request: m.request })).status, 'created')
+  const unsigned = mock({ branch: head, orphan: true, currentTree: tree, committer: 'web-flow', verified: false })
+  await assert.rejects(upsertDraft({ token: 'fixture', repo, state: state(), request: unsigned.request }), /managed|changed/i)
+})
+
+test('an interrupted PR-body update recovers the signed generated head without writing another commit', async () => {
+  const m = mock({ prs: [pr({ body: `${prMarker}\n<!-- dsh-compat-head:${sha} -->` })], branch: head, orphan: true, currentTree: tree })
+  assert.equal((await upsertDraft({ token: 'fixture', repo, state: state(), request: m.request })).status, 'updated')
+  assert.ok(!m.calls.some(x => x.path.endsWith('/git/commits') || x.path.includes('/git/refs')))
+})
+
+test('backfill and closed-PR deduplication follow all pages', async () => {
+  const m = mock({ prs: [pr({ state: 'closed' })] })
+  const request = async (path, options) => {
+    if (path.includes('/issues?') && path.endsWith('page=1')) return Array.from({ length: 100 }, (_, n) => ({ number: n + 20, user: { login: 'someone' }, body: marker(state()) }))
+    if (path.includes('/issues?') && path.endsWith('page=2')) return [issue(state())]
+    if (path.includes('/pulls?') && path.endsWith('page=1')) return Array.from({ length: 100 }, () => ({ head: { ref: 'other' } }))
+    return m.request(path, options)
+  }
+  const results = await maintainDrafts({ token: 'fixture', repo, version, request })
+  assert.equal(results[0].status, 'human-controlled')
+  assert.equal(results[0].number, 14)
+  assert.ok(!m.calls.some(x => x.method))
 })
 
 test('backfills a passed version from bot issues without rerunning checks or trusting input issue ids', async () => {

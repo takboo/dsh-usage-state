@@ -94,18 +94,21 @@ export async function upsertDraft({ token, repo, state, baseBranch = '', activeR
   if (matching.length > 1) throw new Error('Multiple managed PRs for one candidate; manual review required')
   const previous = matching[0]
   if (previous && (previous.state === 'closed' || previous.draft !== true || previous.base?.ref !== base)) return { status: 'human-controlled', number: previous.number, url: previous.html_url }
-  let branchHead
+  let branchHead, recovering = false
   try { branchHead = (await call(`${root}/git/ref/heads/${encodeURIComponent(branch)}`)).object.sha } catch (error) { if (error.status !== 404) throw error }
   if (branchHead && (!previous || previous.head.sha !== branchHead || !previous.body.includes(`<!-- dsh-compat-head:${branchHead} -->`))) {
     // Recover a successful branch write followed by a failed/unknown PR API
     // response. Human commits do not carry the Actions bot's provenance.
     const commit = await call(`${root}/commits/${branchHead}`)
     const recordedHead = previous && /<!-- dsh-compat-head:([a-f0-9]{40}) -->/.exec(previous.body)?.[1]
-    const owned = commit.author?.login === bot && commit.committer?.login === bot && commit.commit?.message === `ci: track DSH ${version} compatibility\n\n${prMarker(version)}`
+    // GitHub signs Actions API commits with web-flow as the committer. The
+    // author/committer display names alone can be supplied by another writer.
+    const owned = commit.author?.login === bot && commit.commit?.verification?.verified === true && commit.commit.verification.reason === 'valid' && commit.commit?.message === `ci: track DSH ${version} compatibility\n\n${prMarker(version)}`
     const recoverable = previous
       ? previous.head.sha === branchHead && recordedHead && commit.parents?.some(p => p.sha === recordedHead)
       : commit.files?.length > 0 && commit.files.length <= 2 && commit.files.every(f => ['.github/dsh-compatibility.json', evidencePath(version)].includes(f.filename))
     if (!owned || !recoverable) throw new Error('Candidate branch changed or is not managed; preserving its contents')
+    recovering = true
   }
   if (previous && !branchHead) throw new Error('Managed candidate branch is missing')
 
@@ -127,6 +130,7 @@ export async function upsertDraft({ token, repo, state, baseBranch = '', activeR
   const nextTree = (await call(`${root}/git/trees`, { method: 'POST', body: JSON.stringify({ base_tree: baseTree, tree: changes }) })).sha
   let nextHead = branchHead
   const currentTree = branchHead && (await call(`${root}/git/commits/${branchHead}`)).tree.sha
+  if (recovering && currentTree !== nextTree) throw new Error('Recoverable branch content changed; preserving its contents for manual review')
   if (!branchHead || currentTree !== nextTree) {
     const parents = [...new Set([baseSha, branchHead].filter(Boolean))]
     nextHead = (await call(`${root}/git/commits`, { method: 'POST', body: JSON.stringify({ message: `ci: track DSH ${version} compatibility\n\n${prMarker(version)}`, tree: nextTree, parents }) })).sha
