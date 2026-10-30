@@ -37,7 +37,7 @@
     "./locale/zh.json": "./locale/zh.json"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "^4.0.4",
+    "@deepseek-ai/cordis": "^4.0.5",
     "@deepseek-ai/dsh-client-locale": "^0.2.0-rc.2",
     "@deepseek-ai/dsh-client-store": "^0.2.0-rc.2",
     "@deepseek-ai/dsh-client-ui-conversation": "^0.2.0-rc.2",
@@ -46,14 +46,14 @@
     "@deepseek-ai/dsh-typert-loader": "^0.2.0-rc.2",
     "@deepseek-ai/dsh-typert-registry": "^0.2.0-rc.2",
     "@deepseek-ai/schemastery": "^3.18.3",
-    "@types/node": "^26.6.4",
+    "@types/node": "^26.6.5",
     "@types/react": "~18.3.1",
     "@types/react-dom": "~18.3.1",
     "@types/react-test-renderer": "18.3.1",
     "react": "^18.3.1",
-    "react-dom": "^18.2.0",
+    "react-dom": "^18.3.1",
     "react-test-renderer": "18.3.1",
-    "tsdown": "^0.23.0",
+    "tsdown": "^0.23.2",
     "typescript": "^5.9.2",
     "unrun": "^0.3.1"
   },
@@ -62,7 +62,7 @@
     "@deepseek-ai/schemastery": "^3.18.3"
   },
   "dependencies": {
-    "zod": "4.6.5"
+    "zod": "4.6.7"
   },
   "main": "lib/index.js",
   "dsh": {
