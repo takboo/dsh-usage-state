@@ -17,7 +17,7 @@
 | 上游 GitHub/npm 发现、兼容性检查与机器人 Issue | [兼容性监测](compatibility-monitor.md) |
 | 提交、发版、跟进CI与恢复失败 | [发布与验收](release.md) |
 | 尚未验收与暂缓事项 | [待办清单](backlog.md) |
-| 核对正式版本CI与分发字节 | [0.4.10发布证据](releases/0.4.10.md) / [0.4.9](releases/0.4.9.md) |
+| 核对正式版本CI与分发字节 | [0.4.11发布证据](releases/0.4.11.md) / [0.4.10](releases/0.4.10.md) |
 | 追溯旧调查或决策 | [归档索引](archive/README.md) |
 
 ## 维护边界
