@@ -29,7 +29,7 @@ test('no key is left as its own translation, except window labels which are lang
 })
 
 test('the dictionaries stay bilingual where it matters most', () => {
-  assert.equal(zh.nav, '用量状态')
-  assert.equal(en.nav, 'Usage state')
+  assert.equal(zh.nav, '余额与额度')
+  assert.equal(en.nav, 'Balance & Quota')
   assert.notEqual(zh['state.unconfigured'], en['state.unconfigured'])
 })

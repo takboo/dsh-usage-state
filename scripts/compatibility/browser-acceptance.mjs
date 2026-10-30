@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 
 /** Exercise the installed client through real browser/Host RPC, not test doubles. */
-export async function browserAcceptance(page, url, { timeoutMs = 60000, noticeTimeoutMs = 15000 } = {}) {
+export async function browserAcceptance(page, url, { timeoutMs = 60000, noticeTimeoutMs = 15000, expectDisplayMetadata = false } = {}) {
   const evidence = { state: false, credentials: false, catalog: false, selection: false }
   page.on('response', response => {
     const path = new URL(response.url()).pathname
@@ -50,7 +50,7 @@ export async function browserAcceptance(page, url, { timeoutMs = 60000, noticeTi
   // The settings section is supplied by the plugin's actual browser bundle.
   await page.getByText('More', { exact: true }).last().click()
   await page.getByText('Settings', { exact: true }).last().click()
-  await page.getByText('Usage state', { exact: true }).last().click()
+  await page.getByText('Balance & Quota', { exact: true }).last().click()
   await page.getByText('Models: Compatibility Flash · Compatibility Pro', { exact: true }).waitFor({ timeout: timeoutMs })
   await page.getByRole('button', { name: 'Hidden', exact: true }).click()
   await balance.waitFor({ state: 'detached', timeout: timeoutMs })
@@ -61,7 +61,11 @@ export async function browserAcceptance(page, url, { timeoutMs = 60000, noticeTi
 
   await waitForEvidence(evidence, ['state', 'credentials', 'catalog', 'selection'], timeoutMs)
   await page.getByText('Plugins', { exact: true }).first().click()
-  await page.getByText('dsh-usage-state', { exact: true }).first().click()
+  // The installed package's exported locale metadata supplies this title; its
+  // technical package name remains visible on the detail page.
+  await page.getByText(expectDisplayMetadata ? 'Balance & Quota' : /^(Balance & Quota|dsh-usage-state)$/, { exact: true }).first().click()
+  await page.getByText('dsh-usage-state', { exact: true }).first().waitFor({ timeout: timeoutMs })
+  if (expectDisplayMetadata) await page.getByText("Shows the current provider's account balance or coding-plan quota above the composer, with usage percentages and reset countdowns.", { exact: true }).first().waitFor({ timeout: timeoutMs })
   await page.getByText('1 total · 1 running', { exact: true }).waitFor({ timeout: timeoutMs })
   await page.getByText('usage-state', { exact: true }).waitFor({ timeout: timeoutMs })
   await page.getByText('Running', { exact: true }).waitFor({ timeout: timeoutMs })

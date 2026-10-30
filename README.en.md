@@ -1,10 +1,10 @@
-# dsh-usage-state
+# Balance & Quota (dsh-usage-state)
 
 [中文](README.md) | **English**
 
 [![CI](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/dsh-usage-state)](https://www.npmjs.com/package/dsh-usage-state)
 
-> **0.4.10** verifies DSH **0.2.1-rc.3** compatibility, including its dynamic model catalog, while retaining separate account sign-in and API Key balances. See the [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.10) for the tarball and checksum and the [Changelog](CHANGELOG.md#0410---2026-10-24) for details.
+> **0.4.11** adds localized “Balance & Quota” names and descriptions in plugin management and settings, and verifies DSH **0.2.1-rc.5** in an isolated Web host and contract tests. See the [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.11) for the tarball and checksum and the [Changelog](CHANGELOG.md#0411---2026-10-30) for details.
 
 Show the current model provider's **account balance** or **coding-plan quota** above the composer input in [DSH (DeepSeek Harness)](https://github.com/deepseek-ai/deepseek-harness). The line matches the input card's width and preserves the native statistics and context meter.
 
@@ -23,7 +23,7 @@ DeepSeek · ¥58.13
 
 ## Install
 
-Requires DSH matching `^0.2.0-rc.2 || ^0.2.1-rc.1` (verified on 0.2.0-rc.2 and 0.2.1-rc.1/rc.2/rc.3). The prebuilt plugin declares Node ≥20. Install into the `web` profile you actually use.
+Requires DSH matching `^0.2.0-rc.2 || ^0.2.1-rc.1` (verified on 0.2.0-rc.2 and 0.2.1-rc.1/rc.2/rc.3/rc.5). The prebuilt plugin declares Node ≥20. Install into the `web` profile you actually use.
 
 Install from npm:
 
@@ -40,13 +40,13 @@ dsh plugin --profile web add github:takboo/dsh-usage-state
 
 This repository commits prebuilt artifacts for DSH's GitHub installation path. A floating Git branch may be ahead of npm; record the source and version/commit when reproducing an issue. This does not describe every npm Git installation's lifecycle.
 
-You can also search for `usage state` or `takboo` in [dsh-market](https://github.com/dsh-market/dsh-market); check the actual installation source and version afterwards. The plugin is on the [curated list](https://awesome-dsh-plugin.com); catalog visibility depends on the selected region and a successful catalog build.
+You can also search for `Balance & Quota`, `dsh-usage-state` or `takboo` in [dsh-market](https://github.com/dsh-market/dsh-market); check the actual installation source and version afterwards. The plugin is on the [curated list](https://awesome-dsh-plugin.com); catalog visibility depends on the selected region and a successful catalog build.
 
 Use historical version 0.3.2 on DSH 0.1; it does not work on 0.2. Version 0.4.0 has a broken RPC mount, so upgrade to the **latest compatible release**. See the [Changelog](CHANGELOG.md) for version history.
 
 ## Quick start
 
-1. Open **Settings → Usage state** to inspect providers, models and the detected source.
+1. Open **Settings → Balance & Quota** to inspect providers, models and the detected source.
 2. Keep Auto for recognized providers, or choose a supported API Key balance, Account balance, Coding Plan or Hidden option.
 3. Set your instance URL for a self-hosted Sub2API source. The current model's reading appears above the input.
 4. Use Refresh now for an explicit query. Check the settings error and the [troubleshooting guide (Chinese)](https://github.com/takboo/dsh-usage-state/blob/main/docs/troubleshooting.md) if it fails.

@@ -6,6 +6,22 @@
 
 ## [Unreleased]
 
+## [0.4.11] - 2026-10-30
+
+### Changed
+
+- 插件管理、组件详情和设置统一使用中文“余额与额度”、英文“Balance & Quota”；通过官方 locale metadata 导出提供双语名称和简洁说明。npm 包名、配置与 RPC 标识保持不变。
+- npm 安装说明突出账户余额、套餐额度、已用比例和重置倒计时；双语 README 同步展示名称与 rc.5 验证边界。
+
+### Fixed
+
+- 兼容性 Draft PR 的中断恢复接受 GitHub 签名的 web-flow committer，并要求候选 tree 完全一致，防止覆盖额外内容；补充签名、内容与分页去重回归。
+
+### Compatibility
+
+- 纳入 rc.5 精确回归候选和原检查证据；自动生成、按版本去重、历史补建及权限隔离经专项审查与验证。支持范围下界不变。
+- 隔离 Web 使用 fixture 验证安装、RPC、模型切换、状态行和设置；真实 Desktop 账号、厂商余额、凭据落盘及完整视觉验收仍单独跟踪。
+
 ## [0.4.10] - 2026-10-24
 
 ### Compatibility
@@ -155,7 +171,8 @@
 
 0.4.5起建立版本tag/Release；更早发布没有保存这些引用。0.3.0至0.4.4的比较端点来自各npm版本的gitHead；0.2系列引用对应实现提交，不能替代当时没有保存的正式发布产物。早期日期沿用历史版本记录。今后版本应按发布流程建立稳定引用。
 
-[Unreleased]: https://github.com/takboo/dsh-usage-state/compare/v0.4.10...HEAD
+[Unreleased]: https://github.com/takboo/dsh-usage-state/compare/v0.4.11...HEAD
+[0.4.11]: https://github.com/takboo/dsh-usage-state/compare/v0.4.10...v0.4.11
 [0.4.10]: https://github.com/takboo/dsh-usage-state/compare/v0.4.9...v0.4.10
 [0.4.9]: https://github.com/takboo/dsh-usage-state/compare/v0.4.8...v0.4.9
 [0.4.8]: https://github.com/takboo/dsh-usage-state/compare/v0.4.7...v0.4.8

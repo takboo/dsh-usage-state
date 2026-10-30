@@ -10,8 +10,8 @@ import type {} from '@deepseek-ai/dsh-client-ui-slots'
 export const LOCALE_NS = 'usage-state'
 
 export const zh = {
-  nav: '用量状态',
-  title: '用量状态',
+  nav: '余额与额度',
+  title: '余额与额度',
   intro: '为每个供应商选择显示账户余额（账号登录或 API Key 模式）或套餐额度（Coding Plan 模式）。数据由宿主定时刷新，密钥交给 DSH 凭据库保存，本插件不另存明文。',
   refreshNow: '立即刷新',
   refreshing: '刷新中…',
@@ -102,8 +102,8 @@ export const zh = {
 export type UsageStateKey = keyof typeof zh
 
 export const en: Record<UsageStateKey, string> = {
-  nav: 'Usage state',
-  title: 'Usage state',
+  nav: 'Balance & Quota',
+  title: 'Balance & Quota',
   intro:
     'Choose what to show for each provider: account balance (account sign-in or API Key mode) or coding-plan quota (Coding Plan mode). The host owns refresh timing, and DSH stores credentials — this plugin keeps no separate plaintext copy.',
   refreshNow: 'Refresh now',

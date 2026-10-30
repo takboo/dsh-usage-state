@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Balance & Quota",
+    "description": "Shows the current provider's account balance or coding-plan quota above the composer, with usage percentages and reset countdowns."
+  }
+}
