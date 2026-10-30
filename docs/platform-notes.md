@@ -1,6 +1,6 @@
 # 平台契约与兼容边界
 
-当前支持范围以 [engines及peer](../package.json) 为准。默认测试依赖锁定0.2.0基线，CI另用精确0.2.1-rc.1/rc.2/rc.3的真实Typert loader/registry；这证明协议契约，不等于每次改动都重新做完整宿主安装。0.4.7/0.4.8的隔离安装与浏览器证据见 [历史兼容性记录](archive/platform-compatibility-2026-10-17.md#dsh-021-compatibility)。
+当前支持范围以 [engines及peer](../package.json) 为准。默认测试依赖锁定0.2.0基线，CI读取 [精确回归候选](../.github/dsh-compatibility.json) 并使用对应真实Typert loader/registry；这证明协议契约，不等于每次改动都重新做完整宿主安装。0.4.7/0.4.8的隔离安装与浏览器证据见 [历史兼容性记录](archive/platform-compatibility-2026-10-17.md#dsh-021-compatibility)。
 
 ## RPC与浏览器装配
 
@@ -50,3 +50,11 @@ patch及Host代码在启动时读取。client-hmr只在活跃传输与实际产�
 - 完整回归344项及rc.3真实Typert host/browser与产物契约19项通过；运行源码及三个bundle与0.4.9相同。CI新增rc.3矩阵，不提高最低支持版本；历史宿主完整安装证据沿用归档记录。
 
 本次未验证真实Desktop账号钱包、厂商账户、凭据保存落盘及完整视觉；账号余额依既有回归和rc.3服务契约核对。正式分发及同包Node20验证以对应Release和发布证据为准。
+
+## DSH 0.2.1-rc.5 展示复验（0.4.11）
+
+2026-10-30，以固定 SHA-512 的官方 rc.5 npm tarball 创建全新 HOME/profile，禁用安装脚本并使用两份不同的假环境/文件凭据。0.4.11 实际打包安装后，Host 激活、RPC、模型切换、输入框上方状态行和 Hidden/API 配置往返通过；fixture 确认宿主使用文件凭据。
+
+插件导出 `./locale/en.json` 与 `./locale/zh.json`，使用官方 `meta.title` / `meta.description` 字段。rc.5 的插件详情与组件行均显示英文 Balance & Quota、中文余额与额度及对应说明；两个独立浏览器语言 context 均通过断言，截图见 [0.4.11 验证](releases/0.4.11.md)。安装页的 npm 描述与英文元数据一致，技术包名与 `usage-state` 设置标识保持不变。较旧宿主若未实现该元数据能力，可以继续显示包名；兼容性浏览器检查允许这一回退，本次展示复验单独强制检查本地化元数据。
+
+本次仍使用 fixture 数据，不代表真实 Desktop 账号、厂商余额、凭据保存落盘或完整视觉验收。正式分发字节和 Node20 结论在发布完成后记录。

@@ -89,7 +89,22 @@ try {
     const page = await browser.newPage()
     phase = 'acceptance'
     try {
-      const evidence = await browserAcceptance(page, url)
+      const evidence = await browserAcceptance(page, url, { expectDisplayMetadata: process.env.DSH_EXPECT_DISPLAY_METADATA === 'true' })
+      if (process.env.DSH_EXPECT_DISPLAY_METADATA === 'true') {
+        await page.screenshot({ path: join(output, 'metadata-en.png'), fullPage: true })
+        const chinese = await browser.newContext({ locale: 'zh-CN' })
+        try {
+          const translated = await chinese.newPage()
+          await translated.goto(url)
+          const consent = translated.getByRole('button', { name: '继续', exact: true })
+          if (await consent.waitFor({ state: 'visible', timeout: 15000 }).then(() => true, () => false)) await consent.click()
+          await translated.getByText('插件', { exact: true }).first().click()
+          await translated.getByText('余额与额度', { exact: true }).first().click()
+          await translated.getByText('在输入框上方查看当前模型供应商的账户余额或套餐额度，显示已用比例和重置倒计时。', { exact: true }).first().waitFor({ timeout: 60000 })
+          await translated.getByText('dsh-usage-state', { exact: true }).first().waitFor({ timeout: 60000 })
+          await translated.screenshot({ path: join(output, 'metadata-zh.png'), fullPage: true })
+        } finally { await chinese.close() }
+      }
       log.push(`Browser RPC evidence: ${JSON.stringify(evidence)}`)
     } catch (error) {
       await page.screenshot({ path: join(output, 'browser-failure.png') }).catch(() => {})

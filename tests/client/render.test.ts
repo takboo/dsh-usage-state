@@ -360,7 +360,7 @@ test('the settings page shows one row per provider with its models and resolved 
     }),
   )
 
-  assert.match(html, /Usage state/)
+  assert.match(html, /Balance &amp; Quota/)
   assert.match(html, /DeepSeek/)
   // Models are listed once per provider, not once per row of controls.
   assert.match(html, /Models: DeepSeek V4 Flash · DeepSeek V4 Pro/)

@@ -1,9 +1,9 @@
 {
   "name": "dsh-usage-state",
-  "version": "0.4.10",
+  "version": "0.4.11",
   "packageManager": "npm@11.19.1",
   "type": "module",
-  "description": "DSH plugin: show account sign-in or API key balances and coding-plan quotas for the model in use",
+  "description": "Shows the current provider's account balance or coding-plan quota above the composer, with usage percentages and reset countdowns.",
   "license": "MIT",
   "engines": {
     "node": ">=20",
@@ -32,7 +32,9 @@
     "./typert": {
       "default": "./lib/typert.js"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./locale/en.json": "./locale/en.json",
+    "./locale/zh.json": "./locale/zh.json"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.4",
@@ -84,7 +86,9 @@
     "README.en.md",
     "LICENSE",
     "CHANGELOG.md",
-    "docs/adapters.md"
+    "docs/adapters.md",
+    "locale/en.json",
+    "locale/zh.json"
   ],
   "keywords": [
     "deepseek",

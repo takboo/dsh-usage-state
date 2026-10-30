@@ -1,10 +1,10 @@
-# dsh-usage-state
+# 余额与额度（dsh-usage-state）
 
 **中文** | [English](README.en.md)
 
 [![CI](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/dsh-usage-state)](https://www.npmjs.com/package/dsh-usage-state)
 
-> **0.4.10** 已验证 DSH **0.2.1-rc.3** 兼容性，支持新版动态模型目录，保留账号登录与 API Key 独立余额查询。安装包及校验文件见 [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.10)，详情见 [更新日志](CHANGELOG.md#0410---2026-10-24)。
+> **0.4.11** 在插件管理与设置中以“余额与额度 / Balance & Quota”展示，并提供双语说明。已完成 DSH **0.2.1-rc.5** 隔离 Web 与契约复验。安装包及校验文件见 [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.11)，详情见 [更新日志](CHANGELOG.md#0411---2026-10-30)。
 
 在 [DSH（DeepSeek Harness）](https://github.com/deepseek-ai/deepseek-harness) 输入框上方显示当前模型供应商的**账户余额**或**套餐额度**。状态行与输入卡片同宽，保留原生统计行和上下文计量器。
 
@@ -23,7 +23,7 @@ DeepSeek · ¥58.13
 
 ## 安装
 
-要求：DSH版本满足 `^0.2.0-rc.2 || ^0.2.1-rc.1`（已验证0.2.0-rc.2及0.2.1-rc.1/rc.2/rc.3），运行预构建插件声明Node≥20，安装到正在使用的 `web` profile。
+要求：DSH版本满足 `^0.2.0-rc.2 || ^0.2.1-rc.1`（已验证0.2.0-rc.2及0.2.1-rc.1/rc.2/rc.3/rc.5），运行预构建插件声明Node≥20，安装到正在使用的 `web` profile。
 
 从npm安装：
 
@@ -40,13 +40,13 @@ dsh plugin --profile web add github:takboo/dsh-usage-state
 
 本仓库提交预构建产物，供DSH的GitHub安装路径直接使用。浮动GitHub分支可能领先于npm；复现问题时记录安装来源和版本/提交。不要把这一行为推广到所有npm Git安装。
 
-也可通过 [dsh-market](https://github.com/dsh-market/dsh-market) 搜索 `usage state` 或 `takboo` 安装；安装后核对实际来源与版本。本插件已进入 [精选列表](https://awesome-dsh-plugin.com)；目录更新的可见时间取决于所用区域与成功构建。
+也可通过 [dsh-market](https://github.com/dsh-market/dsh-market) 搜索 `余额与额度`、`Balance & Quota`、`dsh-usage-state` 或 `takboo` 安装；安装后核对实际来源与版本。本插件已进入 [精选列表](https://awesome-dsh-plugin.com)；目录更新的可见时间取决于所用区域与成功构建。
 
 DSH0.1使用历史版本0.3.2；该版本不适配0.2。0.4.0有RPC挂载缺陷，应升级至**最新兼容版**。完整版本记录见 [更新日志](CHANGELOG.md)。
 
 ## 快速开始
 
-1. 打开 **设置→用量状态**，查看供应商、模型和检测到的数据源。
+1. 打开 **设置→余额与额度**，查看供应商、模型和检测到的数据源。
 2. 对已识别供应商保留“自动”，或选择其支持的API Key余额、账号余额、Coding Plan、隐藏。
 3. 自建Sub2API在高级区填写实例地址；已配置模型的当前读数显示在输入框上方。
 4. “立即刷新”用于主动查询；出错先查看设置页原因及 [排查指南](https://github.com/takboo/dsh-usage-state/blob/main/docs/troubleshooting.md)。

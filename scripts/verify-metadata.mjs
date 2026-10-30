@@ -28,5 +28,12 @@ for (const lifecycle of ['prepare', 'prepack', 'install', 'postinstall']) {
   assert.equal(manifest.scripts?.[lifecycle], undefined, `${lifecycle} would change the prebuilt installation contract`)
 }
 publishedFiles(manifest)
+for (const language of ['en', 'zh']) {
+  const file = `locale/${language}.json`
+  assert.equal(manifest.exports?.[`./${file}`], `./${file}`, `display metadata export missing: ${language}`)
+  const meta = readJson(path.join(ROOT, file)).meta
+  for (const key of ['title', 'description']) assert.ok(typeof meta?.[key] === 'string' && meta[key].trim(), `display metadata ${language}.${key} must be non-empty`)
+  if (language === 'en') assert.equal(meta.description, manifest.description, 'npm and English display descriptions differ')
+}
 assert.equal(manifest.dsh?.client?.platform, 'web')
 console.log(`Metadata verified: ${manifest.name}@${manifest.version}; canonical Node ${nodeVersion}; ${manifest.packageManager}`)
