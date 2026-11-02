@@ -6,6 +6,18 @@
 
 ## [Unreleased]
 
+## [0.4.12] - 2026-11-02
+
+### Changed
+
+- 运行依赖 Zod 从 4.6.5 更新至 4.6.7，使 npm 安装获得本次依赖维护更新。
+- 更新 Cordis、schemastery、Node 类型、React DOM 18 和 tsdown 的锁定依赖；使用规范 Node24.21.0/npm11.19.1 重建并提交三个 bundle。产物差异仅涉及构建工具生成的文件边界注释。
+
+### Compatibility
+
+- 合并 DSH 0.2.1-rc.4 与 0.2.2-alpha.2 的原始自动检查证据，并纳入精确 RPC 回归矩阵；保留 rc.1/rc.2/rc.3/rc.5。alpha.2 仅为回归候选，不扩大包的宿主支持声明。
+- 本次维护未新增真实 Desktop 账号、厂商余额、凭据落盘、模型推理或完整视觉验收；这些边界继续在 Backlog 单独跟踪。
+
 ## [0.4.11] - 2026-10-30
 
 ### Changed
@@ -171,7 +183,8 @@
 
 0.4.5起建立版本tag/Release；更早发布没有保存这些引用。0.3.0至0.4.4的比较端点来自各npm版本的gitHead；0.2系列引用对应实现提交，不能替代当时没有保存的正式发布产物。早期日期沿用历史版本记录。今后版本应按发布流程建立稳定引用。
 
-[Unreleased]: https://github.com/takboo/dsh-usage-state/compare/v0.4.11...HEAD
+[Unreleased]: https://github.com/takboo/dsh-usage-state/compare/v0.4.12...HEAD
+[0.4.12]: https://github.com/takboo/dsh-usage-state/compare/v0.4.11...v0.4.12
 [0.4.11]: https://github.com/takboo/dsh-usage-state/compare/v0.4.10...v0.4.11
 [0.4.10]: https://github.com/takboo/dsh-usage-state/compare/v0.4.9...v0.4.10
 [0.4.9]: https://github.com/takboo/dsh-usage-state/compare/v0.4.8...v0.4.9
