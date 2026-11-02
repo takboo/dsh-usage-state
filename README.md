@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/dsh-usage-state)](https://www.npmjs.com/package/dsh-usage-state)
 
-> **0.4.11** 在插件管理与设置中以“余额与额度 / Balance & Quota”展示，并提供双语说明。已完成 DSH **0.2.1-rc.5** 隔离 Web 与契约复验。安装包及校验文件见 [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.11)，详情见 [更新日志](CHANGELOG.md#0411---2026-10-30)。
+> **0.4.12** 更新运行依赖 Zod 至 4.6.7，并同步构建工具与预构建产物；CI 新增 DSH rc.4 和 alpha.2 精确契约回归候选。安装包及校验文件见 [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.12)，详情见 [更新日志](CHANGELOG.md#0412---2026-11-02)。
 
 在 [DSH（DeepSeek Harness）](https://github.com/deepseek-ai/deepseek-harness) 输入框上方显示当前模型供应商的**账户余额**或**套餐额度**。状态行与输入卡片同宽，保留原生统计行和上下文计量器。
 

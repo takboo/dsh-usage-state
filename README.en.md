@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/dsh-usage-state)](https://www.npmjs.com/package/dsh-usage-state)
 
-> **0.4.11** adds localized “Balance & Quota” names and descriptions in plugin management and settings, and verifies DSH **0.2.1-rc.5** in an isolated Web host and contract tests. See the [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.11) for the tarball and checksum and the [Changelog](CHANGELOG.md#0411---2026-10-30) for details.
+> **0.4.12** updates the Zod runtime dependency to 4.6.7 and refreshes the build tools and prebuilt bundles. CI adds exact DSH rc.4 and alpha.2 contract regression candidates. See the [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.12) for the tarball and checksum and the [Changelog](CHANGELOG.md#0412---2026-11-02) for details.
 
 Show the current model provider's **account balance** or **coding-plan quota** above the composer input in [DSH (DeepSeek Harness)](https://github.com/deepseek-ai/deepseek-harness). The line matches the input card's width and preserves the native statistics and context meter.
 
