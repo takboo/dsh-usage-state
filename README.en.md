@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/dsh-usage-state)](https://www.npmjs.com/package/dsh-usage-state)
 
-> **0.4.12** updates the Zod runtime dependency to 4.6.7 and refreshes the build tools and prebuilt bundles. CI adds exact DSH rc.4 and alpha.2 contract regression candidates. See the [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.12) for the tarball and checksum and the [Changelog](CHANGELOG.md#0412---2026-11-02) for details.
+> **0.4.13** fixes Sub2API routes being mistaken for official Kimi or GLM sources. Manual source choices reuse provider credentials, and settings show inherited endpoints so they do not need to be entered again. See the [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.13) for the tarball and checksum and the [Changelog](CHANGELOG.md#0413---2026-11-04) for details.
 
 Show the current model provider's **account balance** or **coding-plan quota** above the composer input in [DSH (DeepSeek Harness)](https://github.com/deepseek-ai/deepseek-harness). The line matches the input card's width and preserves the native statistics and context meter.
 
@@ -48,7 +48,7 @@ Use historical version 0.3.2 on DSH 0.1; it does not work on 0.2. Version 0.4.0 
 
 1. Open **Settings → Balance & Quota** to inspect providers, models and the detected source.
 2. Keep Auto for recognized providers, or choose a supported API Key balance, Account balance, Coding Plan or Hidden option.
-3. Set your instance URL for a self-hosted Sub2API source. The current model's reading appears above the input.
+3. Sub2API reuses the provider's existing endpoint. Enter an instance URL in Advanced only when one is missing or you want an override. The current model's reading appears above the input.
 4. Use Refresh now for an explicit query. Check the settings error and the [troubleshooting guide (Chinese)](https://github.com/takboo/dsh-usage-state/blob/main/docs/troubleshooting.md) if it fails.
 
 Advanced controls offer source selection; API Key mode also provides endpoint, credential name and key writes. Explicit provider overrides take precedence over legacy source defaults. Descriptions and requests share the candidate order; saves prioritize the explicit ref. Pinned endpoints do not try mirrors, and account configuration/key changes discard previous-identity readings. Configuration and credential write permissions are separate; saves/clears report failure and prevent repeated in-flight operations.

@@ -79,14 +79,27 @@ test('malformed settings documents are simply ignored', () => {
   }
 })
 
-test('a caller-supplied resolver replaces the built-in suggestion', () => {
-  const refs = providerCredentialRefs({
-    sourceId: 'zai',
-    piAiSettings: PI_AI,
-    suggest: (providerId, baseUrl) => (providerId === 'orcarouter' && baseUrl === undefined ? 'zai' : undefined),
-  })
+test('credential discovery honors explicit source overrides instead of guessing again', () => {
+  const piAiSettings = { providers: {
+    'my-kimi': { apiKeyEnv: 'RELAY_KEY', baseURL: 'https://relay.example/v1' },
+  } }
+  const config = normalizeConfig({ providers: { 'my-kimi': { sourceId: 'sub2api' } } })
 
-  assert.deepEqual(refs, [])
+  assert.deepEqual(providerCredentialRefs({ sourceId: 'sub2api', mode: 'api', piAiSettings, config }), ['RELAY_KEY'])
+  assert.deepEqual(providerCredentialRefs({ sourceId: 'kimi', mode: 'api', piAiSettings, config }), [])
+})
+
+test('hidden and unsupported providers do not contribute credentials to another target', () => {
+  const piAiSettings = { providers: {
+    'sub2api-hidden': { apiKeyEnv: 'HIDDEN_KEY', baseURL: 'https://hidden.example/v1' },
+    'sub2api-unsupported': { apiKeyEnv: 'UNSUPPORTED_KEY', baseURL: 'https://unsupported.example/v1' },
+  } }
+  const config = normalizeConfig({ providers: {
+    'sub2api-hidden': { mode: 'hidden' },
+    'sub2api-unsupported': { mode: 'account' },
+  } })
+
+  assert.deepEqual(providerCredentialRefs({ sourceId: 'sub2api', piAiSettings, config }), [])
 })
 
 test('providerEndpointHints reports each configured endpoint, trimmed', () => {

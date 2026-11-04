@@ -154,6 +154,39 @@ test('state exposes origin-only hints for providers recognized from their declar
   for (const secret of ['url-secret', 'url-token', 'custom-test-key']) assert.equal(JSON.stringify(wire).includes(secret), false)
 })
 
+test('Sub2API discovery and source overrides reuse the provider endpoint and key through RPC', async () => {
+  for (const provider of ['sub2api-kimi', 'sub2api-glm', 'my-kimi']) {
+    const host = contextStub({
+      settings: {
+        'usage-state': provider === 'my-kimi' ? { providers: { [provider]: { sourceId: 'sub2api' } } } : {},
+        'llm-pi-ai': { providers: { [provider]: {
+          name: 'kimi', baseURL: 'https://relay.example/v1', apiKeyEnv: 'RELAY_KEY',
+        } } },
+      },
+      credentials: { RELAY_KEY: 'fake-relay-key' },
+    })
+    const get = host.ctx.get.bind(host.ctx)
+    host.ctx.get = name => name === 'llm' ? { listProviders: () => [{ id: provider }] } : get(name)
+    const requests: Array<{ url: string; authorization: string | undefined }> = []
+    const service = createUsageState(host.ctx, deps(host, { fetch: async (url, init) => {
+      requests.push({ url, authorization: init.headers.authorization })
+      return { ok: true, status: 200, json: async () => ({ balance: 12.5 }) }
+    } }))
+    try {
+      const state = await service.getState(false)
+      assert.deepEqual(requests, [{ url: 'https://relay.example/v1/usage', authorization: 'Bearer fake-relay-key' }], provider)
+      assert.deepEqual(state.snapshots['sub2api:api']?.balances, [{ amount: 12.5, currency: 'USD' }])
+      assert.deepEqual(state.endpointHints, { [provider]: 'https://relay.example' })
+      assert.equal(state.snapshots['kimi:api'], undefined)
+      assert.equal(state.snapshots['zai:coding-plan'], undefined)
+      const report = await service.describeCredentials()
+      assert.equal(report.credentials['sub2api:api']?.ref, 'RELAY_KEY')
+    } finally {
+      host.dispose()
+    }
+  }
+})
+
 test('a malformed balance response keeps the last successful reading and exposes a parse failure', async () => {
   const host = contextStub({ settings: CONFIGURED, credentials: { DEEPSEEK_API_KEY: 'sk-test' } })
   let malformed = false

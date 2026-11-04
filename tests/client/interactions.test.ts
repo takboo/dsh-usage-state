@@ -31,6 +31,7 @@ async function page(context: { after(callback: () => void | Promise<void>): unkn
   report?: CredentialReport
   mutation?: (ops: readonly SettingsPathOp[]) => Promise<boolean>
   credentials?: CredentialsRemoteLike
+  endpointHints?: Record<string, string>
 } = {}) {
   const listeners = new Set<() => void>()
   let snapshot = {
@@ -72,7 +73,7 @@ async function page(context: { after(callback: () => void | Promise<void>): unkn
   const store = new UsageStateClientStore({
     getState: async force => {
       refreshes.push(force)
-      return { ok: true, value: { sources: catalog, snapshots: {}, checkedAt: 1000 } }
+      return { ok: true, value: { sources: catalog, snapshots: {}, checkedAt: 1000, endpointHints: options.endpointHints } }
     },
     describeCredentials: async () => ({ ok: true, value: report }),
     modelCatalog: async () => ({ ok: true, value: { groups: [
@@ -224,6 +225,31 @@ test('blurring an untouched field does not restore its draft after an external u
 
   assert.equal(form.getSnapshot().value.refresh.intervalMinutes, 10)
   assert.equal(writes.length, 1, 'a blur with no user edit sends no additional mutation')
+})
+
+test('clearing an endpoint override restores inheritance without persisting the provider endpoint', async context => {
+  const { renderer, form, writes } = await page(context, {
+    value: { providers: { deepseek: { mode: 'api', baseUrl: 'https://override.example' } } },
+    endpointHints: { deepseek: 'https://declared.example' },
+  })
+  const endpoint = renderer.root.findAllByType('input').find(node => node.props.value === 'https://override.example')
+  assert.ok(endpoint)
+  assert.doesNotMatch(text(renderer), /Using the provider endpoint/)
+
+  act(() => endpoint.props.onChange({ target: { value: '' } }))
+  await act(async () => { endpoint.props.onBlur(); await flush() })
+
+  assert.equal(endpoint.props.value, '')
+  assert.equal(endpoint.props.placeholder, 'https://declared.example')
+  assert.match(text(renderer), /Using the provider endpoint https:\/\/declared\.example/)
+  assert.equal(form.getSnapshot().value.providers.deepseek?.baseUrl, undefined)
+  assert.deepEqual(writes, [[{ op: 'unset', path: ['providers', 'deepseek', 'baseUrl'] }]])
+
+  act(() => endpoint.props.onChange({ target: { value: 'https://replacement.example' } }))
+  await act(async () => { endpoint.props.onBlur(); await flush() })
+
+  assert.equal(form.getSnapshot().value.providers.deepseek?.baseUrl, 'https://replacement.example')
+  assert.doesNotMatch(text(renderer), /Using the provider endpoint/)
 })
 
 test('read-only configuration disables provider edits without changing credential permissions', async context => {

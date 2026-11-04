@@ -259,17 +259,13 @@ export function normalizeConfig(raw: unknown): UsageStateConfig {
 }
 
 const PROVIDER_HINTS: ReadonlyArray<{ sourceId: string; pattern: RegExp }> = [
+  // The gateway owns the balance, regardless of the model vendor in its route id.
+  { sourceId: 'sub2api', pattern: /sub-?2-?api/ },
   { sourceId: 'zai', pattern: /(zai|zhipu|bigmodel|glm)/ },
   { sourceId: 'kimi', pattern: /(kimi|moonshot)/ },
-  // Gateways next: an id that names sub2api is a self-hosted relay whatever models it
-  // serves (`sub2api-opencode` is not an OpenCode account). Keeping sub2api ahead of
-  // opencode also keeps the OpenCode account's key away from a gateway host.
-  { sourceId: 'sub2api', pattern: /sub-?2-?api/ },
   // Then OpenCode, and before deepseek: the Zen Go route that serves a DeepSeek model
   // is literally named `opencode-go-deepseek`, and a bare `/deepseek/` test placed any
-  // earlier would claim it for the DeepSeek account. Keeping zai/kimi first leaves
-  // their vendor ids (`sub2api-glm`, `sub2api-kimi`) resolving exactly as before, so
-  // only ids that pair `sub2api` with `deepseek` change meaning.
+  // earlier would claim it for the DeepSeek account.
   { sourceId: 'opencode', pattern: /opencode/ },
   { sourceId: 'deepseek', pattern: /deepseek/ },
 ]

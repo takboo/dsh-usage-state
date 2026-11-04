@@ -50,6 +50,7 @@ export const zh = {
 
   baseUrl: '接口地址',
   baseUrlPlaceholder: 'https://…',
+  baseUrlInherited: '正在使用供应商接口地址 {baseUrl}；留空可继续复用。',
   baseUrlRequired: '此数据源必须填写你自己实例的接口地址',
   apiKeyRef: '凭据名（可选）',
   apiKeyRefHint: '留空则自动探测；填写后优先使用该凭据名。',
@@ -144,6 +145,7 @@ export const en: Record<UsageStateKey, string> = {
 
   baseUrl: 'Endpoint',
   baseUrlPlaceholder: 'https://…',
+  baseUrlInherited: 'Using the provider endpoint {baseUrl}; leave blank to keep using it.',
   baseUrlRequired: 'This data source needs the endpoint of your own instance',
   apiKeyRef: 'Credential name (optional)',
   apiKeyRefHint: 'Leave blank to auto-detect; when set, this ref is tried first.',

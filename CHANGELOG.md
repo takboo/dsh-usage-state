@@ -6,6 +6,14 @@
 
 ## [Unreleased]
 
+## [0.4.13] - 2026-11-04
+
+### Fixed
+
+- `sub2api-kimi`、`sub2api-glm` 等网关路由优先识别为 Sub2API，不再因模型厂商关键词选择官方余额接口。
+- 凭据发现复用完整的供应商来源与模式解析，遵守手动数据源覆盖及隐藏设置，正确复用供应商声明的凭据名。
+- 高级设置显示已继承的供应商接口地址，仅在实际缺少端点时提示填写；手动选择 Sub2API 无需重复配置供应商已有端点。
+
 ## [0.4.12] - 2026-11-02
 
 ### Changed
@@ -183,7 +191,8 @@
 
 0.4.5起建立版本tag/Release；更早发布没有保存这些引用。0.3.0至0.4.4的比较端点来自各npm版本的gitHead；0.2系列引用对应实现提交，不能替代当时没有保存的正式发布产物。早期日期沿用历史版本记录。今后版本应按发布流程建立稳定引用。
 
-[Unreleased]: https://github.com/takboo/dsh-usage-state/compare/v0.4.12...HEAD
+[Unreleased]: https://github.com/takboo/dsh-usage-state/compare/v0.4.13...HEAD
+[0.4.13]: https://github.com/takboo/dsh-usage-state/compare/v0.4.12...v0.4.13
 [0.4.12]: https://github.com/takboo/dsh-usage-state/compare/v0.4.11...v0.4.12
 [0.4.11]: https://github.com/takboo/dsh-usage-state/compare/v0.4.10...v0.4.11
 [0.4.10]: https://github.com/takboo/dsh-usage-state/compare/v0.4.9...v0.4.10

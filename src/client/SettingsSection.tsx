@@ -356,9 +356,9 @@ function ProviderCard(props: {
                 disabled={props.disabled}
                 value={entry?.baseUrl ?? ''}
                 placeholder={
-                  row.resolution.mode === null
+                  row.resolution.baseUrl ?? (row.resolution.mode === null
                     ? t('baseUrlPlaceholder')
-                    : (resolvedSource?.defaultBaseUrl[row.resolution.mode] ?? t('baseUrlPlaceholder'))
+                    : (resolvedSource?.defaultBaseUrl[row.resolution.mode] ?? t('baseUrlPlaceholder')))
                 }
                 width="320px"
                 onCommit={value => {
@@ -366,7 +366,10 @@ function ProviderCard(props: {
                   else props.onField(['providers', row.provider, 'baseUrl'], value)
                 }}
               />
-              {resolvedSource?.requiresBaseUrl === true && entry?.baseUrl === undefined ? (
+              {row.resolution.baseUrl !== undefined && row.resolution.baseUrlPinned !== true ? (
+                <span style={MUTED}>{t('baseUrlInherited', { baseUrl: row.resolution.baseUrl })}</span>
+              ) : null}
+              {resolvedSource?.requiresBaseUrl === true && row.resolution.baseUrl === undefined ? (
                 <Tag tone="warning">{t('baseUrlRequired')}</Tag>
               ) : null}
             </div>

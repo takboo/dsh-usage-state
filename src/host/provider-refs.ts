@@ -1,6 +1,9 @@
-import { suggestSourceId, type UsageStateConfig } from '../shared/config.ts'
-import { kimiMode } from '../shared/providers.ts'
+import { DEFAULT_CONFIG, type UsageStateConfig } from '../shared/config.ts'
+import { resolveProvider } from '../shared/providers.ts'
 import type { UsageMode } from '../shared/types.ts'
+import { toSourceCatalog } from './catalog.ts'
+
+const CATALOG = toSourceCatalog()
 
 /**
  * Inputs for deriving credential refs from the DSH provider configuration.
@@ -14,8 +17,6 @@ export interface ProviderCredentialRefsInput {
   deepseekSettings?: unknown
   /** The `llm-pi-ai` settings namespace, when the host has it. */
   piAiSettings?: unknown
-  /** Source-suggestion override, for tests. */
-  suggest?: (providerId: string, baseUrl?: string) => string | undefined
 }
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
@@ -32,7 +33,7 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
  */
 export function providerCredentialRefs(input: ProviderCredentialRefsInput): string[] {
   if (input.mode === 'account') return []
-  const suggest = input.suggest ?? suggestSourceId
+  const config = input.config ?? DEFAULT_CONFIG
   const refs: string[] = []
   const push = (value: unknown): void => {
     if (typeof value !== 'string') return
@@ -52,15 +53,11 @@ export function providerCredentialRefs(input: ProviderCredentialRefsInput): stri
     const profile = asRecord(raw)
     if (profile === undefined) continue
     const baseUrl = typeof profile.baseURL === 'string' ? profile.baseURL : undefined
-    if (suggest(providerId, baseUrl) !== input.sourceId) continue
-    if (input.sourceId === 'kimi' && input.mode !== undefined) {
-      const entry = input.config?.providers[providerId]
-      const choice = entry?.mode
-      if (choice === 'hidden') continue
-      const endpoint = entry?.baseUrl ?? input.config?.sources.kimi?.baseUrl ?? baseUrl
-      const mode = choice === 'api' || choice === 'coding-plan' ? choice : kimiMode(providerId, endpoint)
-      if (mode !== input.mode) continue
-    }
+    // Use the same effective source/mode as polling and display, including source
+    // overrides and hidden providers. Guessing again can lose a relay's own key.
+    const resolution = resolveProvider({ provider: providerId, endpointHint: baseUrl, config, catalog: CATALOG })
+    if (resolution.sourceId !== input.sourceId || resolution.mode === null) continue
+    if (input.mode !== undefined && resolution.mode !== input.mode) continue
     push(profile.apiKeyEnv)
   }
 

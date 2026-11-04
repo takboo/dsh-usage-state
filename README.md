@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/dsh-usage-state)](https://www.npmjs.com/package/dsh-usage-state)
 
-> **0.4.12** 更新运行依赖 Zod 至 4.6.7，并同步构建工具与预构建产物；CI 新增 DSH rc.4 和 alpha.2 精确契约回归候选。安装包及校验文件见 [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.12)，详情见 [更新日志](CHANGELOG.md#0412---2026-11-02)。
+> **0.4.13** 修复 Sub2API 路由因 Kimi、GLM 等名称被误识别为官方来源的问题；手动来源选择正确复用供应商凭据，设置页显示已继承的端点，无需重复填写。安装包及校验文件见 [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.13)，详情见 [更新日志](CHANGELOG.md#0413---2026-11-04)。
 
 在 [DSH（DeepSeek Harness）](https://github.com/deepseek-ai/deepseek-harness) 输入框上方显示当前模型供应商的**账户余额**或**套餐额度**。状态行与输入卡片同宽，保留原生统计行和上下文计量器。
 
@@ -48,7 +48,7 @@ DSH0.1使用历史版本0.3.2；该版本不适配0.2。0.4.0有RPC挂载缺陷�
 
 1. 打开 **设置→余额与额度**，查看供应商、模型和检测到的数据源。
 2. 对已识别供应商保留“自动”，或选择其支持的API Key余额、账号余额、Coding Plan、隐藏。
-3. 自建Sub2API在高级区填写实例地址；已配置模型的当前读数显示在输入框上方。
+3. 自建Sub2API复用供应商已有接口地址；仅在未配置地址或需要覆盖时在高级区填写。已配置模型的当前读数显示在输入框上方。
 4. “立即刷新”用于主动查询；出错先查看设置页原因及 [排查指南](https://github.com/takboo/dsh-usage-state/blob/main/docs/troubleshooting.md)。
 
 高级区提供数据源选择；API Key模式另有端点、凭据名和密钥写入入口。显式provider覆盖优先于旧source默认；凭据描述与读取共用候选顺序，保存优先写显式ref。固定端点不试镜像，配置或凭据身份变化后清除旧身份读数。只读配置与凭据写入权限分别处理，保存/清除过程会显示失败并禁用重复操作。

@@ -455,6 +455,41 @@ test('the settings page demands an endpoint for a self-hosted provider', () => {
   assert.match(html, /SUB2API_API_KEY/)
 })
 
+test('a manually selected Sub2API source shows the inherited provider endpoint without requiring a duplicate', () => {
+  for (const mode of ['auto', 'api', 'coding-plan'] as const) {
+    const config = configWith({ 'sub2api-kimi': { sourceId: 'sub2api', mode } })
+    const html = renderToStaticMarkup(h(SettingsSection, {
+      close: () => {}, t, credentials: CREDENTIALS,
+      usageState: storeWith({
+        catalog: CATALOG,
+        endpointHints: { 'sub2api-kimi': 'https://relay.example' },
+        models: [{ provider: 'sub2api-kimi', providerName: 'kimi', model: 'k3.1-pro', name: 'k3.1-pro' }],
+      }),
+      settings: settingsWith(config),
+    }))
+
+    assert.doesNotMatch(html, /This data source needs the endpoint of your own instance/)
+    assert.doesNotMatch(html, /Needs an endpoint first/)
+    assert.match(html, /placeholder="https:\/\/relay\.example"/)
+    assert.match(html, /Using the provider endpoint/)
+    assert.equal(config.providers['sub2api-kimi']?.baseUrl, undefined, 'inheritance does not write an override')
+  }
+})
+
+test('a legacy source endpoint also satisfies the Sub2API endpoint requirement', () => {
+  const html = renderToStaticMarkup(h(SettingsSection, {
+    close: () => {}, t, credentials: CREDENTIALS,
+    usageState: storeWith({ catalog: CATALOG, models: [
+      { provider: 'sub2api', providerName: 'Relay', model: 'm', name: 'Model' },
+    ] }),
+    settings: settingsWith(normalizeConfig({ sources: { sub2api: { baseUrl: 'https://legacy.example' } } })),
+  }))
+
+  assert.doesNotMatch(html, /This data source needs the endpoint of your own instance/)
+  assert.match(html, /placeholder="https:\/\/legacy\.example"/)
+  assert.doesNotMatch(html, /Using the provider endpoint/)
+})
+
 test('a hidden provider is marked as such instead of showing a target', () => {
   const html = renderToStaticMarkup(
     h(SettingsSection, {

@@ -47,11 +47,9 @@ test('suggestSourceId recognises the provider ids people actually configure', ()
   // A self-hosted gateway that merely relays OpenCode models stays a gateway:
   // the sub2api hint is checked before opencode on purpose.
   assert.equal(suggestSourceId('sub2api-opencode'), 'sub2api')
-  // Vendor hints still beat the gateway hint, so only ids that pair `sub2api` with
-  // `deepseek` change meaning (deepseek had to move behind opencode — see the order
-  // in src/shared/config.ts).
-  assert.equal(suggestSourceId('sub2api-glm'), 'zai')
-  assert.equal(suggestSourceId('sub2api-kimi'), 'kimi')
+  // Model/vendor names behind a gateway do not identify its billing source.
+  assert.equal(suggestSourceId('sub2api-glm'), 'sub2api')
+  assert.equal(suggestSourceId('sub2api-kimi'), 'sub2api')
   assert.equal(suggestSourceId('sub2api-deepseek'), 'sub2api')
   assert.equal(suggestSourceId('my-relay'), undefined)
 })
