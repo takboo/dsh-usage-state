@@ -9,6 +9,8 @@
 - 0.2客户端非src-json codec需要 `create()` 工厂；可选force参数仍显式传值或undefined并声明acceptsUndefined。
 - 自己贡献的remote命名空间通过 `ctx.get` 读取，挂载失败展示错误。客户端依赖由shell模块表提供，浏览器UI包的CSS入口不直接在Node运行。
 
+从0.4.11起，插件导出 `./locale/en.json` 与 `./locale/zh.json`，以官方 `meta.title` / `meta.description` 提供中英文显示名和说明，技术包名与设置标识不变。旧宿主若未实现该能力，可以回退显示包名；自动兼容性检查允许此回退，双语展示的专门复验另行强制断言本地化元数据。
+
 契约由 [Host测试](../tests/host/typert.test.ts)、[客户端贡献](../tests/client/contribution.test.ts) 和 [bundle测试](../tests/build/bundle.test.ts) 检查。SSR桩件检查标记，React交互检查回调与effects，实际布局仍需浏览器验收。
 
 ## 凭据服务
@@ -39,22 +41,8 @@ patch及Host代码在启动时读取。client-hmr只在活跃传输与实际产�
 
 新宿主发布线先验证实际tarball安装、Host激活、浏览器装配、RPC及当前功能，再放宽支持声明。历史0.1 codec、会话事件和本机探针只在 [归档](archive/README.md) 保留；本插件不写会话日志是产品决定，不依赖对所有平台版本的能力断言。
 
-## DSH 0.2.1-rc.3 复验（0.4.10）
+## 验证记录
 
-2026-10-24，规范Node24.21.0/npm11.19.1，官方 [dsh-v0.2.1-rc.3](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.3)（`1f81c047`）。核对 [rc.2至rc.3差异](https://github.com/deepseek-ai/deepseek-harness/compare/dsh-v0.2.1-rc.2...dsh-v0.2.1-rc.3) 及精确npm宿主：input.dock、Typert和凭据调用仍兼容；账号服务继续提供 `getPlatformSession()` 与 `getBalance(client)`。API Key模型发现改为跟随官方 `/models`，供应商ID仍为 `deepseek-official`。
+当前精确契约候选由 [CI清单](../.github/dsh-compatibility.json) 维护；逐版本自动检查的固定提交、integrity和阶段结果保存在 `docs/compatibility/`，[0.2.2-alpha.3](compatibility/0.2.2-alpha.3.md) 与 [0.2.2-rc.1](compatibility/0.2.2-rc.1.md) 证据不扩大支持声明。
 
-- 独立临时home/profile安装0.4.10候选tarball，使用精确rc.3 CLI和平台包（Cordis4.0.5、schemastery3.18.5），Host成功激活，浏览器客户端及设置页可用。
-- 清空继承账户环境，仅注入两份不同的假环境/文件凭据；进程内fetch fixture提供官方 `/models` 和余额响应并拦截外部网络。设置显示 `Configured (file)` 且可写；getState对应余额为42.25，证明使用文件凭据，而非环境fixture的19.75。
-- `/models`返回一个通过rc.3版本门控的新模型；插件设置、宿主模型选择器均能显示并选择它。会话中input.dock显示 `DeepSeek ¥42.25`，原生统计行保留。Hidden/API配置往返立即移除/恢复状态行，浏览器无error日志。
-- 本机原生目录对话框不可用，测试宿主使用上游支持的远程启动环境切换至browse选择器；未修改插件来绕过该环境限制。仅创建本地测试会话并停止模型请求，fixture不提供模型推理流，本次不验证真实模型生成。
-- 完整回归344项及rc.3真实Typert host/browser与产物契约19项通过；运行源码及三个bundle与0.4.9相同。CI新增rc.3矩阵，不提高最低支持版本；历史宿主完整安装证据沿用归档记录。
-
-本次未验证真实Desktop账号钱包、厂商账户、凭据保存落盘及完整视觉；账号余额依既有回归和rc.3服务契约核对。正式分发及同包Node20验证以对应Release和发布证据为准。
-
-## DSH 0.2.1-rc.5 展示复验（0.4.11）
-
-2026-10-30，以固定 SHA-512 的官方 rc.5 npm tarball 创建全新 HOME/profile，禁用安装脚本并使用两份不同的假环境/文件凭据。0.4.11 实际打包安装后，Host 激活、RPC、模型切换、输入框上方状态行和 Hidden/API 配置往返通过；fixture 确认宿主使用文件凭据。
-
-插件导出 `./locale/en.json` 与 `./locale/zh.json`，使用官方 `meta.title` / `meta.description` 字段。rc.5 的插件详情与组件行均显示英文 Balance & Quota、中文余额与额度及对应说明；两个独立浏览器语言 context 均通过断言，截图见 [0.4.11 验证](releases/0.4.11.md)。安装页的 npm 描述与英文元数据一致，技术包名与 `usage-state` 设置标识保持不变。较旧宿主若未实现该元数据能力，可以继续显示包名；兼容性浏览器检查允许这一回退，本次展示复验单独强制检查本地化元数据。
-
-本次仍使用 fixture 数据，不代表真实 Desktop 账号、厂商余额、凭据保存落盘或完整视觉验收。正式分发字节和 Node20 结论在发布完成后记录。
+DSH 0.2.1-rc.3 的独立安装、动态模型目录、文件凭据及浏览器过程保存在 [0.4.10发布记录](releases/0.4.10.md#宿主浏览器验收与边界)；rc.5 的隔离Web与双语metadata断言、截图保存在 [0.4.11发布记录](releases/0.4.11.md#候选验证)。各版本分发及同包运行验证从 [发布流程](release.md) 进入，未完成的真实验收统一见 [Backlog](backlog.md)。
