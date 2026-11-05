@@ -1,6 +1,6 @@
 # 发布与验收
 
-此流程对应仓库 [CI](../.github/workflows/ci.yml)、[Release](../.github/workflows/release.yml) 和 [工具链action](../.github/actions/setup-toolchain/action.yml)。版本历史见 [Changelog](../CHANGELOG.md)，未验收范围见 [Backlog](backlog.md)。最新的 [0.4.13发布验收](releases/0.4.13.md) 保存实际CI、分发字节、签名与provenance核验；双语展示与隔离Web截图见 [0.4.11](releases/0.4.11.md)。
+此流程对应仓库 [CI](../.github/workflows/ci.yml)、[Release](../.github/workflows/release.yml) 和 [工具链action](../.github/actions/setup-toolchain/action.yml)。版本历史见 [Changelog](../CHANGELOG.md)，未验收范围见 [Backlog](backlog.md)。最新的 [0.4.14发布验收](releases/0.4.14.md) 保存实际CI、分发字节、签名与provenance核验；双语展示与隔离Web截图见 [0.4.11](releases/0.4.11.md)。
 
 ## 准备可信提交
 
