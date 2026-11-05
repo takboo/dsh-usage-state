@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/dsh-usage-state)](https://www.npmjs.com/package/dsh-usage-state)
 
-> **0.4.13** fixes Sub2API routes being mistaken for official Kimi or GLM sources. Manual source choices reuse provider credentials, and settings show inherited endpoints so they do not need to be entered again. See the [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.13) for the tarball and checksum and the [Changelog](CHANGELOG.md#0413---2026-11-04) for details.
+> **0.4.14** updates build dependencies and adds automated compatibility evidence and exact regression candidates for DSH 0.2.2-alpha.3 and rc.1. It includes the Sub2API fixes from 0.4.13 and keeps the existing host support declarations. See the [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.14) for the tarball and checksum and the [Changelog](CHANGELOG.md#0414---2026-11-05) for details.
 
 Show the current model provider's **account balance** or **coding-plan quota** above the composer input in [DSH (DeepSeek Harness)](https://github.com/deepseek-ai/deepseek-harness). The line matches the input card's width and preserves the native statistics and context meter.
 

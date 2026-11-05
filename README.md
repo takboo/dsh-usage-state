@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/dsh-usage-state)](https://www.npmjs.com/package/dsh-usage-state)
 
-> **0.4.13** 修复 Sub2API 路由因 Kimi、GLM 等名称被误识别为官方来源的问题；手动来源选择正确复用供应商凭据，设置页显示已继承的端点，无需重复填写。安装包及校验文件见 [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.13)，详情见 [更新日志](CHANGELOG.md#0413---2026-11-04)。
+> **0.4.14** 更新构建依赖，并纳入 DSH 0.2.2-alpha.3 与 rc.1 的自动检查证据和精确回归矩阵；继续包含0.4.13的 Sub2API 修复，宿主支持声明保持不变。安装包及校验文件见 [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.14)，详情见 [更新日志](CHANGELOG.md#0414---2026-11-05)。
 
 在 [DSH（DeepSeek Harness）](https://github.com/deepseek-ai/deepseek-harness) 输入框上方显示当前模型供应商的**账户余额**或**套餐额度**。状态行与输入卡片同宽，保留原生统计行和上下文计量器。
 

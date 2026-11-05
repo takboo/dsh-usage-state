@@ -6,6 +6,17 @@
 
 ## [Unreleased]
 
+## [0.4.14] - 2026-11-05
+
+### Changed
+
+- 更新锁定的开发依赖：`@types/node` 26.6.5 → 26.6.6、`tsdown` 0.23.2 → 0.23.4，并同步其传递依赖。使用规范 Node24.21.0/npm11.19.1 重建，三个预构建 bundle 与0.4.13一致。
+
+### Compatibility
+
+- 纳入 DSH 0.2.2-alpha.3 与 0.2.2-rc.1 的原始自动检查证据，并加入精确 RPC 回归矩阵；保留 rc.1–rc.5 与 alpha.2，共8个候选。
+- 本版继续包含0.4.13的 Sub2API 来源识别、凭据复用与端点继承修复。宿主支持声明保持不变；真实 Desktop 账号、厂商余额、凭据落盘、模型推理和完整视觉验收继续在 Backlog 单独跟踪。
+
 ## [0.4.13] - 2026-11-04
 
 ### Fixed
@@ -191,7 +202,8 @@
 
 0.4.5起建立版本tag/Release；更早发布没有保存这些引用。0.3.0至0.4.4的比较端点来自各npm版本的gitHead；0.2系列引用对应实现提交，不能替代当时没有保存的正式发布产物。早期日期沿用历史版本记录。今后版本应按发布流程建立稳定引用。
 
-[Unreleased]: https://github.com/takboo/dsh-usage-state/compare/v0.4.13...HEAD
+[Unreleased]: https://github.com/takboo/dsh-usage-state/compare/v0.4.14...HEAD
+[0.4.14]: https://github.com/takboo/dsh-usage-state/compare/v0.4.13...v0.4.14
 [0.4.13]: https://github.com/takboo/dsh-usage-state/compare/v0.4.12...v0.4.13
 [0.4.12]: https://github.com/takboo/dsh-usage-state/compare/v0.4.11...v0.4.12
 [0.4.11]: https://github.com/takboo/dsh-usage-state/compare/v0.4.10...v0.4.11
