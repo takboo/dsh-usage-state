@@ -1,8 +1,27 @@
 import { normalizeConfig, type UsageStateConfig } from '../shared/config.ts'
-import type { ConfigFormLike, SettingsScopeLike, SettingsScopeSnapshotLike } from './context.ts'
+import type { ConfigFormLike, SettingsPathOp, SettingsScopeLike, SettingsScopeSnapshotLike } from './context.ts'
 
 async function requireAccepted(write: Promise<boolean>): Promise<void> {
   if (!await write) throw new Error('The host did not accept the settings write')
+}
+
+/** Materialize a touched legacy provider before a leaf edit masks its model entry. */
+function preserveLegacyProviders(value: unknown, ops: readonly SettingsPathOp[]): readonly SettingsPathOp[] {
+  const raw = value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
+  const stored = normalizeConfig({ providers: raw.providers }).providers
+  const config = normalizeConfig(value)
+  const touched = new Set(ops.filter(op => op.path[0] === 'providers' && op.path.length > 2).map(op => op.path[1]!))
+  const migrated = [...touched].filter(provider => !Object.hasOwn(stored, provider) && Object.hasOwn(config.providers, provider))
+  if (migrated.length === 0) return ops
+
+  // Creating one stored provider must not move it ahead of the other legacy rows.
+  const before: SettingsPathOp[] = [{ op: 'set', path: ['order'], value: config.order }]
+  for (const provider of migrated) {
+    for (const [field, fieldValue] of Object.entries(config.providers[provider]!)) {
+      before.push({ op: 'set', path: ['providers', provider, field], value: fieldValue })
+    }
+  }
+  return [...before, ...ops]
 }
 
 /**
@@ -49,7 +68,7 @@ export function usageStateSettings(form: ConfigFormLike<unknown>): SettingsScope
       await requireAccepted(form.unset(field))
     },
     mutate: async (ops, expectedRevision) => {
-      await requireAccepted(form.mutate(ops, expectedRevision))
+      await requireAccepted(form.mutate(preserveLegacyProviders(form.getSnapshot().value, ops), expectedRevision))
     },
   }
 }

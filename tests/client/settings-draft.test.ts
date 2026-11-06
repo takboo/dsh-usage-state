@@ -53,6 +53,27 @@ async function draftPage(context: { after(callback: () => void): unknown }, opti
 
 const warn = (value: number): SettingsPathOp => ({ op: 'set', path: ['display', 'thresholdWarnPercent'], value })
 
+test('saving an edit to a legacy model preserves its provider routing and display order', async context => {
+  const models = [
+    { provider: 'other-route', model: 'other-model', sourceId: 'kimi', mode: 'coding-plan' },
+    { provider: 'custom-route', model: 'custom-model', sourceId: 'deepseek', mode: 'api' },
+  ]
+  const page = await draftPage(context, { value: { models, future: { keep: true } } })
+  act(() => page.draft.stage([{ op: 'set', path: ['providers', 'custom-route', 'apiKeyRef'], value: 'CUSTOM_KEY' }]))
+  assert.deepEqual(page.draft.config.providers['custom-route'], { mode: 'api', sourceId: 'deepseek', apiKeyRef: 'CUSTOM_KEY' })
+  assert.equal(page.writes.length, 0)
+
+  await act(async () => { await page.draft.save() })
+
+  assert.equal(page.draft.dirty, false)
+  assert.deepEqual(page.draft.config.providers['custom-route'], { mode: 'api', sourceId: 'deepseek', apiKeyRef: 'CUSTOM_KEY' })
+  assert.deepEqual(page.draft.config.order, ['other-route', 'custom-route'])
+  assert.deepEqual(page.form.getSnapshot().value.models, models)
+  assert.deepEqual(page.form.getSnapshot().value.future, { keep: true })
+  assert.equal(page.writes.length, 1)
+  assert.equal(page.writes[0]?.revision, 7)
+})
+
 test('configuration edits stage locally and Save atomically writes narrow paths at the first-edit revision', async context => {
   const page = await draftPage(context, { value: { future: { keep: true }, providers: { deepseek: { future: 'keep' } } } })
   act(() => {

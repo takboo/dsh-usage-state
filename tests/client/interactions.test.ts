@@ -8,6 +8,8 @@ import { UsageStateClientStore } from '../../src/client/store.ts'
 import { usageStateSettings } from '../../src/client/settings-form.ts'
 import { en } from '../../src/client/locales.ts'
 import { normalizeConfig } from '../../src/shared/config.ts'
+import { toSourceCatalog } from '../../src/host/catalog.ts'
+import { resolveProvider } from '../../src/shared/providers.ts'
 import type { SourceCatalog } from '../../src/shared/display.ts'
 import type { CredentialReport } from '../../src/shared/rpc.ts'
 import type { CredentialsRemoteLike, SettingsPathOp } from '../../src/client/context.ts'
@@ -309,6 +311,34 @@ test('clearing an endpoint override restores inheritance without persisting the 
   assert.doesNotMatch(text(renderer), /Using the provider endpoint/)
   await act(async () => { button(renderer, 'Save settings').props.onClick(); await flush() })
   assert.equal(form.getSnapshot().value.providers.deepseek?.baseUrl, 'https://replacement.example')
+})
+
+test('an OpenAI endpoint override can be cleared in API mode to restore the gateway route', async context => {
+  const sources = toSourceCatalog()
+  const { renderer, form, writes } = await page(context, {
+    catalog: sources,
+    groups: [{ id: 'relay', name: 'Relay', models: [{ id: 'm', name: 'Model' }] }],
+    value: { providers: { relay: { mode: 'api', baseUrl: 'https://api.openai.com' } } },
+    endpointHints: { relay: 'https://gateway.example' },
+    report: { credentials: {} },
+  })
+  assert.match(text(renderer), /OpenAI/)
+  assert.equal(renderer.root.findAllByType('input').some(node => node.props.type === 'password'), false)
+
+  const endpoint = renderer.root.findAllByType('input').find(node => node.props['aria-label'] === translate('baseUrl'))
+  assert.ok(endpoint, 'ordinary modes must retain the endpoint editor even when OpenAI cannot supply a balance')
+  act(() => endpoint.props.onChange({ target: { value: '' } }))
+  assert.equal(mode(renderer, 'Relay').props.value, 'api')
+  assert.equal(endpoint.props.placeholder, 'https://gateway.example')
+  assert.deepEqual(writes, [])
+  assert.equal(form.getSnapshot().value.providers.relay?.baseUrl, 'https://api.openai.com')
+
+  await act(async () => { button(renderer, 'Save settings').props.onClick(); await flush() })
+  assert.equal(form.getSnapshot().value.providers.relay?.baseUrl, undefined)
+  assert.equal(resolveProvider({
+    provider: 'relay', config: form.getSnapshot().value, catalog: sources, endpointHint: 'https://gateway.example',
+  }).key, 'sub2api:api')
+  assert.deepEqual(writes, [[{ op: 'unset', path: ['providers', 'relay', 'baseUrl'] }]])
 })
 
 test('native progress switch stages its checked state until settings Save', async context => {

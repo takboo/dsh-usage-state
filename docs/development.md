@@ -51,6 +51,8 @@ link能访问工作树开发依赖，适合迭代；交付验证使用实际tarb
 
 设置贡献挂载 `plugins.row.config` 的 `dsh-usage-state#usage-state`；summary 只输出行内摘要，page 不重复宿主标题。`ConfigPageForm` 为快照和 revision-aware `mutate` 包装，不提供统一 Save 控制器。页面草稿通过既有 `configForms.get('usage-state')` 提交窄路径操作，首次编辑固定 revision；dirty 时不静默同步外部快照，失败保留草稿，Reset 读取最新值，卸载丢弃。凭据保存／清除独立即时生效，不混入配置草稿。相关交互必须使用 fixture 验证，不在真实 GUI 保存测试密钥。
 
+旧 `models` 条目仍由 normalize 解码；首次保存其中供应商的字段编辑时，表单适配器在同一 revision 提交中先补齐该供应商的迁移字段与现有顺序，再应用用户操作，保留旧模型记录及无关字段。普通模式的接口覆盖始终可编辑／清除，即使当前有效端点被识别为 OpenAI；普通密钥面板仍受来源能力限制，账号及 Admin 模式继续隐藏接口覆盖。
+
 ## 修改时关注
 
 - 回归覆盖用户实际调用链：provider配置→身份→实际读取→RPC→显示。账号fixture和API Key fixture使用不同身份及金额。

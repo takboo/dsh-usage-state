@@ -402,7 +402,7 @@ function ProviderCard(props: {
                 onChanged={props.onCredentialChanged}
               />
             )}
-          </>) : accountMode ? <span style={MUTED}>{t('accountHint')}</span> : resolvedSource?.unavailable !== undefined ? null : (<>
+          </>) : accountMode ? <span style={MUTED}>{t('accountHint')}</span> : (<>
             <div style={ROW}>
               <span style={MUTED}>{t('baseUrl')}</span>
               <DraftInput
@@ -429,32 +429,34 @@ function ProviderCard(props: {
               ) : null}
             </div>
 
-            <div style={ROW}>
-              <span style={MUTED}>{t('apiKeyRef')}</span>
-              <DraftInput
-                resetKey={props.resetKey}
-                disabled={props.disabled}
-                value={entry?.apiKeyRef ?? ''}
-                invalid={invalidCredentialRef(row.resolution.apiKeyRef)}
-                label={t('apiKeyRef')}
-                width="220px"
-                onCommit={value => {
-                  if (value === '') props.onClearField(['providers', row.provider, 'apiKeyRef'])
-                  else props.onField(['providers', row.provider, 'apiKeyRef'], value)
-                }}
-              />
-              <span style={MUTED}>{t('apiKeyRefHint')}</span>
-            </div>
+            {resolvedSource?.unavailable !== undefined ? null : (<>
+              <div style={ROW}>
+                <span style={MUTED}>{t('apiKeyRef')}</span>
+                <DraftInput
+                  resetKey={props.resetKey}
+                  disabled={props.disabled}
+                  value={entry?.apiKeyRef ?? ''}
+                  invalid={invalidCredentialRef(row.resolution.apiKeyRef)}
+                  label={t('apiKeyRef')}
+                  width="220px"
+                  onCommit={value => {
+                    if (value === '') props.onClearField(['providers', row.provider, 'apiKeyRef'])
+                    else props.onField(['providers', row.provider, 'apiKeyRef'], value)
+                  }}
+                />
+                <span style={MUTED}>{t('apiKeyRefHint')}</span>
+              </div>
 
-            <CredentialPanel
-              t={t}
-              refs={refs}
-              refOverride={row.resolution.apiKeyRef}
-              description={props.description}
-              credentials={props.credentials}
-              routeChanged={props.credentialRouteChanged}
-              onChanged={props.onCredentialChanged}
-            />
+              <CredentialPanel
+                t={t}
+                refs={refs}
+                refOverride={row.resolution.apiKeyRef}
+                description={props.description}
+                credentials={props.credentials}
+                routeChanged={props.credentialRouteChanged}
+                onChanged={props.onCredentialChanged}
+              />
+            </>)}
           </>)}
         </div>
       </details>
