@@ -3,14 +3,14 @@ import { createElement } from 'react'
 import type { UsageStateConfig } from '../shared/config.ts'
 import type { CredentialReport, RemoteResult, UsageStateView } from '../shared/rpc.ts'
 import { CONTRIBUTION } from './contribution.ts'
-import { SettingsSection } from './SettingsSection.tsx'
+import { SettingsSection, type SettingsSectionProps } from './SettingsSection.tsx'
 import { StatusLine } from './StatusLine.tsx'
 import { en, LOCALE_NS, zh } from './locales.ts'
 import { remoteService } from './remote.ts'
 import { usageStateSettings } from './settings-form.ts'
 import { STATUS_LINE_SLOTS } from './slots.ts'
 import { UsageStateClientStore } from './store.ts'
-import type { ClientContextLike, CredentialsRemoteLike, ModelCatalogLike, RemoteServiceLike, SettingsScopeLike } from './context.ts'
+import type { ClientContextLike, CredentialsRemoteLike, ModelCatalogLike, PluginConfigViewProps, RemoteServiceLike, SettingsScopeLike } from './context.ts'
 
 // `configForms` is the 0.2 settings transport (0.1's `settingsScope` no longer
 // exists); `remote.session` carries the model catalog and `remote.credentials` the
@@ -23,7 +23,6 @@ const POLL_INTERVAL_MS = 30_000
 
 export function apply(ctx: ClientContextLike): void {
   ctx.effect(() => ctx.locale.register(LOCALE_NS, { zh, en }), 'dsh-usage-state: dictionaries')
-  const t = ctx.locale.bind(LOCALE_NS)
 
   // `configForms` keys its forms by profile entry id, so USAGE_STATE_NS has to be
   // the id of the row this plugin's bundle patch inserts. The platform form hands
@@ -137,18 +136,17 @@ export function apply(ctx: ClientContextLike): void {
     )
   }
 
-  ctx.slots.inject('settings.section', () =>
+  ctx.slots.inject('plugins.row.config', () =>
     ctx.slots.register(
       {
-        name: 'settings.section',
-        id: 'usage-state',
-        // After every official page (the platform's own sections use 15–100).
-        order: 200,
-        label: () => t('nav'),
+        name: 'plugins.row.config',
+        key: 'dsh-usage-state#usage-state',
         locale: LOCALE_NS,
         inject: () => ({ ...seat(), credentials: remoteService<CredentialsRemoteLike>(ctx, 'remote.credentials') }),
       },
-      SettingsSection as never,
+      (props: SettingsSectionProps & PluginConfigViewProps) => props.view === 'summary'
+        ? props.t('configSummary')
+        : createElement(SettingsSection, props),
     ),
   )
 }

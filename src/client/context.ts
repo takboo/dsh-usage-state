@@ -85,6 +85,15 @@ export interface ConfigFormSnapshotLike<T> {
   mode: 'host' | 'memory'
 }
 
+/** Plugin Manager owns the page shell; the contribution owns draft/Save controls. */
+export interface PluginConfigViewProps {
+  view: 'summary' | 'page'
+  form?: {
+    state: ConfigFormSnapshotLike<unknown>
+    mutate(ops: readonly SettingsPathOp[], expectedRevision?: number): Promise<boolean>
+  }
+}
+
 export interface RemoteServiceLike {
   getState(force: boolean): Promise<RemoteResult<UsageStateView>>
   describeCredentials(): Promise<RemoteResult<CredentialReport>>

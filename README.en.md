@@ -46,12 +46,15 @@ Use historical version 0.3.2 on DSH 0.1; it does not work on 0.2. Version 0.4.0 
 
 ## Quick start
 
-1. Open **Settings → Balance & Quota** to inspect providers, models and the detected source.
-2. Keep Auto for recognized providers, or choose a supported API Key balance, Account balance, Coding Plan or Hidden option.
-3. Sub2API reuses the provider's existing endpoint. Enter an instance URL in Advanced only when one is missing or you want an override. The current model's reading appears above the input.
-4. Use Refresh now for an explicit query. Check the settings error and the [troubleshooting guide (Chinese)](https://github.com/takboo/dsh-usage-state/blob/main/docs/troubleshooting.md) if it fails.
+The settings entry and draft workflow below belong to the current development branch and are not yet published to npm. Released 0.4.14 still uses the separate settings entry. The new entry has been opened on Desktop 0.2.1-rc.5, with Save/Reset verified in an isolated browser on the same version. Earlier hosts in the declared range still need entry-specific validation; historical RPC checks do not certify the migrated page.
 
-Advanced controls offer source selection; API Key mode also provides endpoint, credential name and key writes. Explicit provider overrides take precedence over legacy source defaults. Descriptions and requests share the candidate order; saves prioritize the explicit ref. Pinned endpoints do not try mirrors, and account configuration/key changes discard previous-identity readings. Configuration and credential write permissions are separate; saves/clears report failure and prevent repeated in-flight operations.
+1. Open **Plugins → Balance & Quota → Configure**, rather than the global settings sidebar.
+2. Each provider has one compact row. Choose Auto, a supported API Key balance / Account balance / Coding Plan mode, or Hidden from its dropdown. The row shows the detected mode, source and status; models and advanced overrides stay collapsed.
+3. Sub2API reuses the provider's existing endpoint. Expand advanced settings only when an address is missing or an override is needed. Harness manages account-mode sign-in, with no API key input. Official OpenAI shows its API limitation and a billing link only.
+4. Click **Save settings** to apply mode, order, endpoint, refresh and display changes together. **Reset** adopts the latest saved configuration; leaving the page discards unsaved edits. Draft configuration does not change the line above the composer.
+5. **Refresh now** explicitly queries readings for the **saved configuration**; it does not save edits. Check the row's reason and the [troubleshooting guide (Chinese)](https://github.com/takboo/dsh-usage-state/blob/main/docs/troubleshooting.md) on failure.
+
+**Configuration and credentials save separately.** **Save key now / Clear key now** are immediate actions and are not undone by resetting configuration. After editing a provider's mode, source, endpoint or credential name, save settings and wait for the current target's permission description before editing its key. Display or order drafts do not block independent key actions. API Key advanced settings offer endpoint, credential name and key controls. Explicit provider overrides take precedence over legacy source defaults, and descriptions and requests share the candidate order. Pinned endpoints do not try mirrors; configuration or credential identity changes discard previous-identity readings. Configuration and credential permissions are separate. Pending saves prevent duplicate submissions, and failed saves preserve the draft. If another page changes configuration, reset and reapply your edits rather than silently overwriting external changes.
 
 ## Sources
 
@@ -79,11 +82,13 @@ OpenCode Zen Go's three windows on the independent line above the input:
 
 ![Account readings above the input](https://raw.githubusercontent.com/takboo/dsh-usage-state/main/assets/screenshots/status-line.webp)
 
-Provider settings and advanced controls:
+Actual development-build screenshots on Desktop 0.2.1-rc.5, with the private sidebar cropped out. Light theme: compact provider rows, mode dropdowns and collapsed advanced controls. Official OpenAI shows its API limitation inline:
 
-![Provider settings](https://raw.githubusercontent.com/takboo/dsh-usage-state/main/assets/screenshots/settings-providers.webp)
+![Compact provider settings](https://raw.githubusercontent.com/takboo/dsh-usage-state/main/assets/screenshots/settings-providers.webp)
 
-![Advanced settings](https://raw.githubusercontent.com/takboo/dsh-usage-state/main/assets/screenshots/settings-advanced.webp)
+Dark theme with official DeepSeek advanced settings expanded: models are reference-only; endpoint and credential-name overrides are optional. Key saves/clears take effect immediately and are not undone by configuration Reset.
+
+![Dark advanced settings](https://raw.githubusercontent.com/takboo/dsh-usage-state/main/assets/screenshots/settings-advanced.webp)
 
 ## Refresh and credentials
 
@@ -96,12 +101,12 @@ The plugin queries balances/quotas and reads the selected model and provider cat
 See the [Backlog (Chinese)](https://github.com/takboo/dsh-usage-state/blob/main/docs/backlog.md) for remediation status and verification scope.
 
 - **Account scope:** one target is still selected per source and mode. Identity isolation does not add independent multi-account support.
-- **Live verification:** this release’s real Desktop account login and visuals, Kimi Code monthly quotas, Sub2API accounts, high-threshold colors, real credential writes and nonzero OpenCode readings still lack live coverage. Local interaction tests do not replace that acceptance.
+- **Live verification:** real Desktop account sign-in and balance comparison, Kimi Code monthly quotas, Sub2API accounts, long provider names, Chinese settings, high-threshold colors, real credential writes and nonzero OpenCode readings still lack live coverage. Local interaction tests do not replace that acceptance.
 - **Scope:** the line can be absent without a selected model or when hidden; clicking it does not open settings; readings are not saved as history.
 
 ## Development and docs
 
-Development supports Node 22.18+ on the 22 line or Node 24.11+. Canonical builds pin **Node 24.21.0** ([.node-version](https://github.com/takboo/dsh-usage-state/blob/main/.node-version)) and **npm 11.19.1** (packageManager), above the runtime floor. Basic checks:
+Development supports Node 22.18+ on the 22 line or Node 24.11+. Canonical builds pin **Node 24.22.2** ([.node-version](https://github.com/takboo/dsh-usage-state/blob/main/.node-version)) and **npm 11.19.1** (packageManager), above the runtime floor. Basic checks:
 
 ```bash
 npm ci

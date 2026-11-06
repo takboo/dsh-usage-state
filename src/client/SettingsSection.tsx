@@ -1,31 +1,29 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, ControlStyles, Input, Switch, Tag } from './controls.tsx'
 
-import { buildProviderRows, reorderProviders, setProviderMode, type ProviderRow } from './provider-rows.ts'
-import { useSettingsValue, useStoreState } from './hooks.ts'
+import { buildProviderRows, reorderProviders, type ProviderRow } from './provider-rows.ts'
+import { useStoreState } from './hooks.ts'
+import { useSettingsDraft } from './settings-draft.ts'
 import type { UsageStateClientSource } from './status-source.ts'
 import type { CredentialsRemoteLike, SettingsScopeLike, Translate } from './context.ts'
 import type { CredentialCandidate, CredentialDescription } from '../shared/rpc.ts'
 import { normalizeConfig, type ProviderMode, type UsageStateConfig } from '../shared/config.ts'
 import type { SourceCatalog } from '../shared/display.ts'
 import type { UsageMode } from '../shared/types.ts'
+import { resolveProvider } from '../shared/providers.ts'
 
 export interface SettingsSectionProps {
-  close: () => void
   t: Translate
   usageState: UsageStateClientSource
   settings: SettingsScopeLike<UsageStateConfig>
   credentials: CredentialsRemoteLike | undefined
 }
 
-const CARD = {
-  border: '1px solid var(--dsw-alias-border-l2, var(--dsw-alias-border-l3))',
-  borderRadius: '12px',
-  background: 'var(--dsw-alias-bg-layer-3)',
-  padding: '12px 14px',
+const SECTION = {
   display: 'flex',
   flexDirection: 'column' as const,
-  gap: '10px',
+  gap: '8px',
+  minWidth: 0,
 }
 
 const ROW = {
@@ -36,7 +34,7 @@ const ROW = {
   minWidth: 0,
 }
 
-const MUTED = { color: 'var(--dsw-alias-label-tertiary)', fontSize: '12px' }
+const MUTED = { color: 'var(--dsw-alias-label-secondary)', fontSize: '12px', lineHeight: '18px', overflowWrap: 'anywhere' as const }
 
 /**
  * The card header is a two-column grid, never a wrapping flex row: the name
@@ -59,7 +57,7 @@ const NAME = {
   whiteSpace: 'nowrap' as const,
 }
 
-const CONTROLS = { display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }
+const CONTROLS = { display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }
 
 /** Models are listed for orientation only, so the line stays short. */
 const MAX_MODELS_SHOWN = 6
@@ -76,10 +74,7 @@ function windowModeLabel(mode: UsageMode, t: Translate): string {
   return modeLabel(mode, t)
 }
 
-/**
- * A text field that keeps a local draft and writes once, on blur or Enter.
- * Committing on every keystroke would mean one settings revision per character.
- */
+/** Keep partial input text while staging immediately; only the page Save writes. */
 function DraftInput(props: {
   value: string
   label: string
@@ -87,18 +82,13 @@ function DraftInput(props: {
   placeholder?: string
   disabled?: boolean
   width?: string
+  resetKey: number
   onCommit: (next: string) => void
 }) {
   const [draft, setDraft] = useState(props.value)
   const [editing, setEditing] = useState(false)
   const shown = editing ? draft : props.value
-
-  const commit = () => {
-    if (!editing || props.disabled) return
-    setEditing(false)
-    const next = draft.trim()
-    if (next !== props.value.trim()) props.onCommit(next)
-  }
+  useEffect(() => { setEditing(false) }, [props.resetKey])
 
   return (
     <Input
@@ -108,14 +98,17 @@ function DraftInput(props: {
       placeholder={props.placeholder}
       disabled={props.disabled}
       onChange={event => {
+        if (props.disabled) return
+        const value = (event.target as HTMLInputElement).value
         setEditing(true)
-        setDraft((event.target as HTMLInputElement).value)
+        setDraft(value)
+        props.onCommit(value.trim())
       }}
-      onBlur={commit}
+      onBlur={() => setEditing(false)}
       onKeyDown={event => {
         if ((event as { key?: string }).key === 'Enter') (event.target as HTMLInputElement).blur()
       }}
-      style={{ maxWidth: props.width ?? '280px' }}
+      style={{ width: props.width ?? '280px', maxWidth: '100%' }}
     />
   )
 }
@@ -131,22 +124,25 @@ function CredentialPanel(props: {
   refOverride?: string
   description: CredentialDescription | undefined
   credentials: CredentialsRemoteLike | undefined
+  routeChanged: boolean
   onChanged: () => void
 }) {
   const { t } = props
-  const [draft, setDraft] = useState('')
+  const [draftForRef, setDraft] = useState<{ ref: string | undefined; value: string }>({ ref: undefined, value: '' })
   const [note, setNote] = useState<string | undefined>(undefined)
   const [pending, setPending] = useState(false)
   const busy = useRef(false)
   const candidates = props.description?.candidates ?? []
   const configuredRef = props.refOverride ?? props.description?.ref ?? candidates.find(candidate => candidate.configured)?.ref ?? props.refs[0]
+  const draft = draftForRef.ref === configuredRef ? draftForRef.value : ''
   const candidate = candidates.find(value => value.ref === configuredRef)
   const sameDescription = props.description?.ref === configuredRef
-  const writable = (candidate?.writable ?? (sameDescription ? props.description?.writable : undefined)) !== false
+  const permission = candidate?.writable ?? (sameDescription ? props.description?.writable : undefined)
+  const writable = permission === true
   const configured = candidate?.configured ?? (sameDescription && props.description?.configured === true)
 
   const save = async () => {
-    if (busy.current || !writable || props.credentials === undefined || configuredRef === undefined || draft.trim() === '') return
+    if (busy.current || props.routeChanged || !writable || props.credentials === undefined || configuredRef === undefined || draft.trim() === '') return
     busy.current = true
     setPending(true)
     setNote(undefined)
@@ -156,7 +152,7 @@ function CredentialPanel(props: {
         setNote(t('credentialFailed', { message: result.error.message }))
         return
       }
-      setDraft('')
+      setDraft({ ref: configuredRef, value: '' })
       setNote(t('credentialSaved'))
       props.onChanged()
     } catch (error) {
@@ -168,7 +164,7 @@ function CredentialPanel(props: {
   }
 
   const clear = async () => {
-    if (busy.current || !writable || props.credentials === undefined || configuredRef === undefined) return
+    if (busy.current || props.routeChanged || !writable || props.credentials === undefined || configuredRef === undefined) return
     busy.current = true
     setPending(true)
     setNote(undefined)
@@ -205,32 +201,33 @@ function CredentialPanel(props: {
             )}
           </span>
         ))}
-        {writable ? null : <span style={MUTED}>{t('credentialLocked')}</span>}
+        {permission === false ? <span style={MUTED}>{t('credentialLocked')}</span> : permission === undefined ? <span style={MUTED}>{t('credentialChecking')}</span> : null}
       </div>
       <div style={ROW}>
         <Input
           type="password"
           autoComplete="off"
           value={draft}
-          disabled={pending || !writable || props.credentials === undefined}
+          disabled={pending || props.routeChanged || !writable || props.credentials === undefined}
           placeholder={t('credentialPlaceholder')}
           aria-label={t('credential')}
-          onChange={event => setDraft((event.target as HTMLInputElement).value)}
+          onChange={event => { if (!pending && !props.routeChanged && writable) setDraft({ ref: configuredRef, value: (event.target as HTMLInputElement).value }) }}
           style={{ maxWidth: '280px' }}
         />
-        <Button size="sm" variant="primary" disabled={pending || !writable || props.credentials === undefined || configuredRef === undefined || draft.trim() === ''} onClick={() => void save()}>
+        <Button size="sm" variant="primary" disabled={pending || props.routeChanged || !writable || props.credentials === undefined || configuredRef === undefined || draft.trim() === ''} onClick={() => void save()}>
           {t('credentialSave')}
         </Button>
         <Button
           size="sm"
           variant="outline"
-          disabled={pending || !writable || props.credentials === undefined || configuredRef === undefined || !configured}
+          disabled={pending || props.routeChanged || !writable || props.credentials === undefined || configuredRef === undefined || !configured}
           onClick={() => void clear()}
         >
           {t('credentialClear')}
         </Button>
       </div>
-      <span style={MUTED}>{note ?? t('credentialHint')}</span>
+      <span style={MUTED}>{props.routeChanged ? t('credentialSaveConfigFirst') : t('credentialHint')}</span>
+      {note === undefined ? null : <span role="status" style={MUTED}>{note}</span>}
     </div>
   )
 }
@@ -262,6 +259,8 @@ function ProviderCard(props: {
   index: number
   total: number
   disabled: boolean
+  resetKey: number
+  credentialRouteChanged: boolean
   onMode: (mode: ProviderMode) => void
   onMove: (delta: number) => void
   onField: (path: string[], value: string) => void
@@ -284,7 +283,7 @@ function ProviderCard(props: {
   const suffix = modelNames.length > MAX_MODELS_SHOWN ? ', …' : ''
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingBottom: '6px' }}>
+    <div data-usage-provider={row.provider} style={{ ...SECTION, gap: '4px', padding: '9px 0', borderBottom: '1px solid var(--dsw-alias-border-l2)' }}>
       <div style={HEADER}>
         <span style={NAME} title={row.providerName === row.provider ? row.providerName : `${row.providerName} · ${row.provider}`}>
           <strong>{row.providerName}</strong>
@@ -304,44 +303,50 @@ function ProviderCard(props: {
           >
             ↓
           </Button>
-          {row.modes.map(mode => (
-            <Button
-              key={mode}
-              size="sm"
-              variant={row.selected === mode ? 'primary' : 'outline'}
-              disabled={props.disabled}
-              onClick={() => props.onMode(mode)}
-            >
-              {modeLabel(mode, t)}
-            </Button>
-          ))}
+          <select
+            className="dsh-usage-state-select"
+            aria-label={t('modeSelectLabel', { provider: row.providerName })}
+            disabled={props.disabled}
+            value={row.selected}
+            onChange={event => {
+              const mode = event.target.value as ProviderMode
+              if (!props.disabled && row.modes.includes(mode)) props.onMode(mode)
+            }}
+            style={{ width: 'min(34vw, 150px)' }}
+          >
+            {row.modes.includes(row.selected) ? null : <option value={row.selected} disabled>{modeLabel(row.selected, t)} — {t('modeUnsupported')}</option>}
+            {row.modes.map(mode => <option key={mode} value={mode}>{modeLabel(mode, t)}</option>)}
+          </select>
         </span>
       </div>
 
-      <span style={MUTED}>{resolutionLabel(row, props.catalog, t)}</span>
-      {resolvedSource?.unavailable === undefined ? null : (
-        <a href={resolvedSource.unavailable.billingUrl} target="_blank" rel="noopener noreferrer" style={MUTED}>{t('openaiBilling')}</a>
-      )}
+      <span style={MUTED}>
+        {row.resolution.reason === 'capability-unavailable' ? t('state.capability-unavailable') : resolutionLabel(row, props.catalog, t)}
+        {accountMode ? <> · {t(props.description?.configured ? 'accountConnected' : 'accountSignInRequired')}</> : null}
+        {resolvedSource?.unavailable === undefined ? null : <> · <a href={resolvedSource.unavailable.billingUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit' }}>{t('openaiBilling')}</a></>}
+      </span>
       {props.failure === undefined ? null : (
         <span style={MUTED}>
           ⚠ {t(accountMode && props.failure.kind === 'config' ? 'accountSignInRequired' : accountMode && props.failure.kind === 'auth' ? 'accountAuthFailed' : `error.${props.failure.kind}`)}
           {props.failure.detail === undefined ? '' : ` — ${props.failure.detail}`}
         </span>
       )}
-      <span style={MUTED}>
-        {modelNames.length === 0 ? t('noModels') : t('modelsPrefix', { list: `${listed}${suffix}` })}
-      </span>
-
-      {accountMode ? <span style={MUTED}>{t(props.description?.configured ? 'accountConnected' : 'accountSignInRequired')}</span> : null}
       <details>
-        <summary style={{ ...MUTED, cursor: 'pointer' }}>{t('advanced')}</summary>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '8px' }}>
+        <summary style={{ ...MUTED, cursor: 'pointer' }}>{t('advanced')} · {t('modelCount', { count: modelNames.length })}</summary>
+        <div style={{ ...SECTION, padding: '8px 0 2px' }}>
+          <span style={MUTED}>{modelNames.length === 0 ? t('noModels') : t('modelsPrefix', { list: `${listed}${suffix}` })}</span>
+          {resolvedSource?.unavailable === undefined ? null : <>
+            <span style={MUTED}>{t('openaiUsageUnavailable')}</span>
+          </>}
           <div style={ROW}>
             <span style={MUTED}>{t('sourceLabel')}</span>
             <select
+              className="dsh-usage-state-select"
+              aria-label={t('sourceLabel')}
               disabled={props.disabled}
               value={entry?.sourceId ?? ''}
               onChange={event => {
+                if (props.disabled) return
                 const value = (event.target as HTMLSelectElement).value
                 if (value === '') props.onClearField(['providers', row.provider, 'sourceId'])
                 else props.onField(['providers', row.provider, 'sourceId'], value)
@@ -360,6 +365,7 @@ function ProviderCard(props: {
             <div style={ROW}>
               <span style={MUTED}>{t('baseUrl')}</span>
               <DraftInput
+                resetKey={props.resetKey}
                 disabled={props.disabled}
                 value={entry?.baseUrl ?? ''}
                 label={t('baseUrl')}
@@ -385,6 +391,7 @@ function ProviderCard(props: {
             <div style={ROW}>
               <span style={MUTED}>{t('apiKeyRef')}</span>
               <DraftInput
+                resetKey={props.resetKey}
                 disabled={props.disabled}
                 value={entry?.apiKeyRef ?? ''}
                 label={t('apiKeyRef')}
@@ -403,6 +410,7 @@ function ProviderCard(props: {
               refOverride={row.resolution.apiKeyRef}
               description={props.description}
               credentials={props.credentials}
+              routeChanged={props.credentialRouteChanged}
               onChanged={props.onCredentialChanged}
             />
           </>)}
@@ -420,9 +428,9 @@ function ProviderCard(props: {
  */
 export function SettingsSection(props: SettingsSectionProps) {
   const { t } = props
-  const snapshot = useSettingsValue(props.settings)
+  const draft = useSettingsDraft(props.settings)
+  const { snapshot, config } = draft
   const state = useStoreState(props.usageState)
-  const [writeError, setWriteError] = useState<string | undefined>(undefined)
 
   useEffect(() => {
     void props.usageState.refreshModels()
@@ -433,33 +441,25 @@ export function SettingsSection(props: SettingsSectionProps) {
     return <p style={MUTED}>{t('unavailable')}</p>
   }
 
-  const config = normalizeConfig(snapshot.value ?? {})
+  const accepted = normalizeConfig(snapshot.value ?? {})
+  const disabled = draft.pending || !snapshot.writable || snapshot.status !== 'ready' || snapshot.revision === undefined
+  const routing = (config: UsageStateConfig, provider: string) => {
+    const entry = config.providers[provider]
+    const target = resolveProvider({ provider, config, catalog: state.catalog, endpointHint: state.endpointHints?.[provider] })
+    return JSON.stringify([entry?.mode ?? 'auto', entry?.sourceId, entry?.baseUrl, entry?.apiKeyRef,
+      target.sourceId, target.mode, target.baseUrl, target.apiKeyRef])
+  }
   const rows = buildProviderRows({
     models: state.models, config, catalog: state.catalog, registry: state.modelRegistry, endpointHints: state.endpointHints,
   })
 
-  const mutate = async (ops: Parameters<typeof props.settings.mutate>[0]) => {
-    if (!snapshot.writable) return
-    setWriteError(undefined)
-    try {
-      await props.settings.mutate(ops)
-    } catch (error) {
-      setWriteError(error instanceof Error ? error.message : String(error))
-    }
-  }
-  const write = (path: string[], value: unknown) => {
-    void mutate([{ op: 'set', path, value }])
-  }
-  const clear = (path: string[]) => {
-    void mutate([{ op: 'unset', path }])
-  }
+  const write = (path: string[], value: unknown) => draft.stage([{ op: 'set', path, value }])
+  const clear = (path: string[]) => draft.stage([{ op: 'unset', path }])
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', maxWidth: '760px' }}>
+    <div className="dsh-usage-state-settings" style={{ ...SECTION, gap: '18px', width: '100%', maxWidth: '760px', fontSize: '13px' }}>
       <ControlStyles />
-      <header style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <h3 style={{ margin: 0 }}>{t('title')}</h3>
-        <p style={{ ...MUTED, margin: 0 }}>{t('intro')}</p>
+      <header style={{ ...SECTION, gap: '6px' }}>
         <div style={ROW}>
           <Button size="sm" variant="outline" onClick={() => void props.usageState.refresh(true)}>
             {t('refreshNow')}
@@ -472,11 +472,10 @@ export function SettingsSection(props: SettingsSectionProps) {
           {state.error === undefined ? null : <span style={MUTED}>{t('refreshFailed', { message: state.error })}</span>}
           {state.modelsError === undefined ? null : <span style={MUTED}>{state.modelsError}</span>}
           {state.credentialsError === undefined ? null : <span style={MUTED}>{t('credentialFailed', { message: state.credentialsError })}</span>}
-          {writeError === undefined ? null : <span role="alert" style={MUTED}>{t('settingsFailed', { message: writeError })}</span>}
         </div>
       </header>
 
-      <section style={CARD}>
+      <section style={{ ...SECTION, gap: '2px' }}>
         <strong>{t('sectionProviders')}</strong>
         <span style={MUTED}>{t('sectionProvidersHint')}</span>
         {rows.length === 0 ? <span style={MUTED}>{t('empty')}</span> : null}
@@ -492,8 +491,10 @@ export function SettingsSection(props: SettingsSectionProps) {
             failure={row.resolution.key === undefined ? undefined : state.snapshots[row.resolution.key]?.error}
             index={index}
             total={rows.length}
-            disabled={!snapshot.writable}
-            onMode={mode => write(['providers'], setProviderMode(config.providers, row.provider, mode))}
+            disabled={disabled}
+            resetKey={draft.resetKey}
+            credentialRouteChanged={routing(config, row.provider) !== routing(accepted, row.provider)}
+            onMode={mode => write(['providers', row.provider, 'mode'], mode)}
             onMove={delta => {
               const next = reorderProviders(rows.map(candidate => candidate.provider), row.provider, delta)
               if (next !== undefined) write(['order'], next)
@@ -509,13 +510,14 @@ export function SettingsSection(props: SettingsSectionProps) {
         ))}
       </section>
 
-      <section style={CARD}>
+      <section style={SECTION}>
         <strong>{t('sectionDisplay')}</strong>
         <div style={ROW}>
           <span style={MUTED}>{t('thresholdWarn')}</span>
           <DraftInput
             type="number"
-            disabled={!snapshot.writable}
+            resetKey={draft.resetKey}
+            disabled={disabled}
             value={String(config.display.thresholdWarnPercent)}
             label={t('thresholdWarn')}
             width="90px"
@@ -524,7 +526,8 @@ export function SettingsSection(props: SettingsSectionProps) {
           <span style={MUTED}>{t('thresholdCritical')}</span>
           <DraftInput
             type="number"
-            disabled={!snapshot.writable}
+            resetKey={draft.resetKey}
+            disabled={disabled}
             value={String(config.display.thresholdCriticalPercent)}
             label={t('thresholdCritical')}
             width="90px"
@@ -535,7 +538,8 @@ export function SettingsSection(props: SettingsSectionProps) {
           <span style={MUTED}>{t('intervalMinutes')}</span>
           <DraftInput
             type="number"
-            disabled={!snapshot.writable}
+            resetKey={draft.resetKey}
+            disabled={disabled}
             value={String(config.refresh.intervalMinutes)}
             label={t('intervalMinutes')}
             width="90px"
@@ -543,18 +547,24 @@ export function SettingsSection(props: SettingsSectionProps) {
           />
         </div>
         <Switch
-          disabled={!snapshot.writable}
+          disabled={disabled}
           checked={config.display.progressBar}
           label={t('progressBar')}
           onChange={next => write(['display', 'progressBar'], next)}
         />
       </section>
 
-      <div style={ROW}>
-        <Button size="sm" variant="ghost" onClick={props.close}>
-          {t('close')}
-        </Button>
-      </div>
+      <footer style={{ ...SECTION, gap: '6px', borderTop: '1px solid var(--dsw-alias-border-l2)', paddingTop: '10px' }}>
+        <div style={ROW}>
+          <Button size="sm" variant="primary" disabled={disabled || !draft.dirty} onClick={() => void draft.save()}>
+            {t(draft.pending ? 'settingsSaving' : 'settingsSave')}
+          </Button>
+          <Button size="sm" variant="ghost" disabled={draft.pending || !draft.dirty} onClick={draft.reset}>{t('settingsReset')}</Button>
+          <span style={MUTED}>{t(!snapshot.writable ? 'settingsReadOnly' : draft.dirty ? 'settingsDirty' : 'settingsPristine')}</span>
+        </div>
+        {draft.stale ? <span role="status" style={MUTED}>{t('settingsStale')}</span> : null}
+        {draft.error === undefined ? null : <span role="alert" style={{ ...MUTED, color: 'var(--dsw-alias-state-error-primary)' }}>{t('settingsFailed', { message: draft.error })}</span>}
+      </footer>
     </div>
   )
 }

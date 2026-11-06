@@ -33,7 +33,9 @@ API Key显式provider覆盖、旧source覆盖优先；自动发现只读取目�
 
 宿主默认回合结束2秒后刷新、空闲5分钟刷新；成功请求最小间隔60秒，显式force可绕过。浏览器30秒读取镜像，普通轮询只初始化缺失或身份变化的读数；修改idle配置重调timer。
 
-配置由DSH configForms/volatile保存。旧models仅经normalize迁移，不保留平行轮询路径。配置写权限与凭据写权限分别判断；异步写入拒绝、pending和失败需要可见。
+配置由 DSH configForms/volatile 保存，设置页挂载到 `plugins.row.config` 的 `dsh-usage-state#usage-state`，宿主负责页面标题和导航。供应商使用紧凑行与模式下拉，高级覆盖和模型参考默认折叠。
+
+页面仅在保存时按路径操作一次提交草稿，首次编辑锁定 revision；修改不即时改变状态行，离开丢弃。保存失败或 revision 冲突保留草稿，不静默 rebase；重置采用最新已保存配置。旧 models 仅经 normalize 迁移，不保留平行写入或轮询路径。配置写权限与凭据写权限分别判断；密钥保存／清除为独立即时操作，不被配置重置撤回。异步拒绝、pending 和失败均需可见。
 
 ## 验证与交付
 

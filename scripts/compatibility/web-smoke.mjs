@@ -118,7 +118,7 @@ try {
   // The profile manager may resolve additional official dependencies; record those too.
   const profileLock = join(state, 'profiles/compat/pnpm-lock.yaml')
   writeFileSync(join(output, 'profile-dependencies.log'), readFileSync(profileLock, 'utf8'))
-  log.push('Browser verified RPC results, model selection, status line placement and hide/API round trip using fake credentials and data.')
+  log.push('Browser verified RPC results, model selection, status line placement and plugin-row configuration with local drafts, Reset and saved hide/API round trip using fake credentials and data.')
   writeFileSync(join(output, 'web-host.log'), log.join('\n'))
   console.log('Exact DSH tarball, browser RPC, model selection, status line and settings round trip passed with fixture data.')
 } catch (error) {

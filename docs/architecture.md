@@ -45,6 +45,8 @@ flowchart LR
 
 账号路径先以 `getPlatformSession()` 获取Host内身份摘要，再调用 `getBalance(client)`，并复核身份。账号模式不执行API Key候选查找或Adapter的HTTP request；签出清缓存，Host任意错误先替换为安全文案。充值与赠送钱包由DeepSeek纯解析器处理。
 
+配置页使用插件管理的 keyed slot，页面草稿与已接受配置分离；首次编辑锁定 revision，Save 通过既有 configForms 适配器提交窄路径操作，拒绝或冲突保留草稿，Reset 采用最新快照。状态行只读已接受配置。凭据保存／清除仍是独立即时调用；来源、模式、端点或 ref 尚有草稿时先保存配置，再写入对应凭据，防止旧描述误用于新目标。
+
 普通 `getState(false)` 使用onlyIfMissing：初始化缺失/变化身份，其余返回镜像。宿主定时与回合刷新负责重新查询；force用于主动刷新。浏览器配置/凭据invalidate有独立generation，显式force遇普通在途RPC会排一次后续。
 
 Host产物是ESM，client是模块加载器的单文件CJS工厂，Typert清单单独导出。三个bundle随源码入库，GitHub安装无需构建。平台共享依赖、codec工厂和服务绑定的要求见 [平台说明](platform-notes.md)。

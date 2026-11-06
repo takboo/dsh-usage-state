@@ -46,12 +46,15 @@ DSH0.1使用历史版本0.3.2；该版本不适配0.2。0.4.0有RPC挂载缺陷�
 
 ## 快速开始
 
-1. 打开 **设置→余额与额度**，查看供应商、模型和检测到的数据源。
-2. 对已识别供应商保留“自动”，或选择其支持的API Key余额、账号余额、Coding Plan、隐藏。
-3. 自建Sub2API复用供应商已有接口地址；仅在未配置地址或需要覆盖时在高级区填写。已配置模型的当前读数显示在输入框上方。
-4. “立即刷新”用于主动查询；出错先查看设置页原因及 [排查指南](https://github.com/takboo/dsh-usage-state/blob/main/docs/troubleshooting.md)。
+以下设置入口与草稿操作对应当前开发分支，尚未发布到 npm；已发布的 0.4.14 仍使用原独立设置入口。新入口已在 Desktop 0.2.1-rc.5 实机打开，并在同版隔离浏览器完成保存／重置验证；支持声明中的更早宿主仍待补验该入口，历史 RPC 检查不代表新配置页已验收。
 
-高级区提供数据源选择；API Key模式另有端点、凭据名和密钥写入入口。显式provider覆盖优先于旧source默认；凭据描述与读取共用候选顺序，保存优先写显式ref。固定端点不试镜像，配置或凭据身份变化后清除旧身份读数。只读配置与凭据写入权限分别处理，保存/清除过程会显示失败并禁用重复操作。
+1. 打开 **插件 → 余额与额度 → 配置**，不再从全局设置侧栏进入。
+2. 每个供应商一行，用下拉菜单选择“自动”、支持的 API Key 余额／账号余额／Coding Plan，或“隐藏”；行内查看检测模式、来源和状态，模型清单与高级覆盖默认折叠。
+3. 自建 Sub2API 复用供应商已有接口地址；仅在地址缺失或需要覆盖时展开高级设置填写。账号模式由 Harness 管理登录，不提供 API Key 输入；OpenAI 官方来源只说明接口限制并链接官方账单。
+4. 修改模式、排序、端点、刷新策略或显示选项后，点击**保存设置**统一生效；**重置**采用最新已保存配置，离开页面则丢弃未保存草稿。未保存的配置不改变输入框上方状态行。
+5. “立即刷新”主动查询**已保存配置**的读数，不保存草稿；出错查看行内原因及 [排查指南](https://github.com/takboo/dsh-usage-state/blob/main/docs/troubleshooting.md)。
+
+**配置与凭据分开保存。** 密钥区域的“立即保存密钥／立即清除密钥”是独立操作，不随配置重置撤回。修改模式、来源、端点或凭据名后，须先保存设置并取得当前目标的权限描述，才能操作密钥；显示或排序草稿不阻止独立密钥操作。API Key 高级设置提供端点、凭据名和密钥入口；显式 provider 覆盖优先于旧 source 默认，凭据描述与读取共用候选顺序。固定端点不试镜像，配置或凭据身份变化后清除旧身份读数。配置与凭据写权限分别处理；保存中防止重复提交，失败保留配置草稿。若其他页面已修改配置，先重置并重新修改，不静默覆盖外部变更。
 
 ## 数据源
 
@@ -79,11 +82,13 @@ OpenCode Zen Go三个窗口，独立状态行位于输入框上方：
 
 ![输入框上方的账户读数](https://raw.githubusercontent.com/takboo/dsh-usage-state/main/assets/screenshots/status-line.webp)
 
-每个provider一行的设置页，以及高级设置：
+开发版在 Desktop 0.2.1-rc.5 上的实机截图，已裁去私有侧栏。亮色下每个供应商一行，模式下拉与高级项默认折叠；OpenAI 官方来源直接说明接口限制：
 
-![供应商设置](https://raw.githubusercontent.com/takboo/dsh-usage-state/main/assets/screenshots/settings-providers.webp)
+![紧凑供应商设置](https://raw.githubusercontent.com/takboo/dsh-usage-state/main/assets/screenshots/settings-providers.webp)
 
-![高级设置](https://raw.githubusercontent.com/takboo/dsh-usage-state/main/assets/screenshots/settings-advanced.webp)
+暗色下展开官方 DeepSeek 高级项：模型仅供参考，端点与凭据引用按需覆盖；密钥保存／清除为独立即时操作，不受配置 Reset 撤销。
+
+![暗色高级设置](https://raw.githubusercontent.com/takboo/dsh-usage-state/main/assets/screenshots/settings-advanced.webp)
 
 ## 刷新与凭据
 
@@ -96,12 +101,12 @@ OpenCode Zen Go三个窗口，独立状态行位于输入框上方：
 完整整改状态及验证范围见 [待办清单](https://github.com/takboo/dsh-usage-state/blob/main/docs/backlog.md)。
 
 - **账户范围**：仍按source+mode选择一个目标；配置身份隔离不等于新增独立多账户支持。
-- **未验证范围**：本次账号模式的真实 Desktop 登录账户与视觉、Kimi Code月额度真实账户、Sub2API真实账户、高阈值视觉、真实凭据写入和OpenCode非零路径仍缺活体验证；本地交互测试不代替这些验收。
+- **未验证范围**：真实 Desktop 账号登录与余额对照、Kimi Code月额度真实账户、Sub2API真实账户、长名／中文设置页及高阈值视觉、真实凭据写入和OpenCode非零路径仍缺活体验证；本地交互测试不代替这些验收。
 - **范围**：无模型选择或隐藏时可以不显示；点击状态行不打开设置；不保存历史读数。
 
 ## 开发与文档
 
-开发兼容下界为Node22.18+的22线或Node24.11+；规范构建固定Node **24.21.0**（[.node-version](https://github.com/takboo/dsh-usage-state/blob/main/.node-version)）和npm **11.19.1**（packageManager），高于运行产物声明。基本检查：
+开发兼容下界为Node22.18+的22线或Node24.11+；规范构建固定Node **24.22.2**（[.node-version](https://github.com/takboo/dsh-usage-state/blob/main/.node-version)）和npm **11.19.1**（packageManager），高于运行产物声明。基本检查：
 
 ```bash
 npm ci

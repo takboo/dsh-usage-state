@@ -3,6 +3,10 @@ import assert from 'node:assert/strict'
 /** Exercise the installed client through real browser/Host RPC, not test doubles. */
 export async function browserAcceptance(page, url, { timeoutMs = 60000, noticeTimeoutMs = 15000, expectDisplayMetadata = false } = {}) {
   const evidence = { state: false, credentials: false, catalog: false, selection: false }
+  let settingsWrites = 0
+  page.on('request', request => {
+    if (new URL(request.url()).pathname === '/api/settings/mutate') settingsWrites += 1
+  })
   page.on('response', response => {
     const path = new URL(response.url()).pathname
     if (!['/api/usageState/getState', '/api/usageState/describeCredentials', '/api/session/modelCatalog', '/api/session/selectModel'].includes(path)) return
@@ -47,28 +51,63 @@ export async function browserAcceptance(page, url, { timeoutMs = 60000, noticeTi
   const editorBox = await page.locator('[contenteditable="true"]').first().boundingBox()
   assert.ok(lineBox && editorBox && lineBox.y < editorBox.y, 'balance line must appear above the composer')
 
-  // The settings section is supplied by the plugin's actual browser bundle.
-  await page.getByText('More', { exact: true }).last().click()
-  await page.getByText('Settings', { exact: true }).last().click()
-  await page.getByText('Balance & Quota', { exact: true }).last().click()
-  await page.getByText('Models: Compatibility Flash · Compatibility Pro', { exact: true }).waitFor({ timeout: timeoutMs })
-  await page.getByRole('button', { name: 'Hidden', exact: true }).click()
-  await balance.waitFor({ state: 'detached', timeout: timeoutMs })
-  await page.getByRole('button', { name: 'API Key balance', exact: true }).click()
-  await balance.waitFor({ state: 'visible', timeout: timeoutMs })
-  await page.getByRole('button', { name: 'Close', exact: true }).last().click()
+  // The migrated page comes from the real keyed plugin-row contribution. Do not
+  // silently fall back to the old Settings entry when testing an older host.
+  const openPackage = async () => {
+    await page.getByRole('button', { name: 'Plugins', exact: true }).click()
+    await page.getByRole('heading', { name: 'Plugins', exact: true }).waitFor({ timeout: timeoutMs })
+    // The market is optional; without it the same page opens directly on the
+    // installed list and has no Discover/Installed tabs.
+    const installed = page.getByText('Installed', { exact: true })
+    if (await installed.isVisible()) await installed.click()
+    await page.getByRole('button', { name: expectDisplayMetadata ? 'View Balance & Quota' : /^View (Balance & Quota|dsh-usage-state)$/ }).click()
+    const detail = page.locator('[data-plugin-detail="dsh-usage-state"]')
+    await detail.getByText('dsh-usage-state', { exact: true }).first().waitFor({ timeout: timeoutMs })
+    if (expectDisplayMetadata) await detail.getByText("Shows the current provider's account balance or coding-plan quota above the composer, with usage percentages and reset countdowns.", { exact: true }).first().waitFor({ timeout: timeoutMs })
+    await detail.getByText('1 total · 1 running', { exact: true }).waitFor({ timeout: timeoutMs })
+    await detail.getByText('usage-state', { exact: true }).waitFor({ timeout: timeoutMs })
+    await detail.getByText('Running', { exact: true }).waitFor({ timeout: timeoutMs })
+    return detail
+  }
+  const openConfiguration = async () => {
+    const detail = await openPackage()
+    await detail.getByRole('button', { name: /^Configure / }).click()
+    await page.locator('[data-plugin-row-detail="dsh-usage-state#usage-state"]').waitFor({ state: 'visible', timeout: timeoutMs })
+    return page.locator('[data-usage-provider="deepseek-official"]')
+  }
+  const saveSettings = async () => {
+    const accepted = page.waitForResponse(response => new URL(response.url()).pathname === '/api/settings/mutate' && response.status() === 200, { timeout: timeoutMs })
+    await page.getByRole('button', { name: 'Save settings', exact: true }).click()
+    assert.equal((await (await accepted).json()).result?.ok, true, 'Host must accept the configuration mutation')
+    const save = page.getByRole('button', { name: 'Save settings', exact: true })
+    await save.waitFor({ state: 'visible', timeout: timeoutMs })
+    assert.equal(await save.isDisabled(), true, 'accepted configuration must clear the draft')
+  }
+  const row = await openConfiguration()
+  const mode = row.getByRole('combobox', { name: /^Mode for / })
+  const acceptedMode = await mode.inputValue()
+  const beforeEdit = settingsWrites
+  await mode.selectOption('hidden')
+  assert.equal(settingsWrites, beforeEdit, 'mode changes must remain local until Save')
+  await page.getByRole('button', { name: 'Reset', exact: true }).click()
+  assert.equal(await mode.inputValue(), acceptedMode, 'Reset must restore accepted configuration without a write')
+  assert.equal(settingsWrites, beforeEdit)
+  await mode.selectOption('hidden')
+  await saveSettings()
+  // Plugin Manager is a full page, not a dialog above the composer. Return to a
+  // fresh local draft before checking the accepted setting's status-line effect.
+  await page.getByRole('button', { name: 'New session', exact: true }).first().click()
+  await page.locator('[contenteditable="true"]').first().waitFor({ state: 'visible', timeout: timeoutMs })
+  assert.equal(await balance.count(), 0, 'saved Hidden must remove the balance from the composer')
+  const restored = await openConfiguration()
+  await restored.getByRole('combobox', { name: /^Mode for / }).selectOption('api')
+  await saveSettings()
+  await page.getByRole('button', { name: 'New session', exact: true }).first().click()
   await balance.waitFor({ state: 'visible', timeout: timeoutMs })
 
   await waitForEvidence(evidence, ['state', 'credentials', 'catalog', 'selection'], timeoutMs)
-  await page.getByText('Plugins', { exact: true }).first().click()
-  // The installed package's exported locale metadata supplies this title; its
-  // technical package name remains visible on the detail page.
-  await page.getByText(expectDisplayMetadata ? 'Balance & Quota' : /^(Balance & Quota|dsh-usage-state)$/, { exact: true }).first().click()
-  await page.getByText('dsh-usage-state', { exact: true }).first().waitFor({ timeout: timeoutMs })
-  if (expectDisplayMetadata) await page.getByText("Shows the current provider's account balance or coding-plan quota above the composer, with usage percentages and reset countdowns.", { exact: true }).first().waitFor({ timeout: timeoutMs })
-  await page.getByText('1 total · 1 running', { exact: true }).waitFor({ timeout: timeoutMs })
-  await page.getByText('usage-state', { exact: true }).waitFor({ timeout: timeoutMs })
-  await page.getByText('Running', { exact: true }).waitFor({ timeout: timeoutMs })
+  // The caller captures the English display-metadata artifact on return.
+  await openPackage()
   return evidence
 }
 

@@ -29,9 +29,11 @@
 
 ## 配置、槽位和热替换
 
-Config由loader提供volatile根；ConfigForm写入的Promise<boolean>返回false意味着拒绝。配置与凭据权限独立。
+Config 由 loader 提供 volatile 根；ConfigForm 写入的 Promise<boolean> 返回 false 意味着拒绝。继续使用 `configForms.get('usage-state')`，不增加并行写入通道。插件内配置使用 `plugins.row.config`，精确 entry key 为 `dsh-usage-state#usage-state`（不是 bundle row `usage-state`）；`view: 'summary'` 返回行内摘要，`view: 'page'` 由宿主提供标题与导航。
 
-唯一槽位为 `conversation.input.dock`，不是原生统计共排的composer.dock。注册位置见 [slots](../src/client/slots.ts)，平台升级需复核公开槽位及实际布局。
+`ConfigPageForm` 只有 `state` 快照与 `mutate(ops, revision)`，不提供宿主 Save 控制器。页面自行管理草稿并提交窄路径操作，首次编辑固定 revision；dirty 时不因新快照自动 rebase，失败／冲突保留草稿，Reset 采用最新快照，卸载丢弃。凭据独立即时保存，不参与配置撤销。当前契约已在 Desktop 0.2.1-rc.5 Inspect 与安装包核对，不把旧版自动 RPC 检查视为插件内配置页面的视觉验收。
+
+状态行唯一槽位仍为 `conversation.input.dock`，不是原生统计共排的 composer.dock。注册位置见 [slots](../src/client/slots.ts)，平台升级需复核公开槽位及实际布局。
 
 patch及Host代码在启动时读取。client-hmr只在活跃传输与实际产物重建时生效；watch覆盖Host和client不代表Host自动热替换。
 

@@ -17,7 +17,7 @@
 
 每个版本的每次执行都创建新的临时安装目录、HOME、DSH_HOME、缓存、浏览器目录和 fixture；拒绝复用非空 Web 根目录。安装一律禁用脚本，包括 DSH 内部调用的 pnpm；子进程环境不继承真实账户、API key、GitHub token 或用户 npm 配置。检查使用固定 tarball、对应真实 Typert loader/registry 和 manifest 内的 Cordis/schemastery 范围；报告记录解析后的平台和宿主依赖版本/integrity，另保存 profile lock 解析证据。依赖范围解析仍可能随 registry 的新传递依赖变化，不能把该报告理解为整棵依赖树永久可重现。
 
-检查随后运行 `npm run verify`、精确版本契约测试，再在隔离 profile 中安装本仓库 tarball，启动 Web，以模拟数据验证浏览器组件、真实 Host RPC、模型切换、状态行和隐藏/API模式往返。fixture 使用不同的假环境/文件凭据，检查宿主选择假文件凭据。Node fetch 拦截不是所有网络 API 的硬隔离。
+检查随后运行 `npm run verify`、精确版本契约测试，再在隔离 profile 中安装本仓库 tarball，启动 Web，以模拟数据验证浏览器组件、真实 Host RPC、模型切换和状态行。配置验收走 Plugins → View → Configure（启用市场时先选 Installed；未启用时直接显示已安装列表），检查模式编辑不立即写入、Reset 不写入、Save 后隐藏／API 模式往返；不会退回旧 Settings 入口来掩盖新入口缺失。历史通过结果保留当时旧入口的证据边界，不自动视为新脚本已通过。fixture 使用不同的假环境/文件凭据，检查宿主选择假文件凭据。Node fetch 拦截不是所有网络 API 的硬隔离。
 
 Artifact 保留 **14 天**，按白名单只上传 JSON 报告/依赖清单、必要 `.log` 和失败截图；不上传依赖目录、浏览器、profile、真实用户数据或 fixture 工作区。Issue 持久保存摘要、上游/插件源码基线、关键实际依赖版本和原检查运行链接；Artifact 过期后仍可追溯结论。渠道更新不会覆写原检查链接。
 
@@ -56,4 +56,4 @@ export DSH_REPORT_DIR="$(mktemp -d /tmp/dsh-web-report.XXXXXX)"
 node scripts/compatibility/web-smoke.mjs
 ```
 
-脚本会安装对应版本 DSH、固定 pnpm 和 Playwright，打包当前插件，创建隔离 profile，安装 tarball，验证启动 URL 的 cookie 交换、Web HTML、浏览器组件、RPC、模型切换、余额显示和隐藏/API配置往返。环境只包含临时 HOME、DSH_HOME、Documents 工作区和假 API key；不继承实际账号环境或当前目录的 `.env`。不得将 `DSH_WEB_ROOT` 指向真实用户目录；脚本拒绝使用非空的 `DSH_WEB_ROOT`。输出目录的 `web-host.log` 可排查安装问题。测试使用宿主文件与环境中不同的假凭据，断言宿主选择文件凭据。Linux 首次运行还会安装 Chromium 所需系统依赖；可用 `DSH_BROWSER_EXECUTABLE` 指定本机浏览器供本地排查，CI 使用 Playwright 固定的 Chromium。
+脚本会安装对应版本 DSH、固定 pnpm 和 Playwright，打包当前插件，创建隔离 profile，安装 tarball，验证启动 URL 的 cookie 交换、Web HTML、浏览器组件、RPC、模型切换、余额显示和插件内配置的草稿／重置／保存往返。环境只包含临时 HOME、DSH_HOME、Documents 工作区和假 API key；不继承实际账号环境或当前目录的 `.env`。不得将 `DSH_WEB_ROOT` 指向真实用户目录；脚本拒绝使用非空的 `DSH_WEB_ROOT`。输出目录的 `web-host.log` 可排查安装问题。测试使用宿主文件与环境中不同的假凭据，断言宿主选择文件凭据。Linux 首次运行还会安装 Chromium 所需系统依赖；可用 `DSH_BROWSER_EXECUTABLE` 指定本机浏览器供本地排查，CI 使用 Playwright 固定的 Chromium。

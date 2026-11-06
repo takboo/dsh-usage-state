@@ -203,6 +203,8 @@ test('the built browser bundle mounts its RPC contribution through the real 0.2 
   const registry = await realRegistry()
   const events: string[] = []
   const disposers: Array<() => void> = []
+  const slots: Array<{ owner: string; options: { name: string; key?: string; locale?: string }; render: (props: { view: string; t: (key: string) => string }) => unknown }> = []
+  let owner = ''
   let mountError: unknown
   const form = {
     getSnapshot: () => ({ status: 'ready', value: {}, revision: 1, writable: true, mode: 'host' }),
@@ -224,7 +226,18 @@ test('the built browser bundle mounts its RPC contribution through the real 0.2 
     on: () => () => undefined,
     get: () => undefined,
     locale: { register: () => () => undefined, bind: () => (key: string) => key },
-    slots: { inject: () => () => undefined, register: () => () => undefined },
+    slots: {
+      inject: (name: string, callback: () => () => void) => {
+        owner = name
+        const dispose = callback()
+        owner = ''
+        return dispose
+      },
+      register: (options: { name: string; key?: string; locale?: string }, render: (props: { view: string; t: (key: string) => string }) => unknown) => {
+        slots.push({ owner, options, render })
+        return () => undefined
+      },
+    },
     configForms: {
       get: (namespace: string) => {
         events.push(`configForms.get(${namespace})`)
@@ -265,6 +278,13 @@ test('the built browser bundle mounts its RPC contribution through the real 0.2 
   assert.notEqual(registry.lookup('usageState/getState'), undefined)
   assert.notEqual(registry.lookup('usageState/describeCredentials'), undefined)
   assert.deepEqual(events, ['effect', 'configForms.get(usage-state)', 'effect', 'effect', 'mounted'])
+  assert.equal(slots.some(slot => slot.options.name === 'settings.section'), false, 'the packaged client must not restore the removed Settings entry')
+  const configuration = slots.find(slot => slot.options.name === 'plugins.row.config')
+  assert.ok(configuration, 'the packaged client declares the Plugin Manager configuration')
+  assert.equal(configuration.owner, 'plugins.row.config')
+  assert.equal(configuration.options.key, 'dsh-usage-state#usage-state')
+  assert.equal(configuration.options.locale, 'usage-state')
+  assert.equal(configuration.render({ view: 'summary', t: key => key }), 'configSummary', 'summary returns inline text, not an editor or nested paragraph')
 })
 
 test('the shipped bundle supports account login without an API key and encodes account mode over RPC', async () => {

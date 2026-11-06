@@ -132,7 +132,7 @@ test('official OpenAI shows the API limitation and fixed Billing link, not fake 
   const line = renderToStaticMarkup(h(StatusLine, {
     t, usageState: store, settings, useProjection: projectionOf({ provider: 'openai', model: 'gpt-test' }),
   }))
-  const page = renderToStaticMarkup(h(SettingsSection, { t, usageState: store, settings, credentials: CREDENTIALS, close: () => {} }))
+  const page = renderToStaticMarkup(h(SettingsSection, { t, usageState: store, settings, credentials: CREDENTIALS }))
   for (const html of [line, page]) {
     assert.match(html, /OpenAI/)
     assert.match(html, /no documented public endpoint/)
@@ -162,7 +162,7 @@ test('a provider recognized by the host endpoint renders consistently in the lin
   const line = renderToStaticMarkup(h(StatusLine, {
     t, usageState: store, settings, useProjection: projectionOf({ provider: 'custom-account', model: 'm' }),
   }))
-  const page = renderToStaticMarkup(h(SettingsSection, { t, usageState: store, settings, credentials: CREDENTIALS, close: () => {} }))
+  const page = renderToStaticMarkup(h(SettingsSection, { t, usageState: store, settings, credentials: CREDENTIALS }))
 
   assert.match(line, /¥66\.28/)
   assert.match(page, /Detected DeepSeek · API Key balance/)
@@ -382,7 +382,6 @@ test('the settings page shows one row per provider with its models and resolved 
 
   const html = renderToStaticMarkup(
     h(SettingsSection, {
-      close: () => undefined,
       t,
       usageState: store,
       settings: settingsWith(configWith()),
@@ -390,7 +389,11 @@ test('the settings page shows one row per provider with its models and resolved 
     }),
   )
 
-  assert.match(html, /Balance &amp; Quota/)
+  assert.doesNotMatch(html, /<h3|Balance &amp; Quota|>Close</)
+  assert.match(html, /Save settings/)
+  assert.match(html, /Reset/)
+  assert.match(html, /<select[^>]+aria-label="Mode for DeepSeek"/)
+  assert.match(html, /<summary[^>]*>Advanced · 2 models<\/summary>/)
   assert.match(html, /DeepSeek/)
   // Models are listed once per provider, not once per row of controls.
   assert.match(html, /Models: DeepSeek V4 Flash · DeepSeek V4 Pro/)
@@ -410,7 +413,6 @@ test('the settings page shows one row per provider with its models and resolved 
 test('a long provider name truncates instead of pushing the controls onto a second line', () => {
   const html = renderToStaticMarkup(
     h(SettingsSection, {
-      close: () => undefined,
       t,
       usageState: storeWith({
         catalog: CATALOG,
@@ -440,7 +442,6 @@ test('a long provider name truncates instead of pushing the controls onto a seco
 test('the settings page shows why a reading failed, not just that it did', () => {
   const html = renderToStaticMarkup(
     h(SettingsSection, {
-      close: () => undefined,
       t,
       usageState: storeWith({
         catalog: CATALOG,
@@ -468,7 +469,6 @@ test('the settings page shows why a reading failed, not just that it did', () =>
 test('the settings page demands an endpoint for a self-hosted provider', () => {
   const html = renderToStaticMarkup(
     h(SettingsSection, {
-      close: () => undefined,
       t,
       usageState: storeWith({
         catalog: CATALOG,
@@ -489,7 +489,7 @@ test('a manually selected Sub2API source shows the inherited provider endpoint w
   for (const mode of ['auto', 'api', 'coding-plan'] as const) {
     const config = configWith({ 'sub2api-kimi': { sourceId: 'sub2api', mode } })
     const html = renderToStaticMarkup(h(SettingsSection, {
-      close: () => {}, t, credentials: CREDENTIALS,
+      t, credentials: CREDENTIALS,
       usageState: storeWith({
         catalog: CATALOG,
         endpointHints: { 'sub2api-kimi': 'https://relay.example' },
@@ -508,7 +508,7 @@ test('a manually selected Sub2API source shows the inherited provider endpoint w
 
 test('a legacy source endpoint also satisfies the Sub2API endpoint requirement', () => {
   const html = renderToStaticMarkup(h(SettingsSection, {
-    close: () => {}, t, credentials: CREDENTIALS,
+    t, credentials: CREDENTIALS,
     usageState: storeWith({ catalog: CATALOG, models: [
       { provider: 'sub2api', providerName: 'Relay', model: 'm', name: 'Model' },
     ] }),
@@ -523,7 +523,6 @@ test('a legacy source endpoint also satisfies the Sub2API endpoint requirement',
 test('a hidden provider is marked as such instead of showing a target', () => {
   const html = renderToStaticMarkup(
     h(SettingsSection, {
-      close: () => undefined,
       t,
       usageState: storeWith({
         catalog: CATALOG,
@@ -543,7 +542,6 @@ test('a provider deleted in DSH disappears from the settings page', () => {
   // row must go even though the stored entry is still there.
   const html = renderToStaticMarkup(
     h(SettingsSection, {
-      close: () => undefined,
       t,
       usageState: storeWith({
         catalog: CATALOG,
@@ -562,7 +560,6 @@ test('a provider deleted in DSH disappears from the settings page', () => {
   // that simply has not loaded.
   const unknownRegistry = renderToStaticMarkup(
     h(SettingsSection, {
-      close: () => undefined,
       t,
       usageState: storeWith({
         catalog: CATALOG,
@@ -578,7 +575,6 @@ test('a provider deleted in DSH disappears from the settings page', () => {
 test('the empty hint only shows when there is nothing to list at all', () => {
   const withProviders = renderToStaticMarkup(
     h(SettingsSection, {
-      close: () => undefined,
       t,
       usageState: storeWith({
         catalog: CATALOG,
@@ -592,7 +588,6 @@ test('the empty hint only shows when there is nothing to list at all', () => {
 
   const withoutProviders = renderToStaticMarkup(
     h(SettingsSection, {
-      close: () => undefined,
       t,
       usageState: storeWith({ catalog: CATALOG }),
       settings: settingsWith(configWith()),
@@ -613,7 +608,6 @@ test('the settings page reports an unavailable settings transport instead of ren
 
   const html = renderToStaticMarkup(
     h(SettingsSection, {
-      close: () => undefined,
       t,
       usageState: storeWith({}),
       settings: unavailable,
@@ -760,7 +754,7 @@ test('account login UI shows account balance and sign-in guidance without key or
   const line = renderToStaticMarkup(h(StatusLine, {
     t, usageState: store, settings, useProjection: projectionOf({ provider: 'deepseek-account', model: 'm' }),
   }))
-  const page = renderToStaticMarkup(h(SettingsSection, { t, usageState: store, settings, credentials: CREDENTIALS, close: () => {} }))
+  const page = renderToStaticMarkup(h(SettingsSection, { t, usageState: store, settings, credentials: CREDENTIALS }))
   assert.match(page, /Detected DeepSeek · Account balance/)
   assert.match(page, /Sign in through Harness account settings/)
   assert.doesNotMatch(page, /DEEPSEEK_API_KEY|type="password"|Credential name|Paste the key|https:\/\/platform.deepseek.com/)

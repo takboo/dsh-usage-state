@@ -29,7 +29,7 @@ async function page(context: { after(callback: () => void | Promise<void>): unkn
   value?: unknown
   writable?: boolean
   report?: CredentialReport
-  mutation?: (ops: readonly SettingsPathOp[]) => Promise<boolean>
+  mutation?: (ops: readonly SettingsPathOp[], revision?: number) => Promise<boolean>
   credentials?: CredentialsRemoteLike
   endpointHints?: Record<string, string>
 } = {}) {
@@ -39,14 +39,21 @@ async function page(context: { after(callback: () => void | Promise<void>): unkn
     writable: options.writable ?? true, mode: 'host' as const,
   }
   const writes: Array<readonly SettingsPathOp[]> = []
+  const revisions: Array<number | undefined> = []
+  const publish = (value: unknown) => {
+    snapshot = { ...snapshot, value: normalizeConfig(value), revision: snapshot.revision + 1 }
+    for (const listener of listeners) listener()
+  }
   const form = {
     getSnapshot: () => snapshot,
     subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener) } },
     set: async () => true,
     unset: async () => true,
-    mutate: async (ops: readonly SettingsPathOp[]) => {
+    mutate: async (ops: readonly SettingsPathOp[], revision?: number) => {
       writes.push(structuredClone(ops))
-      if (options.mutation !== undefined) return options.mutation(ops)
+      revisions.push(revision)
+      if (options.mutation !== undefined && !await options.mutation(ops, revision)) return false
+      if (revision !== undefined && revision !== snapshot.revision) return false
       const value = structuredClone(snapshot.value) as unknown as Record<string, unknown>
       for (const op of ops) {
         let parent = value
@@ -90,17 +97,21 @@ async function page(context: { after(callback: () => void | Promise<void>): unkn
   let renderer!: ReactTestRenderer
   await act(async () => {
     renderer = create(h(SettingsSection, {
-      t: translate, close: () => {}, usageState: store, settings: usageStateSettings(form), credentials,
+      t: translate, usageState: store, settings: usageStateSettings(form), credentials,
     }))
   })
   context.after(() => { act(() => renderer.unmount()) })
-  return { renderer, writes, refreshes, store, form }
+  return { renderer, writes, revisions, publish, refreshes, store, form }
 }
 
 function button(renderer: ReactTestRenderer, label: string): ReactTestInstance {
   const found = renderer.root.findAllByType('button').find(node => node.children.join('') === label)
   assert.ok(found, `button ${label} is available`)
   return found
+}
+
+function mode(renderer: ReactTestRenderer, provider = 'DeepSeek'): ReactTestInstance {
+  return renderer.root.findByProps({ 'aria-label': `Mode for ${provider}` })
 }
 
 function password(renderer: ReactTestRenderer): ReactTestInstance {
@@ -124,15 +135,24 @@ test('a default provider can be moved without first creating a stored order', as
 
   await act(async () => { move.props.onClick(); await flush() })
 
+  assert.deepEqual(writes, [], 'moving a provider stages locally')
+  const key = renderer.root.findByProps({ 'data-usage-provider': 'deepseek' }).findAllByType('input').find(node => node.props.type === 'password')!
+  assert.equal(key.props.disabled, false, 'ordering does not change credential routing')
+  assert.equal(button(renderer, 'Save settings').props.disabled, false)
+  await act(async () => { button(renderer, 'Save settings').props.onClick(); await flush() })
   assert.deepEqual(writes, [[{ op: 'set', path: ['order'], value: ['zai', 'deepseek'] }]])
 })
 
-test('a refused configuration write is visible to the user and leaves the mode unchanged', async context => {
-  const { renderer, writes } = await page(context, { mutation: async () => false })
-
-  await act(async () => { button(renderer, 'Hidden').props.onClick(); await flush() })
-
-  assert.equal(writes.length, 1)
+test('a refused configuration write is visible and retains the staged mode instead of changing accepted config', async context => {
+  const { renderer, writes, form } = await page(context, { mutation: async () => false })
+  act(() => mode(renderer).props.onChange({ target: { value: 'hidden' } }))
+  assert.equal(mode(renderer).props.value, 'hidden')
+  assert.equal(form.getSnapshot().value.providers.deepseek, undefined)
+  assert.deepEqual(writes, [])
+  await act(async () => { button(renderer, 'Save settings').props.onClick(); await flush() })
+  assert.deepEqual(writes, [[{ op: 'set', path: ['providers', 'deepseek', 'mode'], value: 'hidden' }]])
+  assert.equal(mode(renderer).props.value, 'hidden')
+  assert.equal(button(renderer, 'Save settings').props.disabled, false)
   assert.match(text(renderer), /Could not save settings/)
 })
 
@@ -151,8 +171,8 @@ test('a read-only credential cannot be cleared from the settings panel', async c
   })
 
   assert.equal(password(renderer).props.disabled, true)
-  assert.equal(button(renderer, 'Clear').props.disabled, true)
-  await act(async () => { button(renderer, 'Clear').props.onClick(); await flush() })
+  assert.equal(button(renderer, 'Clear key now').props.disabled, true)
+  await act(async () => { button(renderer, 'Clear key now').props.onClick(); await flush() })
   assert.equal(cleared, 0)
 })
 
@@ -164,7 +184,7 @@ test('a rejected credential save is shown as an error instead of an unhandled re
   } })
   act(() => password(renderer).props.onChange({ target: { value: 'replacement-test-key' } }))
 
-  await act(async () => { button(renderer, 'Save').props.onClick(); await flush() })
+  await act(async () => { button(renderer, 'Save key now').props.onClick(); await flush() })
 
   assert.match(text(renderer), /Could not save: credential connection lost/)
 })
@@ -181,24 +201,26 @@ test('an in-flight credential update disables controls and coalesces repeated sa
   act(() => password(renderer).props.onChange({ target: { value: 'replacement-test-key' } }))
   try {
     await act(async () => {
-      const save = button(renderer, 'Save').props.onClick
+      const save = button(renderer, 'Save key now').props.onClick
       save(); save()
       await flush()
     })
     assert.equal(saves, 1)
     assert.equal(password(renderer).props.disabled, true)
-    assert.equal(button(renderer, 'Save').props.disabled, true)
-    assert.equal(button(renderer, 'Clear').props.disabled, true)
+    assert.equal(button(renderer, 'Save key now').props.disabled, true)
+    assert.equal(button(renderer, 'Clear key now').props.disabled, true)
   } finally {
     await act(async () => { release?.(); await flush() })
   }
   assert.match(text(renderer), /Saved/)
 })
 
-test('saving a key uses the explicit provider ref even while its prior description is visible', async context => {
+test('saving a key uses the accepted explicit provider ref with positively confirmed permission', async context => {
   const saved: Array<{ ref: string; value: string }> = []
   const { renderer, refreshes } = await page(context, {
     value: { providers: { deepseek: { mode: 'api', apiKeyRef: 'TEAM_KEY' } } },
+    report: { credentials: { 'deepseek:api': { configured: false, ref: 'TEAM_KEY', writable: true,
+      candidates: [{ ref: 'TEAM_KEY', configured: false, writable: true }] } } },
     credentials: {
       describe: async () => ({ ok: true, value: {} }),
       set: async (ref, value) => { saved.push({ ref, value }); return { ok: true, value: undefined } },
@@ -207,10 +229,40 @@ test('saving a key uses the explicit provider ref even while its prior descripti
   })
   act(() => password(renderer).props.onChange({ target: { value: 'team-test-key' } }))
 
-  await act(async () => { button(renderer, 'Save').props.onClick(); await flush() })
+  await act(async () => { button(renderer, 'Save key now').props.onClick(); await flush() })
 
   assert.deepEqual(saved, [{ ref: 'TEAM_KEY', value: 'team-test-key' }])
   assert.deepEqual(refreshes, [false, true])
+})
+
+test('an unsubmitted masked key draft cannot cross into a newly saved and confirmed credential ref', async context => {
+  const saved: Array<{ ref: string; value: string }> = []
+  const report: CredentialReport = { credentials: { 'deepseek:api': { configured: false, ref: 'OLD_KEY', writable: true,
+    candidates: [{ ref: 'OLD_KEY', configured: false, writable: true }] } } }
+  const { renderer, store, form } = await page(context, {
+    value: { providers: { deepseek: { mode: 'api', apiKeyRef: 'OLD_KEY' } } }, report,
+    credentials: {
+      describe: async () => ({ ok: true, value: {} }),
+      set: async (ref, value) => { saved.push({ ref, value }); return { ok: true, value: undefined } },
+      unset: async () => ({ ok: true, value: undefined }),
+    },
+  })
+  act(() => password(renderer).props.onChange({ target: { value: 'old-target-test-key' } }))
+  act(() => renderer.root.findAllByType('input').find(node => node.props['aria-label'] === translate('apiKeyRef'))!.props.onChange({ target: { value: 'NEW_KEY' } }))
+  assert.equal(button(renderer, 'Save key now').props.disabled, true)
+  await act(async () => { button(renderer, 'Save settings').props.onClick(); await flush() })
+  assert.equal(form.getSnapshot().value.providers.deepseek?.apiKeyRef, 'NEW_KEY')
+  report.credentials['deepseek:api'] = { configured: false, ref: 'NEW_KEY', writable: true,
+    candidates: [{ ref: 'NEW_KEY', configured: false, writable: true }] }
+  await act(async () => { await store.refreshCredentials() })
+  assert.equal(password(renderer).props.disabled, false)
+  assert.equal(password(renderer).props.value, '', 'the old target draft is not displayed for the new target')
+  assert.equal(button(renderer, 'Save key now').props.disabled, true)
+  await act(async () => { button(renderer, 'Save key now').props.onClick(); await flush() })
+  assert.deepEqual(saved, [])
+  act(() => password(renderer).props.onChange({ target: { value: 'new-target-test-key' } }))
+  await act(async () => { button(renderer, 'Save key now').props.onClick(); await flush() })
+  assert.deepEqual(saved, [{ ref: 'NEW_KEY', value: 'new-target-test-key' }])
 })
 
 test('blurring an untouched field does not restore its draft after an external update', async context => {
@@ -242,46 +294,199 @@ test('clearing an endpoint override restores inheritance without persisting the 
   assert.equal(endpoint.props.value, '')
   assert.equal(endpoint.props.placeholder, 'https://declared.example')
   assert.match(text(renderer), /Using the provider endpoint https:\/\/declared\.example/)
+  assert.equal(form.getSnapshot().value.providers.deepseek?.baseUrl, 'https://override.example')
+  assert.deepEqual(writes, [])
+  await act(async () => { button(renderer, 'Save settings').props.onClick(); await flush() })
   assert.equal(form.getSnapshot().value.providers.deepseek?.baseUrl, undefined)
   assert.deepEqual(writes, [[{ op: 'unset', path: ['providers', 'deepseek', 'baseUrl'] }]])
 
   act(() => endpoint.props.onChange({ target: { value: 'https://replacement.example' } }))
   await act(async () => { endpoint.props.onBlur(); await flush() })
 
-  assert.equal(form.getSnapshot().value.providers.deepseek?.baseUrl, 'https://replacement.example')
+  assert.equal(form.getSnapshot().value.providers.deepseek?.baseUrl, undefined)
   assert.doesNotMatch(text(renderer), /Using the provider endpoint/)
+  await act(async () => { button(renderer, 'Save settings').props.onClick(); await flush() })
+  assert.equal(form.getSnapshot().value.providers.deepseek?.baseUrl, 'https://replacement.example')
 })
 
-test('native progress switch writes through configForms and reflects its checked state', async context => {
+test('native progress switch stages its checked state until settings Save', async context => {
   const { renderer, writes, form } = await page(context)
   const previous = form.getSnapshot().value.display.progressBar
   const control = renderer.root.findByProps({ role: 'switch' })
   assert.equal(control.props['aria-label'], translate('progressBar'))
   assert.equal(control.props['aria-checked'], previous)
   await act(async () => { control.props.onClick(); await flush() })
-  assert.deepEqual(writes, [[{ op: 'set', path: ['display', 'progressBar'], value: !previous }]])
+  assert.deepEqual(writes, [])
+  assert.equal(form.getSnapshot().value.display.progressBar, previous)
   assert.equal(renderer.root.findByProps({ role: 'switch' }).props['aria-checked'], !previous)
+  await act(async () => { button(renderer, 'Save settings').props.onClick(); await flush() })
+  assert.deepEqual(writes, [[{ op: 'set', path: ['display', 'progressBar'], value: !previous }]])
+  assert.equal(form.getSnapshot().value.display.progressBar, !previous)
 })
 
-test('labelled native draft input commits once through blur when Enter is pressed', async context => {
+test('a focused first edit immediately enables Save, while Enter and blur never duplicate staged operations', async context => {
   const { renderer, writes } = await page(context)
   const input = () => renderer.root.findAllByType('input').find(node => node.props['aria-label'] === translate('thresholdWarn'))!
   assert.ok(input())
   act(() => input().props.onChange({ target: { value: '61' } }))
+  assert.equal(button(renderer, 'Save settings').props.disabled, false)
+  assert.deepEqual(writes, [])
   await act(async () => {
     input().props.onKeyDown({ key: 'Enter', target: { blur: () => input().props.onBlur() } })
     await flush()
   })
   act(() => input().props.onBlur())
+  assert.deepEqual(writes, [])
+  await act(async () => { button(renderer, 'Save settings').props.onClick(); await flush() })
   assert.deepEqual(writes, [[{ op: 'set', path: ['display', 'thresholdWarnPercent'], value: 61 }]])
+})
+
+test('Reset discards staged text while focused, including partial empty input, without a Host write', async context => {
+  const { renderer, writes } = await page(context)
+  const input = () => renderer.root.findAllByType('input').find(node => node.props['aria-label'] === translate('thresholdWarn'))!
+  act(() => input().props.onChange({ target: { value: '' } }))
+  assert.equal(input().props.value, '')
+  assert.equal(button(renderer, 'Save settings').props.disabled, false)
+  act(() => button(renderer, 'Reset').props.onClick())
+  assert.equal(input().props.value, '80')
+  assert.equal(button(renderer, 'Save settings').props.disabled, true)
+  assert.equal(button(renderer, 'Reset').props.disabled, true)
+  assert.deepEqual(writes, [])
+})
+
+test('pending settings Save disables all configuration edits and Reset and coalesces repeated events', async context => {
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  const { renderer, writes } = await page(context, { mutation: async () => { await gate; return true } })
+  act(() => mode(renderer).props.onChange({ target: { value: 'api' } }))
+  try {
+    await act(async () => {
+      const save = button(renderer, 'Save settings').props.onClick
+      save(); save()
+      await flush()
+    })
+    assert.equal(writes.length, 1)
+    assert.equal(button(renderer, 'Saving…').props.disabled, true)
+    assert.equal(button(renderer, 'Reset').props.disabled, true)
+    assert.equal(mode(renderer).props.disabled, true)
+    assert.equal(renderer.root.findByProps({ role: 'switch' }).props.disabled, true)
+    for (const input of renderer.root.findAllByType('input').filter(node => node.props.type !== 'password')) assert.equal(input.props.disabled, true)
+    act(() => { mode(renderer).props.onChange({ target: { value: 'hidden' } }); button(renderer, 'Reset').props.onClick() })
+    assert.equal(mode(renderer).props.value, 'api')
+  } finally {
+    await act(async () => { release(); await flush() })
+  }
+  assert.equal(button(renderer, 'Save settings').props.disabled, true)
+  assert.equal(mode(renderer).props.disabled, false)
+})
+
+test('a dirty page shows external conflicts without rebasing and Reset adopts the latest accepted state', async context => {
+  const { renderer, publish, writes, revisions } = await page(context)
+  act(() => mode(renderer).props.onChange({ target: { value: 'api' } }))
+  act(() => publish({ providers: { deepseek: { mode: 'hidden' } } }))
+  assert.equal(mode(renderer).props.value, 'api')
+  assert.match(text(renderer), /Settings changed elsewhere/)
+  await act(async () => { button(renderer, 'Save settings').props.onClick(); await flush() })
+  assert.equal(mode(renderer).props.value, 'api')
+  assert.match(text(renderer), /Could not save settings/)
+  assert.deepEqual(revisions, [1])
+  assert.deepEqual(writes, [[{ op: 'set', path: ['providers', 'deepseek', 'mode'], value: 'api' }]])
+  act(() => button(renderer, 'Reset').props.onClick())
+  assert.equal(mode(renderer).props.value, 'hidden')
+  assert.doesNotMatch(text(renderer), /Settings changed elsewhere|Could not save settings/)
+})
+
+for (const field of ['mode', 'sourceId', 'baseUrl', 'apiKeyRef']) {
+  test(`unsaved ${field} routing prevents immediate credential writes until Reset or accepted configuration`, async context => {
+    const saved: string[] = []
+    const cleared: string[] = []
+    const { renderer, writes } = await page(context, { credentials: {
+      describe: async () => ({ ok: true, value: {} }),
+      set: async ref => { saved.push(ref); return { ok: true, value: undefined } },
+      unset: async ref => { cleared.push(ref); return { ok: true, value: undefined } },
+    } })
+    act(() => password(renderer).props.onChange({ target: { value: 'test-key' } }))
+    act(() => {
+      if (field === 'mode') mode(renderer).props.onChange({ target: { value: 'api' } })
+      else if (field === 'sourceId') renderer.root.findAllByType('select').find(node => node.props['aria-label'] === 'Source')!.props.onChange({ target: { value: 'zai' } })
+      else renderer.root.findAllByType('input').find(node => node.props['aria-label'] === translate(field === 'baseUrl' ? 'baseUrl' : 'apiKeyRef'))!.props.onChange({ target: { value: field === 'baseUrl' ? 'https://override.example' : 'NEW_KEY' } })
+    })
+    assert.equal(password(renderer).props.disabled, true)
+    assert.equal(button(renderer, 'Save key now').props.disabled, true)
+    assert.equal(button(renderer, 'Clear key now').props.disabled, true)
+    assert.match(text(renderer), /Save settings before editing its key/)
+    await act(async () => { button(renderer, 'Save key now').props.onClick(); button(renderer, 'Clear key now').props.onClick(); await flush() })
+    assert.deepEqual(saved, [])
+    assert.deepEqual(cleared, [])
+    assert.deepEqual(writes, [])
+    act(() => button(renderer, 'Reset').props.onClick())
+    assert.equal(password(renderer).props.disabled, false)
+    await act(async () => { button(renderer, 'Save key now').props.onClick(); await flush() })
+    assert.deepEqual(saved, ['DEEPSEEK_API_KEY'])
+    assert.deepEqual(writes, [])
+  })
+}
+
+test('unrelated display drafts do not block immediate key writes and Reset does not undo them', async context => {
+  let saves = 0
+  const { renderer, writes } = await page(context, { credentials: {
+    describe: async () => ({ ok: true, value: {} }),
+    set: async () => { saves++; return { ok: true, value: undefined } },
+    unset: async () => ({ ok: true, value: undefined }),
+  } })
+  act(() => renderer.root.findByProps({ role: 'switch' }).props.onClick())
+  assert.equal(password(renderer).props.disabled, false)
+  act(() => password(renderer).props.onChange({ target: { value: 'test-key' } }))
+  await act(async () => { button(renderer, 'Save key now').props.onClick(); await flush() })
+  assert.equal(saves, 1)
+  assert.equal(button(renderer, 'Save settings').props.disabled, false)
+  assert.deepEqual(writes, [])
+  act(() => button(renderer, 'Reset').props.onClick())
+  assert.equal(saves, 1)
+  assert.match(text(renderer), /Reset does not undo key changes/)
+})
+
+test('external source routing changes also block old draft credential targets even when provider fields are unchanged', async context => {
+  let saves = 0
+  const { renderer, publish } = await page(context, { credentials: {
+    describe: async () => ({ ok: true, value: {} }),
+    set: async () => { saves++; return { ok: true, value: undefined } },
+    unset: async () => ({ ok: true, value: undefined }),
+  } })
+  act(() => renderer.root.findByProps({ role: 'switch' }).props.onClick())
+  act(() => password(renderer).props.onChange({ target: { value: 'test-key' } }))
+  act(() => publish({ sources: { deepseek: { apiKeyRef: 'LATEST_KEY' } } }))
+  assert.equal(password(renderer).props.disabled, true)
+  assert.match(text(renderer), /Save settings before editing its key/)
+  await act(async () => { button(renderer, 'Save key now').props.onClick(); await flush() })
+  assert.equal(saves, 0)
+})
+
+test('missing or mismatched credential metadata fails closed without labelling unknown permissions as locked', async context => {
+  for (const value of [{}, { providers: { deepseek: { mode: 'api', apiKeyRef: 'UNKNOWN_KEY' } } }]) {
+    let saves = 0
+    const { renderer, store } = await page(context, { value, credentials: {
+      describe: async () => ({ ok: true, value: {} }),
+      set: async () => { saves++; return { ok: true, value: undefined } },
+      unset: async () => ({ ok: true, value: undefined }),
+    } })
+    if (!('providers' in value)) act(() => store.invalidate())
+    assert.equal(password(renderer).props.disabled, true)
+    assert.equal(button(renderer, 'Clear key now').props.disabled, true)
+    assert.match(text(renderer), /Checking credential permissions/)
+    assert.doesNotMatch(text(renderer), /This credential source cannot be edited here/)
+    act(() => password(renderer).props.onChange({ target: { value: 'test-key' } }))
+    await act(async () => { button(renderer, 'Save key now').props.onClick(); await flush() })
+    assert.equal(saves, 0)
+  }
 })
 
 test('read-only configuration disables provider edits without changing credential permissions', async context => {
   const { renderer, writes } = await page(context, { writable: false })
 
-  assert.equal(button(renderer, 'Hidden').props.disabled, true)
+  assert.equal(mode(renderer).props.disabled, true)
   assert.equal(renderer.root.findByProps({ role: 'switch' }).props.disabled, true)
   assert.equal(password(renderer).props.disabled, false)
-  await act(async () => { button(renderer, 'Hidden').props.onClick(); await flush() })
+  await act(async () => { mode(renderer).props.onChange({ target: { value: 'hidden' } }); await flush() })
   assert.deepEqual(writes, [])
 })

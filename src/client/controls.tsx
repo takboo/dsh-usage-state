@@ -3,38 +3,38 @@ import { useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type Inp
 /** Plugin-owned controls: native semantics, with only theme aliases shared with the shell. */
 export function ControlStyles() {
   return <style>{`
-.dsh-usage-state-button, .dsh-usage-state-input, .dsh-usage-state-switch {
+.dsh-usage-state-button, .dsh-usage-state-input, .dsh-usage-state-switch, .dsh-usage-state-select {
   box-sizing: border-box; font-family: inherit; color: var(--dsw-alias-label-primary);
 }
 .dsh-usage-state-button {
   display: inline-flex; align-items: center; justify-content: center; gap: 4px;
-  height: 36px; padding: 0 14px; border: 0; border-radius: 6px;
-  font-size: 14px; line-height: 22px; background: transparent; cursor: pointer;
+  height: 30px; padding: 0 10px; border: 1px solid transparent; border-radius: 5px;
+  font-size: 13px; line-height: 20px; background: transparent; cursor: pointer;
 }
-.dsh-usage-state-button[data-size="sm"] { height: 28px; padding: 0 10px; border-radius: 4px; font-size: 12px; line-height: 18px; }
-.dsh-usage-state-button[data-variant="outline"] { border: .5px solid var(--dsw-alias-border-l3); }
-.dsh-usage-state-button[data-variant="primary"] { background: var(--dsw-alias-button-primary-fill); color: var(--dsw-alias-label-primary-foreground); }
-.dsh-usage-state-button:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }
-.dsh-usage-state-button[data-variant="primary"]:hover:not(:disabled) { background: var(--dsw-alias-button-primary-hover); }
-.dsh-usage-state-button:active:not(:disabled) { background: var(--dsw-alias-interactive-bg-active); }
-.dsh-usage-state-button:disabled, .dsh-usage-state-input:disabled, .dsh-usage-state-switch:disabled { opacity: .4; cursor: not-allowed; }
-.dsh-usage-state-input {
-  min-width: 0; height: 32px; padding: 0 8px; border: .5px solid var(--dsw-alias-border-l4);
-  border-radius: 6px; background: var(--dsw-alias-bg-layer-1); font-size: 14px; line-height: 22px;
+.dsh-usage-state-button[data-size="sm"] { height: 26px; padding: 0 8px; border-radius: 4px; font-size: 12px; line-height: 18px; }
+.dsh-usage-state-button[data-variant="outline"] { border-color: var(--dsw-alias-border-l2); }
+.dsh-usage-state-button[data-variant="primary"] { background: color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent); border-color: var(--dsw-alias-brand-primary); }
+.dsh-usage-state-button:hover:not(:disabled) { background: var(--dsw-alias-bg-layer-2); }
+.dsh-usage-state-button:active:not(:disabled) { background: var(--dsw-alias-bg-layer-1); }
+.dsh-usage-state-button:disabled, .dsh-usage-state-input:disabled, .dsh-usage-state-switch:disabled, .dsh-usage-state-select:disabled { opacity: .45; cursor: not-allowed; }
+.dsh-usage-state-input, .dsh-usage-state-select {
+  min-width: 0; max-width: 100%; height: 28px; padding: 0 7px; border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 4px; background: var(--dsw-alias-bg-layer-1); font-size: 12px; line-height: 20px;
 }
-.dsh-usage-state-input::placeholder { color: var(--dsw-alias-label-dimmed); }
-.dsh-usage-state-button:focus-visible, .dsh-usage-state-input:focus-visible, .dsh-usage-state-switch:focus-visible {
-  outline: 2px solid var(--dsw-alias-state-business-primary); outline-offset: 2px;
+.dsh-usage-state-select { cursor: pointer; }
+.dsh-usage-state-input::placeholder { color: var(--dsw-alias-label-secondary); }
+.dsh-usage-state-button:focus-visible, .dsh-usage-state-input:focus-visible, .dsh-usage-state-switch:focus-visible, .dsh-usage-state-select:focus-visible, .dsh-usage-state-settings summary:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary); outline-offset: 2px;
 }
 .dsh-usage-state-switch {
   position: relative; flex: 0 0 auto; width: 36px; height: 20px; padding: 2px;
-  border: 0; border-radius: 999px; corner-shape: round; background: var(--dsw-alias-border-l3); cursor: pointer;
+  border: 0; border-radius: 999px; background: var(--dsw-alias-border-l1); cursor: pointer;
 }
 .dsh-usage-state-switch[aria-checked="true"] { background: var(--dsw-alias-brand-primary); }
-.dsh-usage-state-switch > span { display: block; width: 16px; height: 16px; border-radius: 50%; corner-shape: round; background: var(--dsw-alias-switch-thumb); }
-.dsh-usage-state-switch[aria-checked="true"] > span { transform: translateX(16px); background: var(--dsw-alias-label-primary-foreground); }
-.dsh-usage-state-tag { display: inline-flex; align-items: center; border-radius: 999px; corner-shape: round; padding: 1px 8px; font-size: 11px; line-height: 17px; font-weight: 500; white-space: nowrap; }
-.dsh-usage-state-tag[data-tone="neutral"] { background: var(--dsw-alias-bg-module-platform); color: var(--dsw-alias-label-secondary); }
+.dsh-usage-state-switch > span { display: block; width: 16px; height: 16px; border-radius: 50%; background: var(--dsw-alias-bg-overlay); }
+.dsh-usage-state-switch[aria-checked="true"] > span { transform: translateX(16px); }
+.dsh-usage-state-tag { display: inline-flex; align-items: center; border-radius: 4px; padding: 1px 5px; font-size: 11px; line-height: 17px; white-space: nowrap; }
+.dsh-usage-state-tag[data-tone="neutral"] { background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-secondary); }
 .dsh-usage-state-tag[data-tone="success"] { background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 10%, transparent); color: var(--dsw-alias-state-success-primary); }
 .dsh-usage-state-tag[data-tone="warning"] { background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 12%, transparent); color: var(--dsw-alias-state-warn-primary); }
 `}</style>
@@ -122,7 +122,7 @@ export function Tooltip({ label, side = 'top', children }: { label: string; side
           paddingBottom: (position?.side ?? side) === 'top' ? '6px' : 0,
           fontSize: '13px', lineHeight: '20px', fontWeight: 400, whiteSpace: 'pre-line', overflowWrap: 'anywhere' }}>
         <span style={{ display: 'block', padding: '3px 7px', borderRadius: '4px',
-          background: 'var(--dsw-alias-tooltip-bg)', color: 'var(--dsw-alias-label-primary-foreground)' }}>{label}</span>
+          background: 'var(--dsw-alias-bg-overlay)', color: 'var(--dsw-alias-label-primary)', border: '1px solid var(--dsw-alias-border-l1)' }}>{label}</span>
       </span>
     </span>
   )
