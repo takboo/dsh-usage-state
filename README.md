@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/dsh-usage-state)](https://www.npmjs.com/package/dsh-usage-state)
 
-> **0.4.14** 更新构建依赖，并纳入 DSH 0.2.2-alpha.3 与 rc.1 的自动检查证据和精确回归矩阵；继续包含0.4.13的 Sub2API 修复，宿主支持声明保持不变。安装包及校验文件见 [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.14)，详情见 [更新日志](CHANGELOG.md#0414---2026-11-05)。
+> **0.4.15** 新增 OpenAI 组织月消费（Admin Key）、插件内设置与草稿保存／重置，并修复旧配置保存、端点编辑、凭据归属及生命周期取消。宿主支持声明保持不变。安装包及校验文件见 [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.15)，详情见 [更新日志](CHANGELOG.md#0415---2026-11-06)。
 
 在 [DSH（DeepSeek Harness）](https://github.com/deepseek-ai/deepseek-harness) 输入框上方显示当前模型供应商的**账户余额**或**套餐额度**。状态行与输入卡片同宽，保留原生统计行和上下文计量器。
 
@@ -17,6 +17,7 @@ DeepSeek · ¥58.13
 
 - 已识别的供应商默认使用“自动”，复用DSH已有凭据；每个provider配置一次，模型列表用于参考。
 - 显示余额、已用百分比、重置倒计时和SVG进度环；默认≥80%琥珀、≥95%红，可调整阈值和隐藏进度环。
+- 可显式启用 OpenAI Admin 模式，显示整个组织在当前 UTC 月已报告的 USD 消费，独立于余额与套餐额度。
 - 同一有效账户身份的源请求失败时保留上次成功读数并标记陈旧、年龄和原因；RPC传输失败也会明确标出旧值。
 - 悬停查看数据源、模式、重置时刻及余额构成；中英界面跟随DSH语言设置。
 - 只显示账户当前读数，不做成本归因、价格目录、预算或历史账单。
@@ -46,7 +47,7 @@ DSH0.1使用历史版本0.3.2；该版本不适配0.2。0.4.0有RPC挂载缺陷�
 
 ## 快速开始
 
-以下设置入口与草稿操作对应当前开发分支，尚未发布到 npm；已发布的 0.4.14 仍使用原独立设置入口。新入口已在 Desktop 0.2.1-rc.5 实机打开，并在同版隔离浏览器完成保存／重置验证；支持声明中的更早宿主仍待补验该入口，历史 RPC 检查不代表新配置页已验收。
+0.4.15 起使用以下插件内设置入口与草稿操作，0.4.14 及更早版本仍使用原独立设置入口。新入口已在 Desktop 0.2.1-rc.5 实机打开，并在同版隔离浏览器完成保存／重置验证；支持声明中的更早宿主仍待补验该入口，历史 RPC 检查不代表新配置页已验收。
 
 1. 打开 **插件 → 余额与额度 → 配置**，不再从全局设置侧栏进入。
 2. 每个供应商一行，用下拉菜单选择“自动”、支持的 API Key 余额／账号余额／Coding Plan，或“隐藏”；行内查看检测模式、来源和状态，模型清单与高级覆盖默认折叠。

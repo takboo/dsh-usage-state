@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/dsh-usage-state)](https://www.npmjs.com/package/dsh-usage-state)
 
-> **0.4.14** updates build dependencies and adds automated compatibility evidence and exact regression candidates for DSH 0.2.2-alpha.3 and rc.1. It includes the Sub2API fixes from 0.4.13 and keeps the existing host support declarations. See the [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.14) for the tarball and checksum and the [Changelog](CHANGELOG.md#0414---2026-11-05) for details.
+> **0.4.15** adds OpenAI organization monthly spend (Admin Key), plugin-row configuration and local Save/Reset drafts. It fixes legacy configuration saves, endpoint editing, credential ownership and lifecycle cancellation while keeping the existing host support declarations. See the [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.15) for the tarball and checksum and the [Changelog](CHANGELOG.md#0415---2026-11-06) for details.
 
 Show the current model provider's **account balance** or **coding-plan quota** above the composer input in [DSH (DeepSeek Harness)](https://github.com/deepseek-ai/deepseek-harness). The line matches the input card's width and preserves the native statistics and context meter.
 
@@ -17,6 +17,7 @@ DeepSeek · ¥58.13
 
 - Recognized providers default to Auto and reuse existing DSH credentials. Configuration is per provider; the model list is informational.
 - Balances, used percentages, reset countdowns and SVG rings, with configurable amber/red thresholds (80%/95% by default) and an option to hide rings.
+- An explicit OpenAI Admin mode reports organization-wide USD spend for the current UTC month, separately from balances and plan quotas.
 - A failed source request keeps the last successful reading for the same effective account identity, with its age and reason. An RPC failure also marks retained values as stale.
 - Hover details include source, mode, reset time and balance components. The UI follows DSH's Chinese/English language setting.
 - Current account readings only: no cost attribution, price catalog, budgets or historical bills.
@@ -46,7 +47,7 @@ Use historical version 0.3.2 on DSH 0.1; it does not work on 0.2. Version 0.4.0 
 
 ## Quick start
 
-The settings entry and draft workflow below belong to the current development branch and are not yet published to npm. Released 0.4.14 still uses the separate settings entry. The new entry has been opened on Desktop 0.2.1-rc.5, with Save/Reset verified in an isolated browser on the same version. Earlier hosts in the declared range still need entry-specific validation; historical RPC checks do not certify the migrated page.
+Version 0.4.15 introduces the plugin-row settings entry and draft workflow below; 0.4.14 and earlier use the separate settings entry. The new entry has been opened on Desktop 0.2.1-rc.5, with Save/Reset verified in an isolated browser on the same version. Earlier hosts in the declared range still need entry-specific validation; historical RPC checks do not certify the migrated page.
 
 1. Open **Plugins → Balance & Quota → Configure**, rather than the global settings sidebar.
 2. Each provider has one compact row. Choose Auto, a supported API Key balance / Account balance / Coding Plan mode, or Hidden from its dropdown. The row shows the detected mode, source and status; models and advanced overrides stay collapsed.

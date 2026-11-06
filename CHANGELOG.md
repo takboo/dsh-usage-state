@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+## [0.4.15] - 2026-11-06
+
 ### Fixed
 
 - 旧 `models` 配置首次编辑供应商字段时，在同一次保存中补齐迁移出的模式和来源并保留供应商顺序，避免窄路径写入遮蔽旧配置后丢失余额路由。
@@ -227,7 +229,8 @@
 
 0.4.5起建立版本tag/Release；更早发布没有保存这些引用。0.3.0至0.4.4的比较端点来自各npm版本的gitHead；0.2系列引用对应实现提交，不能替代当时没有保存的正式发布产物。早期日期沿用历史版本记录。今后版本应按发布流程建立稳定引用。
 
-[Unreleased]: https://github.com/takboo/dsh-usage-state/compare/v0.4.14...HEAD
+[Unreleased]: https://github.com/takboo/dsh-usage-state/compare/v0.4.15...HEAD
+[0.4.15]: https://github.com/takboo/dsh-usage-state/compare/v0.4.14...v0.4.15
 [0.4.14]: https://github.com/takboo/dsh-usage-state/compare/v0.4.13...v0.4.14
 [0.4.13]: https://github.com/takboo/dsh-usage-state/compare/v0.4.12...v0.4.13
 [0.4.12]: https://github.com/takboo/dsh-usage-state/compare/v0.4.11...v0.4.12
