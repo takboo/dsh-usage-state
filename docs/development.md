@@ -6,6 +6,17 @@
 
 规范Node由 [.node-version](../.node-version) 固定，npm由 [packageManager](../package.json) 固定。开发下界是Node22.18+的22线或Node24.11+；预构建运行下界Node20与开发要求不同。
 
+mise通过 [项目配置](../mise.toml) 读取同一份Node版本文件，不另设版本号。当前Node24.22.2自带固定的npm11.19.1，无需覆盖全局npm。首次使用执行：
+
+```bash
+mise trust
+mise install node
+mise exec -- node --version
+mise exec -- npm --version
+```
+
+启用mise shell激活后，进入仓库会选择项目版本；未启用时，在下列命令前加 `mise exec --`，不要沿用启动终端时的旧PATH。安装不会改写全局配置，但mise会更新共享的浮动 `lts` 别名；全局使用 `node@lts` 的其他目录也可能随之切换，精确固定版本的项目不受影响。
+
 ```bash
 node --version
 npm --version

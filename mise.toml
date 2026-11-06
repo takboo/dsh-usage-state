@@ -1,0 +1,3 @@
+# Node 版本以 .node-version 为准，与 CI 共用同一固定版本。
+[settings]
+idiomatic_version_file_enable_tools = ["node"]
