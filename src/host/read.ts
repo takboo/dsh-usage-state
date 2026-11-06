@@ -1,6 +1,7 @@
 import type { UsageMode, UsageReading } from '../shared/types.ts'
 import type { ResolvedTargetCredential } from './refresh.ts'
-import type { SourceFailureKind, UsageSource } from './sources/types.ts'
+import { readOpenAICosts } from './sources/openai.ts'
+import type { SourceFailureKind, UsageRequest, UsageSource } from './sources/types.ts'
 import { SourceError } from './sources/types.ts'
 import type { UsageTarget } from './targets.ts'
 
@@ -12,11 +13,13 @@ export interface HttpResponseLike {
 }
 
 export interface FetchLike {
-  (url: string, init: { headers: Record<string, string>; signal?: AbortSignal }): Promise<HttpResponseLike>
+  (url: string, init: { headers: Record<string, string>; signal?: AbortSignal; redirect?: 'error' }): Promise<HttpResponseLike>
 }
 
 export interface ReaderDeps {
   fetch: FetchLike
+  /** Reporting clock, captured once per read and shared by every costs page. */
+  now?: () => number
   /** Hard timeout for one provider call. `0` disables only the timeout. */
   timeoutMs?: number
   /** The store lifetime that owns this reading, including any mirror attempts. */
@@ -59,8 +62,25 @@ export async function readUsage(input: ReadInput, deps: ReaderDeps): Promise<Usa
   const requestInput = {
     mode: input.mode,
     apiKey: input.apiKey,
+    now: deps.now?.() ?? Date.now(),
     ...(input.baseUrl === undefined ? {} : { baseUrl: input.baseUrl }),
     ...(input.pinnedBaseUrl === true ? { pinnedBaseUrl: true } : {}),
+  }
+  if (input.source.id === 'openai' && input.mode === 'admin') {
+    const timeoutMs = deps.timeoutMs ?? DEFAULT_TIMEOUT_MS
+    const deadline = timeoutMs > 0 ? Date.now() + timeoutMs : undefined
+    const reading = await readOpenAICosts(requestInput, async request => {
+      ensureActive(deps.signal)
+      const remaining = deadline === undefined ? 0 : deadline - Date.now()
+      if (deadline !== undefined && remaining <= 0) throw new SourceError('network', 'request timed out')
+      const payload = await fetchPayload(request, { ...deps, timeoutMs: remaining })
+      ensureActive(deps.signal)
+      if (deadline !== undefined && Date.now() >= deadline) throw new SourceError('network', 'request timed out')
+      return payload
+    }, deps.signal)
+    ensureActive(deps.signal)
+    if (deadline !== undefined && Date.now() >= deadline) throw new SourceError('network', 'request timed out')
+    return reading
   }
   const candidates = [input.source.request(requestInput), ...(input.source.fallbackRequests?.(requestInput) ?? [])]
 
@@ -70,7 +90,7 @@ export async function readUsage(input: ReadInput, deps: ReaderDeps): Promise<Usa
     try {
       const payload = await fetchPayload(request, deps)
       ensureActive(deps.signal)
-      return input.source.parse(payload, input.mode)
+      return input.source.parse(payload, input.mode, requestInput)
     } catch (error) {
       ensureActive(deps.signal)
       const failure = toSourceError(error)
@@ -92,7 +112,7 @@ function ensureActive(signal: AbortSignal | undefined): void {
   if (signal?.aborted === true) throw new SourceError('network', 'request aborted')
 }
 
-async function fetchPayload(request: { url: string; headers: Record<string, string> }, deps: ReaderDeps): Promise<unknown> {
+async function fetchPayload(request: UsageRequest, deps: ReaderDeps): Promise<unknown> {
   ensureActive(deps.signal)
   const timeoutMs = deps.timeoutMs ?? DEFAULT_TIMEOUT_MS
   const timeout = timeoutMs > 0 ? AbortSignal.timeout(timeoutMs) : undefined
@@ -111,19 +131,27 @@ async function fetchPayload(request: { url: string; headers: Record<string, stri
     try {
       response = await deps.fetch(
         request.url,
-        signal === undefined ? { headers: request.headers } : { headers: request.headers, signal },
+        {
+          headers: request.headers,
+          ...(signal === undefined ? {} : { signal }),
+          ...(request.redirect === undefined ? {} : { redirect: request.redirect }),
+        },
       )
     } catch (error) {
       throw new SourceError('network', messageOf(error))
     }
 
     ensureActive(deps.signal)
+    ensureActive(signal)
     if (!response.ok) {
       throw new SourceError(failureKindForStatus(response.status), `HTTP ${response.status}`)
     }
 
     try {
-      return await response.json()
+      const payload = await response.json()
+      ensureActive(deps.signal)
+      ensureActive(signal)
+      return payload
     } catch (error) {
       if (error instanceof SyntaxError) {
         throw new SourceError('parse', `invalid JSON: ${messageOf(error)}`)

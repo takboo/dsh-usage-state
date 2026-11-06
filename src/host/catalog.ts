@@ -23,11 +23,12 @@ export function toSourceCatalog(sources: readonly UsageSource[] = ALL_SOURCES): 
       defaultBaseUrl,
       credentialRefs,
     }
+    if (source.id === 'openai') entry.unavailable = { reason: 'openai-public-api', billingUrl: OPENAI_BILLING_URL }
     return entry
   })
-  // Official OpenAI has no documented normal-key balance/subscription-quota
-  // endpoint. Describe that limitation without inventing a pollable UsageSource.
-  catalog.push({
+  // Keep the normal-key limitation visible even for a caller supplying a subset
+  // without the opt-in Admin adapter. Auto must never select privileged mode.
+  if (!catalog.some(entry => entry.id === 'openai')) catalog.push({
     id: 'openai', displayName: 'OpenAI', modes: [], requiresBaseUrl: false,
     defaultBaseUrl: {}, credentialRefs: {},
     unavailable: { reason: 'openai-public-api', billingUrl: OPENAI_BILLING_URL },

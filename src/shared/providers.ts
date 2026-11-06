@@ -123,6 +123,19 @@ export function resolveProvider(input: ResolveProviderInput): ProviderResolution
     return { ...base, sourceId, mode: null, reason: 'unknown-source' }
   }
 
+  // Privileged billing reads are opt-in and use a separate, explicitly chosen
+  // credential. Never inherit a provider/source inference key or custom endpoint.
+  if (entry?.mode === 'admin' && sourceId === 'openai' && source.modes.includes('admin')) {
+    return withTarget({
+      provider: input.provider, sourceId, mode: 'admin', reason: 'configured',
+      baseUrl: 'https://api.openai.com', baseUrlPinned: true,
+      ...(entry.adminKeyRef === undefined ? {} : { apiKeyRef: entry.adminKeyRef }),
+    })
+  }
+
+  // Admin is a dedicated OpenAI opt-in, never a generic/automatic source mode.
+  if (entry?.mode === 'admin') return { ...base, sourceId, mode: null, reason: 'unsupported' }
+
   if (source.unavailable !== undefined) {
     return { ...base, sourceId, mode: null, reason: 'capability-unavailable' }
   }
@@ -140,7 +153,7 @@ export function resolveProvider(input: ResolveProviderInput): ProviderResolution
     return { ...base, sourceId, mode: null, reason: 'needs-endpoint' }
   }
   const mode = sourceId === 'deepseek' && input.provider === 'deepseek-account' ? 'account'
-    : sourceId === 'kimi' ? kimiMode(input.provider, baseUrl) : source.modes[0]
+    : sourceId === 'kimi' ? kimiMode(input.provider, baseUrl) : source.modes.find(mode => mode !== 'admin')
   if (mode === undefined || !source.modes.includes(mode)) {
     return { ...base, sourceId, mode: null, reason: 'unsupported' }
   }

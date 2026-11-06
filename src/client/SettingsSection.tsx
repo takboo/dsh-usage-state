@@ -65,6 +65,7 @@ const MAX_MODELS_SHOWN = 6
 function modeLabel(mode: ProviderMode, t: Translate): string {
   if (mode === 'account') return t('modeAccount')
   if (mode === 'api') return t('modeApi')
+  if (mode === 'admin') return t('modeAdmin')
   if (mode === 'coding-plan') return t('modeCodingPlan')
   if (mode === 'hidden') return t('modeHidden')
   return t('modeAuto')
@@ -72,6 +73,11 @@ function modeLabel(mode: ProviderMode, t: Translate): string {
 
 function windowModeLabel(mode: UsageMode, t: Translate): string {
   return modeLabel(mode, t)
+}
+
+// DSH CredentialRef names are POSIX shell identifiers, not free-form labels.
+function invalidCredentialRef(ref: string | undefined): boolean {
+  return ref !== undefined && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(ref)
 }
 
 /** Keep partial input text while staging immediately; only the page Save writes. */
@@ -83,6 +89,7 @@ function DraftInput(props: {
   disabled?: boolean
   width?: string
   resetKey: number
+  invalid?: boolean
   onCommit: (next: string) => void
 }) {
   const [draft, setDraft] = useState(props.value)
@@ -94,6 +101,7 @@ function DraftInput(props: {
     <Input
       type={props.type ?? 'text'}
       aria-label={props.label}
+      aria-invalid={props.invalid}
       value={shown}
       placeholder={props.placeholder}
       disabled={props.disabled}
@@ -122,6 +130,7 @@ function CredentialPanel(props: {
   t: Translate
   refs: readonly string[]
   refOverride?: string
+  admin?: boolean
   description: CredentialDescription | undefined
   credentials: CredentialsRemoteLike | undefined
   routeChanged: boolean
@@ -138,7 +147,8 @@ function CredentialPanel(props: {
   const candidate = candidates.find(value => value.ref === configuredRef)
   const sameDescription = props.description?.ref === configuredRef
   const permission = candidate?.writable ?? (sameDescription ? props.description?.writable : undefined)
-  const writable = permission === true
+  const invalidRef = invalidCredentialRef(configuredRef)
+  const writable = permission === true && !invalidRef
   const configured = candidate?.configured ?? (sameDescription && props.description?.configured === true)
 
   const save = async () => {
@@ -187,7 +197,7 @@ function CredentialPanel(props: {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
       <div style={ROW}>
-        <span style={MUTED}>{t('credential')}</span>
+        <span style={MUTED}>{t(props.admin ? 'adminCredential' : 'credential')}</span>
         {(candidates.length === 0
           ? props.refs.map((ref): CredentialCandidate => ({ ref, configured: false }))
           : candidates
@@ -201,7 +211,7 @@ function CredentialPanel(props: {
             )}
           </span>
         ))}
-        {permission === false ? <span style={MUTED}>{t('credentialLocked')}</span> : permission === undefined ? <span style={MUTED}>{t('credentialChecking')}</span> : null}
+        {invalidRef ? <span role="alert" style={MUTED}>{t('credentialRefInvalid')}</span> : permission === false ? <span style={MUTED}>{t('credentialLocked')}</span> : permission === undefined ? <span style={MUTED}>{t('credentialChecking')}</span> : null}
       </div>
       <div style={ROW}>
         <Input
@@ -210,7 +220,7 @@ function CredentialPanel(props: {
           value={draft}
           disabled={pending || props.routeChanged || !writable || props.credentials === undefined}
           placeholder={t('credentialPlaceholder')}
-          aria-label={t('credential')}
+          aria-label={t(props.admin ? 'adminCredential' : 'credential')}
           onChange={event => { if (!pending && !props.routeChanged && writable) setDraft({ ref: configuredRef, value: (event.target as HTMLInputElement).value }) }}
           style={{ maxWidth: '280px' }}
         />
@@ -226,7 +236,7 @@ function CredentialPanel(props: {
           {t('credentialClear')}
         </Button>
       </div>
-      <span style={MUTED}>{props.routeChanged ? t('credentialSaveConfigFirst') : t('credentialHint')}</span>
+      <span style={MUTED}>{props.routeChanged ? t('credentialSaveConfigFirst') : t(props.admin ? 'adminCredentialHint' : 'credentialHint')}</span>
       {note === undefined ? null : <span role="status" style={MUTED}>{note}</span>}
     </div>
   )
@@ -278,6 +288,7 @@ function ProviderCard(props: {
   const refs: string[] = refMode === undefined ? [] : [...(resolvedSource?.credentialRefs[refMode] ?? [])]
 
   const accountMode = row.resolution.mode === 'account'
+  const adminMode = row.selected === 'admin'
   const modelNames = row.models.map(model => model.name)
   const listed = modelNames.slice(0, MAX_MODELS_SHOWN).join(' · ')
   const suffix = modelNames.length > MAX_MODELS_SHOWN ? ', …' : ''
@@ -335,7 +346,7 @@ function ProviderCard(props: {
         <summary style={{ ...MUTED, cursor: 'pointer' }}>{t('advanced')} · {t('modelCount', { count: modelNames.length })}</summary>
         <div style={{ ...SECTION, padding: '8px 0 2px' }}>
           <span style={MUTED}>{modelNames.length === 0 ? t('noModels') : t('modelsPrefix', { list: `${listed}${suffix}` })}</span>
-          {resolvedSource?.unavailable === undefined ? null : <>
+          {adminMode || resolvedSource?.unavailable === undefined ? null : <>
             <span style={MUTED}>{t('openaiUsageUnavailable')}</span>
           </>}
           <div style={ROW}>
@@ -361,7 +372,37 @@ function ProviderCard(props: {
             </select>
           </div>
 
-          {accountMode ? <span style={MUTED}>{t('accountHint')}</span> : resolvedSource?.unavailable !== undefined ? null : (<>
+          {adminMode ? (<>
+            <span style={MUTED}>{t('adminWarning')}</span>
+            <div style={ROW}>
+              <span style={MUTED}>{t('adminKeyRef')}</span>
+              <DraftInput
+                resetKey={props.resetKey}
+                disabled={props.disabled}
+                value={entry?.adminKeyRef ?? ''}
+                invalid={invalidCredentialRef(entry?.adminKeyRef)}
+                label={t('adminKeyRef')}
+                width="220px"
+                onCommit={value => {
+                  if (value === '') props.onClearField(['providers', row.provider, 'adminKeyRef'])
+                  else props.onField(['providers', row.provider, 'adminKeyRef'], value)
+                }}
+              />
+            </div>
+            <span style={MUTED}>{t('adminKeyRefHint')}</span>
+            {entry?.adminKeyRef === undefined ? <span role="status" style={MUTED}>{t('adminKeyRefRequired')}</span> : (
+              <CredentialPanel
+                t={t}
+                admin
+                refs={[entry.adminKeyRef]}
+                refOverride={entry.adminKeyRef}
+                description={props.description}
+                credentials={props.credentials}
+                routeChanged={props.credentialRouteChanged}
+                onChanged={props.onCredentialChanged}
+              />
+            )}
+          </>) : accountMode ? <span style={MUTED}>{t('accountHint')}</span> : resolvedSource?.unavailable !== undefined ? null : (<>
             <div style={ROW}>
               <span style={MUTED}>{t('baseUrl')}</span>
               <DraftInput
@@ -394,6 +435,7 @@ function ProviderCard(props: {
                 resetKey={props.resetKey}
                 disabled={props.disabled}
                 value={entry?.apiKeyRef ?? ''}
+                invalid={invalidCredentialRef(row.resolution.apiKeyRef)}
                 label={t('apiKeyRef')}
                 width="220px"
                 onCommit={value => {
@@ -446,12 +488,16 @@ export function SettingsSection(props: SettingsSectionProps) {
   const routing = (config: UsageStateConfig, provider: string) => {
     const entry = config.providers[provider]
     const target = resolveProvider({ provider, config, catalog: state.catalog, endpointHint: state.endpointHints?.[provider] })
-    return JSON.stringify([entry?.mode ?? 'auto', entry?.sourceId, entry?.baseUrl, entry?.apiKeyRef,
+    return JSON.stringify([entry?.mode ?? 'auto', entry?.sourceId, entry?.baseUrl, entry?.apiKeyRef, entry?.adminKeyRef,
       target.sourceId, target.mode, target.baseUrl, target.apiKeyRef])
   }
   const rows = buildProviderRows({
     models: state.models, config, catalog: state.catalog, registry: state.modelRegistry, endpointHints: state.endpointHints,
   })
+
+  const invalidRefs = rows.some(row => invalidCredentialRef(
+    row.selected === 'admin' ? config.providers[row.provider]?.adminKeyRef : row.resolution.apiKeyRef,
+  ))
 
   const write = (path: string[], value: unknown) => draft.stage([{ op: 'set', path, value }])
   const clear = (path: string[]) => draft.stage([{ op: 'unset', path }])
@@ -556,12 +602,13 @@ export function SettingsSection(props: SettingsSectionProps) {
 
       <footer style={{ ...SECTION, gap: '6px', borderTop: '1px solid var(--dsw-alias-border-l2)', paddingTop: '10px' }}>
         <div style={ROW}>
-          <Button size="sm" variant="primary" disabled={disabled || !draft.dirty} onClick={() => void draft.save()}>
+          <Button size="sm" variant="primary" disabled={disabled || !draft.dirty || invalidRefs} onClick={() => { if (!invalidRefs) void draft.save() }}>
             {t(draft.pending ? 'settingsSaving' : 'settingsSave')}
           </Button>
           <Button size="sm" variant="ghost" disabled={draft.pending || !draft.dirty} onClick={draft.reset}>{t('settingsReset')}</Button>
           <span style={MUTED}>{t(!snapshot.writable ? 'settingsReadOnly' : draft.dirty ? 'settingsDirty' : 'settingsPristine')}</span>
         </div>
+        {invalidRefs ? <span role="alert" style={MUTED}>{t('credentialRefInvalid')}</span> : null}
         {draft.stale ? <span role="status" style={MUTED}>{t('settingsStale')}</span> : null}
         {draft.error === undefined ? null : <span role="alert" style={{ ...MUTED, color: 'var(--dsw-alias-state-error-primary)' }}>{t('settingsFailed', { message: draft.error })}</span>}
       </footer>

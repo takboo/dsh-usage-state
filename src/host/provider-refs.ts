@@ -31,7 +31,7 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
 
 /** Discover only the target owner's declared ref, never another provider's key. */
 export function providerCredentialRefs(input: ProviderCredentialRefsInput): string[] {
-  if (input.mode === 'account' || input.provider === undefined) return []
+  if (input.mode === 'account' || input.mode === 'admin' || input.provider === undefined) return []
   const config = input.config ?? DEFAULT_CONFIG
   const providers = asRecord(asRecord(input.piAiSettings)?.providers)
   const profile = asRecord(providers?.[input.provider])

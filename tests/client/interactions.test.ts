@@ -32,6 +32,8 @@ async function page(context: { after(callback: () => void | Promise<void>): unkn
   mutation?: (ops: readonly SettingsPathOp[], revision?: number) => Promise<boolean>
   credentials?: CredentialsRemoteLike
   endpointHints?: Record<string, string>
+  catalog?: SourceCatalog
+  groups?: Array<{ id: string; name: string; models: Array<{ id: string; name: string }> }>
 } = {}) {
   const listeners = new Set<() => void>()
   let snapshot = {
@@ -80,10 +82,10 @@ async function page(context: { after(callback: () => void | Promise<void>): unkn
   const store = new UsageStateClientStore({
     getState: async force => {
       refreshes.push(force)
-      return { ok: true, value: { sources: catalog, snapshots: {}, checkedAt: 1000, endpointHints: options.endpointHints } }
+      return { ok: true, value: { sources: options.catalog ?? catalog, snapshots: {}, checkedAt: 1000, endpointHints: options.endpointHints } }
     },
     describeCredentials: async () => ({ ok: true, value: report }),
-    modelCatalog: async () => ({ ok: true, value: { groups: [
+    modelCatalog: async () => ({ ok: true, value: { groups: options.groups ?? [
       { id: 'deepseek', name: 'DeepSeek', models: [{ id: 'm', name: 'Model' }] },
       { id: 'zai', name: 'z.ai', models: [{ id: 'm', name: 'Model' }] },
     ] } }),
@@ -489,4 +491,226 @@ test('read-only configuration disables provider edits without changing credentia
   assert.equal(password(renderer).props.disabled, false)
   await act(async () => { mode(renderer).props.onChange({ target: { value: 'hidden' } }); await flush() })
   assert.deepEqual(writes, [])
+})
+
+const ADMIN_PAGE = {
+  catalog: [{ id: 'openai', displayName: 'OpenAI', modes: ['admin'], requiresBaseUrl: false,
+    defaultBaseUrl: {}, credentialRefs: {}, unavailable: { reason: 'openai-public-api', billingUrl: 'https://platform.openai.com/settings/organization/billing/overview' } }] as SourceCatalog,
+  groups: [{ id: 'openai', name: 'OpenAI', models: [{ id: 'm', name: 'Model' }] }],
+}
+
+function adminRef(renderer: ReactTestRenderer): ReactTestInstance {
+  return renderer.root.findAllByType('input').find(node => node.props['aria-label'] === translate('adminKeyRef'))!
+}
+
+test('invalid credential names show the DSH grammar and cannot save settings or keys', async context => {
+  for (const admin of [false, true]) {
+    const provider = admin ? 'openai' : 'deepseek'
+    const field = admin ? 'adminKeyRef' : 'apiKeyRef'
+    const ref = admin ? 'ORG_ADMIN' : 'DEEPSEEK_API_KEY'
+    const saved: string[] = []
+    const cleared: string[] = []
+    const { renderer, writes } = await page(context, {
+      ...(admin ? ADMIN_PAGE : {}),
+      groups: [{ id: provider, name: provider, models: [{ id: 'm', name: 'Model' }] }],
+      value: { providers: { [provider]: { mode: admin ? 'admin' : 'api', [field]: ref } } },
+      report: { credentials: { [`${provider}:${admin ? 'admin' : 'api'}`]: {
+        configured: true, ref, writable: true, candidates: [{ ref, configured: true, writable: true }],
+      } } },
+      credentials: {
+        describe: async () => ({ ok: true, value: {} }),
+        set: async ref => { saved.push(ref); return { ok: true, value: undefined } },
+        unset: async ref => { cleared.push(ref); return { ok: true, value: undefined } },
+      },
+    })
+    const refInput = () => renderer.root.findByProps({ 'data-usage-provider': provider }).findAllByType('input')
+      .find(node => node.props['aria-label'] === translate(admin ? 'adminKeyRef' : 'apiKeyRef'))!
+    for (const invalid of ['oai-usage-readonly', '1ADMIN', 'ADMIN KEY', 'ADMIN.KEY', '管理密钥']) {
+      act(() => refInput().props.onChange({ target: { value: invalid } }))
+      assert.equal(refInput().props['aria-invalid'], true)
+      assert.match(text(renderer), /Credential names must start with a letter or underscore/)
+      assert.doesNotMatch(text(renderer), /Checking credential permissions/)
+      assert.equal(button(renderer, 'Save settings').props.disabled, true)
+      assert.equal(password(renderer).props.disabled, true)
+      await act(async () => {
+        button(renderer, 'Save settings').props.onClick()
+        button(renderer, 'Save key now').props.onClick()
+        button(renderer, 'Clear key now').props.onClick()
+        await flush()
+      })
+    }
+    assert.deepEqual(writes, [])
+    assert.deepEqual(saved, [])
+    assert.deepEqual(cleared, [])
+    act(() => button(renderer, 'Reset').props.onClick())
+    assert.equal(refInput().props.value, ref)
+    assert.equal(refInput().props['aria-invalid'], false)
+    assert.equal(password(renderer).props.disabled, false)
+    act(() => refInput().props.onChange({ target: { value: '_oai_usage_readonly2' } }))
+    assert.equal(refInput().props['aria-invalid'], false)
+    assert.equal(button(renderer, 'Save settings').props.disabled, false)
+    await act(async () => { button(renderer, 'Save settings').props.onClick(); await flush() })
+    assert.deepEqual(writes, [[{ op: 'set', path: ['providers', provider, field], value: '_oai_usage_readonly2' }]])
+  }
+})
+
+test('a previously saved invalid ref cannot write even if credential metadata says writable', async context => {
+  let writes = 0
+  const ref = 'oai-usage-readonly'
+  const { renderer } = await page(context, {
+    ...ADMIN_PAGE,
+    value: { providers: { openai: { mode: 'admin', adminKeyRef: ref } } },
+    report: { credentials: { 'openai:admin': { configured: true, ref, writable: true,
+      candidates: [{ ref, configured: true, writable: true }] } } },
+    credentials: {
+      describe: async () => ({ ok: true, value: {} }),
+      set: async () => { writes++; return { ok: true, value: undefined } },
+      unset: async () => { writes++; return { ok: true, value: undefined } },
+    },
+  })
+  assert.equal(password(renderer).props.disabled, true)
+  assert.match(text(renderer), /Credential names must start with a letter or underscore/)
+  act(() => password(renderer).props.onChange({ target: { value: 'fake-admin-key' } }))
+  await act(async () => {
+    button(renderer, 'Save key now').props.onClick()
+    button(renderer, 'Clear key now').props.onClick()
+    await flush()
+  })
+  assert.equal(writes, 0)
+})
+
+test('an Admin key target cannot be inferred from ordinary refs or writable credential descriptors', async context => {
+  let saves = 0
+  const { renderer, writes, form, store } = await page(context, {
+    ...ADMIN_PAGE,
+    value: { providers: { openai: { mode: 'admin', apiKeyRef: 'INFERENCE_KEY' } } },
+    report: { credentials: { 'openai:admin': { configured: false, ref: 'INFERRED_ADMIN', writable: true,
+      candidates: [{ ref: 'INFERRED_ADMIN', configured: false, writable: true }] } } },
+    credentials: {
+      describe: async () => ({ ok: true, value: {} }),
+      set: async () => { saves++; return { ok: true, value: undefined } },
+      unset: async () => ({ ok: true, value: undefined }),
+    },
+  })
+  assert.equal(renderer.root.findAllByType('input').filter(node => node.props.type === 'password').length, 0)
+  assert.match(text(renderer), /Enter a dedicated Admin credential name and save settings before pasting/)
+  act(() => adminRef(renderer).props.onChange({ target: { value: 'ORG_ADMIN' } }))
+  assert.equal(password(renderer).props.disabled, true)
+  assert.match(text(renderer), /Save settings before editing its key/)
+  await act(async () => { button(renderer, 'Save key now').props.onClick(); await flush() })
+  assert.equal(saves, 0)
+  assert.deepEqual(writes, [])
+  await act(async () => { button(renderer, 'Save settings').props.onClick(); await flush(); await store.refreshCredentials() })
+  assert.equal(form.getSnapshot().value.providers.openai?.adminKeyRef, 'ORG_ADMIN')
+  assert.deepEqual(writes, [[{ op: 'set', path: ['providers', 'openai', 'adminKeyRef'], value: 'ORG_ADMIN' }]])
+  assert.equal(password(renderer).props.disabled, true, 'the inferred descriptor cannot grant permission for the explicit ref')
+  assert.match(text(renderer), /Checking credential permissions/)
+})
+
+test('Admin ref drafts block key writes, Reset restores the target, and a saved new target cannot inherit a masked key', async context => {
+  const saved: Array<{ ref: string; value: string }> = []
+  const cleared: string[] = []
+  const report: CredentialReport = { credentials: { 'openai:admin': { configured: true, ref: 'ADMIN_A', writable: true,
+    candidates: [{ ref: 'ADMIN_A', configured: true, writable: true }, { ref: 'ADMIN_B', configured: false, writable: true }] } } }
+  const { renderer, writes, form, store } = await page(context, {
+    ...ADMIN_PAGE,
+    value: { providers: { openai: { mode: 'admin', adminKeyRef: 'ADMIN_A', apiKeyRef: 'INFERENCE_KEY' } } }, report,
+    credentials: {
+      describe: async () => ({ ok: true, value: {} }),
+      set: async (ref, value) => { saved.push({ ref, value }); return { ok: true, value: undefined } },
+      unset: async ref => { cleared.push(ref); return { ok: true, value: undefined } },
+    },
+  })
+  act(() => password(renderer).props.onChange({ target: { value: 'admin-a-test-secret' } }))
+  act(() => adminRef(renderer).props.onChange({ target: { value: 'ADMIN_B' } }))
+  assert.equal(password(renderer).props.value, '')
+  assert.equal(password(renderer).props.disabled, true)
+  await act(async () => { button(renderer, 'Save key now').props.onClick(); button(renderer, 'Clear key now').props.onClick(); await flush() })
+  assert.deepEqual(saved, [])
+  assert.deepEqual(cleared, [])
+  act(() => button(renderer, 'Reset').props.onClick())
+  assert.equal(adminRef(renderer).props.value, 'ADMIN_A')
+  assert.equal(password(renderer).props.value, 'admin-a-test-secret')
+  assert.equal(password(renderer).props.disabled, false)
+  assert.deepEqual(writes, [])
+  act(() => adminRef(renderer).props.onChange({ target: { value: 'ADMIN_B' } }))
+  await act(async () => { button(renderer, 'Save settings').props.onClick(); await flush() })
+  report.credentials['openai:admin'] = { configured: false, ref: 'ADMIN_B', writable: true,
+    candidates: [{ ref: 'ADMIN_B', configured: false, writable: true }] }
+  await act(async () => { await store.refreshCredentials() })
+  assert.equal(form.getSnapshot().value.providers.openai?.adminKeyRef, 'ADMIN_B')
+  assert.equal(form.getSnapshot().value.providers.openai?.apiKeyRef, 'INFERENCE_KEY')
+  assert.equal(password(renderer).props.value, '')
+  await act(async () => { button(renderer, 'Save key now').props.onClick(); await flush() })
+  assert.deepEqual(saved, [])
+  act(() => password(renderer).props.onChange({ target: { value: 'admin-b-test-secret' } }))
+  await act(async () => { button(renderer, 'Save key now').props.onClick(); await flush() })
+  assert.deepEqual(saved, [{ ref: 'ADMIN_B', value: 'admin-b-test-secret' }])
+  assert.deepEqual(writes, [[{ op: 'set', path: ['providers', 'openai', 'adminKeyRef'], value: 'ADMIN_B' }]])
+})
+
+for (const writable of [undefined, false, true]) {
+  test(`Admin credential permission ${String(writable)} is independent of read-only configuration and fails closed`, async context => {
+    const saved: string[] = []
+    const cleared: string[] = []
+    const { renderer, writes } = await page(context, {
+      ...ADMIN_PAGE, writable: false,
+      value: { providers: { openai: { mode: 'admin', adminKeyRef: 'ORG_ADMIN' } } },
+      report: { credentials: { 'openai:admin': { configured: true, ref: 'ORG_ADMIN', writable,
+        candidates: [{ ref: 'ORG_ADMIN', configured: true, writable }] } } },
+      credentials: {
+        describe: async () => ({ ok: true, value: {} }),
+        set: async ref => { saved.push(ref); return { ok: true, value: undefined } },
+        unset: async ref => { cleared.push(ref); return { ok: true, value: undefined } },
+      },
+    })
+    assert.equal(adminRef(renderer).props.disabled, true)
+    assert.equal(password(renderer).props.disabled, writable !== true)
+    act(() => password(renderer).props.onChange({ target: { value: 'admin-test-secret' } }))
+    await act(async () => { button(renderer, 'Save key now').props.onClick(); await flush() })
+    await act(async () => { button(renderer, 'Clear key now').props.onClick(); await flush() })
+    assert.deepEqual(saved, writable === true ? ['ORG_ADMIN'] : [])
+    assert.deepEqual(cleared, writable === true ? ['ORG_ADMIN'] : [])
+    assert.deepEqual(writes, [])
+  })
+}
+
+test('pending Admin credential writes coalesce events and display Reset does not undo immediate key writes', async context => {
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  const saved: string[] = []
+  const cleared: string[] = []
+  const { renderer, writes } = await page(context, {
+    ...ADMIN_PAGE,
+    value: { providers: { openai: { mode: 'admin', adminKeyRef: 'ORG_ADMIN' } } },
+    report: { credentials: { 'openai:admin': { configured: true, ref: 'ORG_ADMIN', writable: true,
+      candidates: [{ ref: 'ORG_ADMIN', configured: true, writable: true }] } } },
+    credentials: {
+      describe: async () => ({ ok: true, value: {} }),
+      set: async ref => { saved.push(ref); await gate; return { ok: true, value: undefined } },
+      unset: async ref => { cleared.push(ref); return { ok: true, value: undefined } },
+    },
+  })
+  act(() => renderer.root.findByProps({ role: 'switch' }).props.onClick())
+  assert.equal(password(renderer).props.disabled, false)
+  act(() => password(renderer).props.onChange({ target: { value: 'admin-test-secret' } }))
+  try {
+    await act(async () => {
+      const save = button(renderer, 'Save key now').props.onClick
+      save(); save(); button(renderer, 'Clear key now').props.onClick(); await flush()
+    })
+    assert.equal(password(renderer).props.disabled, true)
+    assert.equal(button(renderer, 'Save key now').props.disabled, true)
+    assert.equal(button(renderer, 'Clear key now').props.disabled, true)
+    assert.deepEqual(saved, ['ORG_ADMIN'])
+    assert.deepEqual(cleared, [])
+    act(() => button(renderer, 'Reset').props.onClick())
+    assert.deepEqual(writes, [])
+  } finally {
+    await act(async () => { release(); await flush() })
+  }
+  assert.equal(password(renderer).props.value, '')
+  assert.equal(password(renderer).props.disabled, false)
+  assert.match(text(renderer), /Reset does not undo key changes/)
+  assert.deepEqual(saved, ['ORG_ADMIN'])
 })

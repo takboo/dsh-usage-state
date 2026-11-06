@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import { DEFAULT_TIMEOUT_MS, failureKindForStatus, readUsage, type FetchLike } from '../../src/host/read.ts'
 import { deepseek } from '../../src/host/sources/deepseek.ts'
 import { sub2api } from '../../src/host/sources/sub2api.ts'
+import { openai } from '../../src/host/sources/openai.ts'
 import { SourceError } from '../../src/host/sources/types.ts'
 
 interface Call {
@@ -227,4 +228,152 @@ test('a provider-declared endpoint is used first, with the mirror still availabl
     'https://api.z.ai/api/monitor/usage/quota/limit',
     'https://open.bigmodel.cn/api/monitor/usage/quota/limit',
   ])
+})
+
+const COST_MONTH = Date.UTC(2026, 10, 1)
+const COST_NOW = Date.UTC(2026, 10, 6, 12, 34, 56)
+const costBucket = (day: number, value: unknown) => ({
+  object: 'bucket', start_time: COST_MONTH / 1000 + day * 86_400, end_time: COST_MONTH / 1000 + (day + 1) * 86_400,
+  results: [{ object: 'organization.costs.result', amount: { value, currency: 'usd' } }],
+})
+const costPage = (data: unknown[] = [], next: string | null = null) => ({ object: 'page', data, has_more: next !== null, next_page: next })
+const adminInput = { source: openai, mode: 'admin' as const, apiKey: 'fake-admin-secret' }
+
+test('OpenAI read captures the reporting clock once across all fixed-origin, nonredirecting pages', async () => {
+  let reads = 0
+  const calls: Parameters<FetchLike>[] = []
+  const pages = [costPage([costBucket(0, 1.25)], 'opaque+/cursor'), costPage([costBucket(5, -0.001)])]
+  const fetch: FetchLike = async (url, init) => {
+    calls.push([url, init])
+    return { ok: true, status: 200, json: async () => pages[calls.length - 1] }
+  }
+  const reading = await readUsage({ ...adminInput, baseUrl: 'https://private-relay.invalid/path', pinnedBaseUrl: true }, {
+    fetch, now: () => { reads += 1; return reads === 1 ? COST_NOW : Date.UTC(2026, 11, 1) },
+  })
+  assert.equal(reads, 1)
+  assert.equal(reading.currentMonthSpend?.amount, 1.249)
+  assert.equal(calls.length, 2)
+  for (const [urlText, init] of calls) {
+    const url = new URL(urlText)
+    assert.equal(url.origin, 'https://api.openai.com')
+    assert.equal(url.pathname, '/v1/organization/costs')
+    assert.equal(url.searchParams.get('start_time'), String(COST_MONTH / 1000))
+    assert.equal(url.searchParams.has('end_time'), false)
+    assert.equal(url.searchParams.has('group_by'), false)
+    assert.equal(url.searchParams.has('project_ids'), false)
+    assert.equal(init.redirect, 'error')
+    assert.equal(init.headers.authorization, 'Bearer fake-admin-secret')
+  }
+})
+
+test('OpenAI applies one overall deadline instead of resetting the timeout for every page', async t => {
+  let clock = 10_000
+  t.mock.method(Date, 'now', () => clock)
+  let calls = 0
+  const fetch: FetchLike = async () => {
+    calls += 1
+    return { ok: true, status: 200, json: async () => {
+      clock += 600
+      return costPage([costBucket(calls - 1, calls)], 'later')
+    } }
+  }
+  await assert.rejects(() => readUsage(adminInput, { fetch, now: () => COST_NOW, timeoutMs: 1_000 }),
+    (error: unknown) => error instanceof SourceError && error.kind === 'network')
+  assert.equal(calls, 2)
+})
+
+test('OpenAI timeout aborts a later body read and never requests another page', async () => {
+  let calls = 0
+  let bodyAborted = false
+  let guard: ReturnType<typeof setTimeout> | undefined
+  const fetch: FetchLike = async (_url, init) => {
+    calls += 1
+    if (calls === 1) return { ok: true, status: 200, json: async () => costPage([costBucket(0, 1)], 'later') }
+    return { ok: true, status: 200, json: () => new Promise((_resolve, reject) => {
+      const aborted = () => { bodyAborted = true; reject(new Error('sensitive body aborted')) }
+      if (init.signal?.aborted === true) aborted()
+      else init.signal?.addEventListener('abort', aborted, { once: true })
+      guard = setTimeout(() => reject(new Error('timeout signal did not abort body')), 1_000)
+    }) }
+  }
+  try {
+    await assert.rejects(() => readUsage(adminInput, { fetch, now: () => COST_NOW, timeoutMs: 20 }),
+      (error: unknown) => error instanceof SourceError && error.kind === 'network')
+    assert.equal(bodyAborted, true)
+    assert.equal(calls, 2)
+  } finally {
+    clearTimeout(guard)
+  }
+})
+
+test('OpenAI owner abort during headers or JSON prevents another page or publication, even if fetch ignores abort', async () => {
+  for (const duringBody of [true, false]) {
+    const controller = new AbortController()
+    let calls = 0
+    const fetch: FetchLike = async () => {
+      calls += 1
+      if (!duringBody) controller.abort()
+      return { ok: true, status: 200, json: async () => {
+        if (duringBody) controller.abort()
+        return costPage([costBucket(0, 1)], 'later')
+      } }
+    }
+    await assert.rejects(() => readUsage(adminInput, { fetch, now: () => COST_NOW, signal: controller.signal }),
+      (error: unknown) => error instanceof SourceError && error.kind === 'network')
+    assert.equal(calls, 1)
+  }
+})
+
+test('OpenAI owner cancellation while awaiting the final body rejects a late success after an earlier valid page', async () => {
+  const controller = new AbortController()
+  let release: (payload: unknown) => void = () => { throw new Error('body has not started') }
+  let started: () => void = () => {}
+  const bodyStarted = new Promise<void>(resolve => { started = resolve })
+  let calls = 0
+  let bodySignal: AbortSignal | undefined
+  const fetch: FetchLike = async (_url, init) => {
+    calls += 1
+    if (calls === 1) return { ok: true, status: 200, json: async () => costPage([costBucket(0, 12)], 'last') }
+    bodySignal = init.signal
+    return { ok: true, status: 200, json: () => new Promise(resolve => { release = resolve; started() }) }
+  }
+  const pending = readUsage(adminInput, { fetch, now: () => COST_NOW, timeoutMs: 0, signal: controller.signal })
+  await bodyStarted
+  controller.abort()
+  release(costPage([costBucket(1, 2)]))
+  await assert.rejects(pending, (error: unknown) => error instanceof SourceError && error.kind === 'network')
+  assert.equal(bodySignal?.aborted, true)
+  assert.equal(calls, 2)
+})
+
+test('OpenAI first-second month reads and already-aborted owners never start HTTP', async () => {
+  const controller = new AbortController()
+  controller.abort()
+  let calls = 0
+  const fetch: FetchLike = async () => { calls += 1; throw new Error('must not fetch') }
+  const empty = await readUsage(adminInput, { fetch, now: () => COST_MONTH + 999 })
+  assert.equal(empty.currentMonthSpend?.amount, null)
+  await assert.rejects(() => readUsage(adminInput, { fetch, now: () => COST_NOW, signal: controller.signal }), SourceError)
+  assert.equal(calls, 0)
+})
+
+test('OpenAI later-page HTTP, transport, JSON and amount failures remain atomic and sanitized without fallback', async () => {
+  const secret = 'fake-admin-secret https://private.invalid/?cursor=secret raw-payload'
+  for (const failure of ['401', '403', '429', '302', 'transport', 'json', 'amount'] as const) {
+    let calls = 0
+    const fetch: FetchLike = async () => {
+      calls += 1
+      if (calls === 1) return { ok: true, status: 200, json: async () => costPage([costBucket(0, 12)], 'secret-cursor') }
+      if (failure === 'transport') throw new Error(secret)
+      if (failure === 'json') return { ok: true, status: 200, json: async () => { throw new SyntaxError(secret) } }
+      if (failure === 'amount') return { ok: true, status: 200, json: async () => costPage([costBucket(1, null)]) }
+      return { ok: false, status: Number(failure), json: async () => ({ error: secret }) }
+    }
+    const expected = failure === '401' || failure === '403' ? 'auth'
+      : failure === 'json' || failure === 'amount' ? 'parse' : failure === 'transport' ? 'network' : 'http'
+    await assert.rejects(() => readUsage(adminInput, { fetch, now: () => COST_NOW }),
+      (error: unknown) => error instanceof SourceError && error.kind === expected
+        && !/fake-admin-secret|private|cursor|raw-payload/.test(error.message))
+    assert.equal(calls, 2)
+  }
 })

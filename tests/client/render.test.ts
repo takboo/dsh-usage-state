@@ -774,3 +774,65 @@ test('account and API key routes select separate balances in the status line', (
     assert.ok(line.includes(`Mode ${mode}`))
   }
 })
+
+test('Admin settings require an explicit ref and hide inference key and endpoint controls', () => {
+  const catalog = toSourceCatalog()
+  for (const adminKeyRef of [undefined, 'ORG_ADMIN']) {
+    const page = renderToStaticMarkup(h(SettingsSection, {
+      t, credentials: CREDENTIALS,
+      settings: settingsWith(configWith({ openai: { mode: 'admin', sourceId: 'openai', adminKeyRef, apiKeyRef: 'INFERENCE_KEY', baseUrl: 'https://gateway.example' } })),
+      usageState: storeWith({ catalog, models: [{ provider: 'openai', providerName: 'OpenAI', model: 'm', name: 'Model' }],
+        credentials: { 'openai:admin': { configured: false, ref: adminKeyRef ?? 'INFERRED_ADMIN', writable: true,
+          candidates: [{ ref: adminKeyRef ?? 'INFERRED_ADMIN', configured: false, writable: true }] } },
+      }),
+    }))
+    assert.match(page, /Organization spend \(Admin Key\)/)
+    assert.match(page, /high-privilege.*read-only Usage permission/)
+    assert.match(page, /Admin credential name \(required\)/)
+    assert.doesNotMatch(page, /aria-label="Endpoint"|Credential name \(optional\)|INFERENCE_KEY|INFERRED_ADMIN|gateway\.example|Leave blank to auto-detect/)
+    assert.doesNotMatch(page, /no documented public endpoint/)
+    assert.match(page, /OpenAI Billing/)
+    if (adminKeyRef === undefined) {
+      assert.doesNotMatch(page, /type="password"/)
+      assert.match(page, /Enter a dedicated Admin credential name and save settings before pasting the Admin Key/)
+    } else {
+      assert.match(page, /type="password".*aria-label="Admin Key"/)
+      assert.match(page, /ORG_ADMIN/)
+      assert.match(page, /Reset does not undo key changes/)
+    }
+  }
+})
+
+for (const amount of [12.34, 0, null]) {
+  test(`Admin status renders organization monthly spend ${String(amount)} without a fake balance`, context => {
+    const now = Date.UTC(2026, 0, 10, 6)
+    context.mock.method(Date, 'now', () => now)
+    const line = renderToStaticMarkup(h(StatusLine, {
+      t, settings: settingsWith(configWith({ openai: { mode: 'admin', adminKeyRef: 'ORG_ADMIN' } })),
+      useProjection: projectionOf({ provider: 'openai', model: 'm' }),
+      usageState: storeWith({ catalog: toSourceCatalog(), snapshots: { 'openai:admin': {
+        sourceId: 'openai', mode: 'admin', fetchedAt: now, balances: [], windows: [],
+        currentMonthSpend: { amount, currency: 'USD', scope: 'organization', monthStart: Date.UTC(2026, 0, 1), monthEnd: Date.UTC(2026, 1, 1) },
+      } } }),
+    }))
+    assert.ok(line.includes(`Organization 2026-01 spend ${amount === null ? 'No data' : `$${amount.toFixed(2)}`}`))
+    assert.match(line, /Fetched as of 2026-01-10T06:00:00\.000Z/)
+    assert.match(line, /Organization-wide spend/)
+    assert.match(line, /Reporting may be delayed/)
+    assert.doesNotMatch(line, /Reading…|no documented public endpoint|API Key balance|Key rejected/)
+    if (amount === null) assert.doesNotMatch(line, /\$0\.00/)
+  })
+}
+
+test('an expired monthly snapshot cannot show last month as this month’s numeric spend', context => {
+  context.mock.method(Date, 'now', () => Date.UTC(2026, 1, 1))
+  const line = renderToStaticMarkup(h(StatusLine, {
+    t, settings: settingsWith(configWith({ openai: { mode: 'admin', adminKeyRef: 'ORG_ADMIN' } })),
+    useProjection: projectionOf({ provider: 'openai', model: 'm' }),
+    usageState: storeWith({ catalog: toSourceCatalog(), snapshots: { 'openai:admin': {
+      sourceId: 'openai', mode: 'admin', fetchedAt: Date.UTC(2026, 0, 31), balances: [], windows: [], stale: true,
+      currentMonthSpend: { amount: 99, currency: 'USD', scope: 'organization', monthStart: Date.UTC(2026, 0, 1), monthEnd: Date.UTC(2026, 1, 1) },
+    } } }),
+  }))
+  assert.doesNotMatch(line, /\$99\.00|Organization 2026-02 spend \$/)
+})

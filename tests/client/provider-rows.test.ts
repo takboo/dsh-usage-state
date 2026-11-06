@@ -190,3 +190,27 @@ test('reorderProviders swaps neighbours and refuses to move past either end', ()
   assert.equal(reorderProviders(order, 'c', 1), undefined)
   assert.equal(reorderProviders(order, 'missing', 1), undefined)
 })
+
+test('OpenAI offers explicit Admin mode without selecting it automatically or reusing an inference credential', () => {
+  const catalog: SourceCatalog = [...CATALOG, { id: 'openai', displayName: 'OpenAI', modes: ['admin'], requiresBaseUrl: false,
+    defaultBaseUrl: {}, credentialRefs: {}, unavailable: { reason: 'openai-public-api', billingUrl: 'https://platform.openai.com/settings/organization/billing/overview' } }]
+  const models = [{ provider: 'openai', providerName: 'OpenAI', model: 'm', name: 'Model' }]
+  const automatic = buildProviderRows({ models, config: DEFAULT_CONFIG, catalog })[0]!
+  assert.deepEqual(automatic.modes, ['auto', 'admin', 'hidden'])
+  assert.equal(automatic.selected, 'auto')
+  assert.equal(automatic.resolution.reason, 'capability-unavailable')
+  const configured = buildProviderRows({ models, catalog, config: configWith({ providers: {
+    openai: { mode: 'admin', sourceId: 'openai', adminKeyRef: 'ORG_ADMIN', apiKeyRef: 'INFERENCE_KEY', baseUrl: 'https://gateway.example' },
+  } }) })[0]!
+  assert.equal(configured.selected, 'admin')
+  assert.equal(configured.resolution.key, 'openai:admin')
+  assert.equal(configured.resolution.apiKeyRef, 'ORG_ADMIN')
+  assert.equal(configured.resolution.baseUrl, 'https://api.openai.com')
+  // Admin transport is fixed, but Admin mode alone must not reclassify a gateway as official OpenAI.
+  const gateway = buildProviderRows({ models, catalog, config: configWith({ providers: {
+    openai: { mode: 'admin', adminKeyRef: 'ORG_ADMIN', baseUrl: 'https://gateway.example' },
+  } }) })[0]!
+  assert.equal(gateway.resolution.sourceId, 'sub2api')
+  assert.equal(gateway.resolution.key, undefined)
+  assert.equal(gateway.resolution.reason, 'unsupported')
+})

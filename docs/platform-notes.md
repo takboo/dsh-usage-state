@@ -17,6 +17,8 @@
 
 每次resolve/describe获取当前 `credentials` 服务；启动顺序或重载不能永久缓存“无服务”。宿主回答优先：历史0.2.0偏环境，0.2.1 Web/Desktop偏已保存凭据。插件仅在宿主无结果时保留env→file的直接回退，并标记direct来源。写权限由宿主描述决定。
 
+OpenAI Admin 模式仅使用 provider 手动填写的 `adminKeyRef`，不发现默认 Admin 名称，不继承普通 `apiKeyRef`、source 默认或推理服务环境引用。resolve/describe 均只处理这个显式名称；宿主无结果时的直接回退也仅限同一显式名称。只有精确 `writable === true` 才允许写入。
+
 0.4.9账号路径动态读取 `deepseekAccount`，要求 `getPlatformSession()` 与 `getBalance(client)`。账号服务负责协议、超时、目的地址和登录失效，插件只取Host内身份摘要和安全钱包投影。精确契约及验证边界见 [适配器指南](adapters.md#deepseek-harness-账号与-api-key)。旧宿主缺少此服务时不启用API Key替代。
 
 <a id="module-resolution"></a>

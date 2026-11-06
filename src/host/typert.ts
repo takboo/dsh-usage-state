@@ -29,7 +29,7 @@ export function strictCodec(name: string, schema: z.ZodType): StrictCodec {
   return { mode: 'strict', typeSymbol: `${TYPERT_PACKAGE}#${name}`, schema, create: () => schema }
 }
 
-const usageModeSchema = z.enum(['api', 'account', 'coding-plan'])
+const usageModeSchema = z.enum(['api', 'account', 'coding-plan', 'admin'])
 
 const balanceSchema = z.object({
   amount: z.number(),
@@ -54,6 +54,13 @@ const snapshotSchema = z.object({
   mode: usageModeSchema,
   balances: z.array(balanceSchema),
   windows: z.array(quotaWindowSchema),
+  currentMonthSpend: z.object({
+    amount: z.number().nullable(),
+    currency: z.literal('USD'),
+    scope: z.literal('organization'),
+    monthStart: z.number(),
+    monthEnd: z.number(),
+  }).optional(),
   fetchedAt: z.number(),
   stale: z.boolean().optional(),
   error: snapshotErrorSchema.optional(),

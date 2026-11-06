@@ -50,19 +50,21 @@ DSH0.1使用历史版本0.3.2；该版本不适配0.2。0.4.0有RPC挂载缺陷�
 
 1. 打开 **插件 → 余额与额度 → 配置**，不再从全局设置侧栏进入。
 2. 每个供应商一行，用下拉菜单选择“自动”、支持的 API Key 余额／账号余额／Coding Plan，或“隐藏”；行内查看检测模式、来源和状态，模型清单与高级覆盖默认折叠。
-3. 自建 Sub2API 复用供应商已有接口地址；仅在地址缺失或需要覆盖时展开高级设置填写。账号模式由 Harness 管理登录，不提供 API Key 输入；OpenAI 官方来源只说明接口限制并链接官方账单。
+3. 自建 Sub2API 复用供应商已有接口地址；仅在地址缺失或需要覆盖时展开高级设置填写。账号模式由 Harness 管理登录，不提供 API Key 输入；OpenAI 官方普通密钥仍不查余额，可手动选择“组织月消费（Admin Key）”，配置独立 Admin 凭据。
 4. 修改模式、排序、端点、刷新策略或显示选项后，点击**保存设置**统一生效；**重置**采用最新已保存配置，离开页面则丢弃未保存草稿。未保存的配置不改变输入框上方状态行。
 5. “立即刷新”主动查询**已保存配置**的读数，不保存草稿；出错查看行内原因及 [排查指南](https://github.com/takboo/dsh-usage-state/blob/main/docs/troubleshooting.md)。
+
+**凭据名不是密钥本身。** 使用 `OAI_USAGE_READONLY` 这类名称，格式为 `[A-Za-z_][A-Za-z0-9_]*`：首字符只能是英文字母或下划线，后续可含数字，不支持连字符、空格或中文。API Key 与 Admin 凭据名不合法时，设置页会提示并阻止保存设置及写入／清除密钥；修正名称即可，无需靠重启解决。
 
 **配置与凭据分开保存。** 密钥区域的“立即保存密钥／立即清除密钥”是独立操作，不随配置重置撤回。修改模式、来源、端点或凭据名后，须先保存设置并取得当前目标的权限描述，才能操作密钥；显示或排序草稿不阻止独立密钥操作。API Key 高级设置提供端点、凭据名和密钥入口；显式 provider 覆盖优先于旧 source 默认，凭据描述与读取共用候选顺序。固定端点不试镜像，配置或凭据身份变化后清除旧身份读数。配置与凭据写权限分别处理；保存中防止重复提交，失败保留配置草稿。若其他页面已修改配置，先重置并重新修改，不静默覆盖外部变更。
 
 ## 数据源
 
-| 来源 | 余额读数 | Coding Plan读数 | 主要凭据 |
+| 来源 | 余额／消费读数 | Coding Plan读数 | 主要凭据 |
 |---|---|---|---|
 | DeepSeek官方 API Key | CNY/USD余额 | — | DEEPSEEK_API_KEY |
 | DeepSeek账号登录 | CNY/USD充值与赠送余额 | — | Harness当前登录账号 |
-| OpenAI官方 API Key | 官方普通 API Key 暂无余额查询接口；显示说明与账单入口 | — | 不为余额查询读取密钥 |
+| OpenAI官方 | 普通密钥无余额接口；显式 Admin 模式显示组织级本月 USD 消费（非余额） | — | 手动独立 adminKeyRef；自动不读取密钥 |
 | z.ai / 智谱GLM | — | 5h / 7d已用% | ZAI_API_KEY等 |
 | Kimi / Moonshot | 人民币余额 | Kimi Code订阅窗口 | MOONSHOT_API_KEY / KIMI_CODING_API_KEY |
 | OpenCode Zen Go | — | 5h / 7d / 30d已用% | OPENCODE_GO_API_KEY / OPENCODE_API_KEY |
@@ -70,7 +72,13 @@ DSH0.1使用历史版本0.3.2；该版本不适配0.2。0.4.0有RPC挂载缺陷�
 
 **DeepSeek 桌面端账号登录**：`deepseek-account` 路由自动选择「账号余额」，通过 Harness 登录服务读取充值与赠送余额之和，无需 API Key；`deepseek-official` 路由选择「API Key 余额」。两者独立查询和缓存，账号模式不会探测或回退使用 `DEEPSEEK_API_KEY`。请在 Harness 账号设置中登录；账号模式要求宿主提供账号服务；旧宿主缺少该服务时需升级宿主。账号模式的端点与登录凭据由宿主管理，高级区不提供 API Key 输入。
 
-**OpenAI 官方 API Key：** 插件识别官方来源并提示“暂无余额查询接口”，提供[官方账单入口](https://platform.openai.com/settings/organization/billing/overview)，不读取密钥或发起余额请求。官方 [Usage / Costs 管理接口](https://developers.openai.com/api/reference/resources/admin/subresources/organization/subresources/usage/methods/costs.md) 使用管理密钥，返回历史消费，不是剩余余额；不借用浏览器登录 token、探测私有计费接口或把速率限制当额度。兼容 OpenAI 协议的第三方平台仍按该平台实际余额协议接入，不能由模型名称推断。
+**OpenAI 官方：** 自动模式和普通 API Key 模式仍只提示余额接口限制，并提供[官方账单入口](https://platform.openai.com/settings/organization/billing/overview)，不读取普通密钥或探测余额接口。要查看消费：
+
+1. 由组织 owner 在 [Admin keys](https://platform.openai.com/settings/organization/admin-keys) 创建管理密钥，尽可能仅授予读取 Usage 的权限；普通项目／推理密钥不可替代。不要因 403 自动扩大权限。
+2. 在供应商行手动选择“组织月消费（Admin Key）”，填写**独立 Admin 凭据名**并先保存设置，再在凭据区立即保存密钥；也可引用已由宿主管理的同名凭据。密钥不写入插件配置，不自动发现或复用推理凭据。
+3. 读数来自官方 [Costs API](https://developers.openai.com/api/reference/resources/admin/subresources/organization/subresources/usage/methods/costs.md)，是**整个组织在当前 UTC 日历月已报告的 USD 消费**，不是本项目、当前模型／会话或此密钥自身消费，更不是余额、预算剩余或最终账单。提示中显示实际月份及查询时间；可能有入账延迟，查询时间不代表数据已入账至该时刻。完整查询无金额行显示“暂无数据”，明确返回 0 才显示零。费用按 UTC 日桶查询，省略当前秒 `end_time` 以免排除当天费用；返回桶仍按捕获时钟限制在本月截至当日。
+
+官方来源优先按解析后的精确主机名 `api.openai.com` 识别，不按模型名、OpenAI 协议或字符串包含关系判断；第三方兼容平台仍按其余额协议接入。Admin 请求另有更严格的安全策略：固定 `https://api.openai.com/v1/organization/costs`、拒绝重定向，不使用 HTTP、自定义端口、网关／端点覆盖。若要将网关模型路由显式关联到官方组织消费，需手动选 OpenAI 来源，不能自动推断二者账户相同。换凭据或 UTC 跨月清除旧消费；同身份同月刷新失败才保留旧值。当前每个 source+mode 仍只有首个有效供应商拥有目标，不代表独立多组织支持。
 
 Kimi Code 的 `kimi-code`、`kimi-coding`、`kimi-for-coding` provider，以及声明 `api.kimi.com` / `api.kimi.ai` 的自定义 provider，会自动读取套餐用量。支持 5h、7d、月总额度及编程月用量，仅展示账户实际返回的窗口。Moonshot 国内/国际 API 继续显示人民币余额；可在设置中显式选择模式。
 
@@ -82,7 +90,7 @@ OpenCode Zen Go三个窗口，独立状态行位于输入框上方：
 
 ![输入框上方的账户读数](https://raw.githubusercontent.com/takboo/dsh-usage-state/main/assets/screenshots/status-line.webp)
 
-开发版在 Desktop 0.2.1-rc.5 上的实机截图，已裁去私有侧栏。亮色下每个供应商一行，模式下拉与高级项默认折叠；OpenAI 官方来源直接说明接口限制：
+设置迁移版在 Desktop 0.2.1-rc.5 上的实机截图，已裁去私有侧栏；以下截图早于新增 Admin 模式，不展示 Admin 凭据区。亮色下每个供应商一行，模式下拉与高级项默认折叠，OpenAI 自动模式说明余额接口限制：
 
 ![紧凑供应商设置](https://raw.githubusercontent.com/takboo/dsh-usage-state/main/assets/screenshots/settings-providers.webp)
 

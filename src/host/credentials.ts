@@ -45,6 +45,10 @@ export function orderedCredentialRefs(
   mode: UsageMode,
   options: CredentialOptions = {},
 ): string[] {
+  if (mode === 'admin') {
+    const ref = clean(options.overrideRef)
+    return ref === undefined ? [] : [ref]
+  }
   const ordered: string[] = []
   for (const candidate of [clean(options.overrideRef), ...(options.preferredRefs ?? []), ...(options.allowDefaultRefs === false ? [] : source.credentialRefs(mode))]) {
     const ref = clean(candidate)

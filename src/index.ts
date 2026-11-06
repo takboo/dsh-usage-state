@@ -238,6 +238,11 @@ export function createUsageState(ctx: PluginContextLike, deps: UsageStateDeps = 
   }
   const optionsFor = (target: UsageTarget) => {
     const overrideRef = target.apiKeyRef
+    if (target.mode === 'admin') return {
+      ...(overrideRef === undefined ? {} : { overrideRef }),
+      preferredRefs: [],
+      allowDefaultRefs: false,
+    }
     const source = findSource(target.sourceId)
     const origin = originOf(target.baseUrl)
     // Default ref names identify a vendor, not a custom endpoint's account.
@@ -255,7 +260,7 @@ export function createUsageState(ctx: PluginContextLike, deps: UsageStateDeps = 
   }
 
   const account = () => ctx.get('deepseekAccount') as DeepSeekAccountLike | undefined
-  const httpReader = createTargetReader({ fetch: fetchImpl })
+  const httpReader = createTargetReader({ fetch: fetchImpl, now })
   const store = new UsageStateStore({
     clock: {
       now,

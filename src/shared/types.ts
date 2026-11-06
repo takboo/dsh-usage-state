@@ -7,7 +7,7 @@
  */
 
 /** How the usage of a model's account is read. */
-export type UsageMode = 'api' | 'account' | 'coding-plan'
+export type UsageMode = 'api' | 'account' | 'coding-plan' | 'admin'
 
 /** A monetary balance, already scaled to the provider's major unit (yuan, dollars). */
 export interface BalanceAmount {
@@ -33,6 +33,16 @@ export interface QuotaWindow {
 export interface UsageReading {
   balances: BalanceAmount[]
   windows: QuotaWindow[]
+  /** Reported organization spend, NOT a balance, budget, or quota. */
+  currentMonthSpend?: {
+    /** Null means a complete report contained no cost rows; explicit zero is 0. */
+    amount: number | null
+    currency: 'USD'
+    scope: 'organization'
+    /** Full UTC calendar month [start, end), in epoch milliseconds. */
+    monthStart: number
+    monthEnd: number
+  }
 }
 
 /** Why a reading is unavailable. The browser turns this into localized copy. */

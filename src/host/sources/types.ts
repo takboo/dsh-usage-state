@@ -20,6 +20,8 @@ export class SourceError extends Error {
 export interface UsageRequest {
   url: string
   headers: Record<string, string>
+  /** Sensitive organization credentials must never follow a redirect. */
+  redirect?: 'error'
 }
 
 export interface RequestInput {
@@ -29,6 +31,8 @@ export interface RequestInput {
   baseUrl?: string
   /** True when the endpoint is the user's explicit choice, not a suggestion. */
   pinnedBaseUrl?: boolean
+  /** Captured reporting instant in epoch milliseconds; parsers never read a clock. */
+  now?: number
 }
 
 /**
@@ -68,5 +72,5 @@ export interface UsageSource {
    */
   fallbackRequests?(input: RequestInput): readonly UsageRequest[]
   /** Pure parser: raw JSON payload -> normalized reading. Throws `SourceError`. */
-  parse(payload: unknown, mode: UsageMode): UsageReading
+  parse(payload: unknown, mode: UsageMode, input?: RequestInput): UsageReading
 }

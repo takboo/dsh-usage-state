@@ -13,7 +13,7 @@ function configWith(models: UsageStateConfig['models']): UsageStateConfig {
 test('the source registry exposes every v1 source by id', () => {
   assert.deepEqual(
     ALL_SOURCES.map(source => source.id).sort(),
-    ['deepseek', 'kimi', 'opencode', 'sub2api', 'zai'],
+    ['deepseek', 'kimi', 'openai', 'opencode', 'sub2api', 'zai'],
   )
   assert.equal(findSource('zai')?.displayName, 'z.ai / GLM')
   assert.equal(findSource('opencode')?.displayName, 'OpenCode Zen Go')

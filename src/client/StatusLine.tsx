@@ -147,6 +147,7 @@ function renderPart(part: StatusPart, t: Translate, key: number) {
         </span>
       )
     case 'balance':
+    case 'spend':
       return (
         <span key={key} style={{ color: 'var(--dsw-alias-label-secondary)' }}>
           {part.text}
@@ -250,9 +251,10 @@ export function StatusLine(props: StatusLineProps) {
       ? (key, params) => t(key === 'error.config' ? 'accountSignInRequired' : key === 'error.auth' ? 'accountAuthFailed' : key, params)
       : t,
     now,
+    ...(snapshot === undefined ? {} : { fetchedAt: snapshot.fetchedAt }),
     ...(sourceLabel === '' ? {} : { sourceLabel }),
     ...(status.kind === 'ready'
-      ? { modeLabel: status.mode === 'account' ? t('modeAccount') : status.mode === 'api' ? t('modeApi') : t('modeCodingPlan') }
+      ? { modeLabel: status.mode === 'account' ? t('modeAccount') : status.mode === 'api' ? t('modeApi') : status.mode === 'admin' ? t('modeAdmin') : t('modeCodingPlan') }
       : {}),
   })
   if (fullParts.length === 0) return null

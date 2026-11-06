@@ -41,7 +41,9 @@ flowchart LR
 
 ## 关键边界
 
-`UsageStateStore`在每次读取时重新解析目标和有效凭据。目标的端点和自动发现凭据由同一owner provider持有，自定义origin不使用未显式绑定的适配器默认密钥。endpoint/pin/ref/preferredRefs构成目标签名，有效密钥或账号身份摘要进入私有缓存身份。配置代次变化拒绝旧结果；失败保留同身份成功读数。stop另取消本生命周期在途HTTP，阻止延迟凭据查询和镜像回退在卸载后继续发请求，重新start使用新signal。source+mode合并仍不是独立多账户注册。
+`UsageStateStore`在每次读取时重新解析目标和有效凭据。目标的端点和自动发现凭据由同一owner provider持有，自定义origin不使用未显式绑定的适配器默认密钥。endpoint/pin/ref/preferredRefs构成目标签名，有效密钥或账号身份摘要进入私有缓存身份。配置代次变化拒绝旧结果；失败保留同身份成功读数。目标失效会取消该目标在途HTTP，stop取消本生命周期全部请求，阻止延迟凭据查询和镜像回退继续发请求，重新start使用新signal。source+mode合并仍不是独立多账户注册。
+
+OpenAI Admin 路径只解析 provider 显式 `adminKeyRef`，不继承推理端点／凭据；固定官方HTTPS，独立严格分页器在一个报告时钟和总截止时间下重查整月。`currentMonthSpend` 单独经codec传输，不进入余额／窗口。UTC月初进入目标签名；跨月取消并拒绝旧响应，Client共享display另抑制过期月金额。`fetchedAt`仅为查询时间，不是入账水位或最终账单保证。
 
 账号路径先以 `getPlatformSession()` 获取Host内身份摘要，再调用 `getBalance(client)`，并复核身份。账号模式不执行API Key候选查找或Adapter的HTTP request；签出清缓存，Host任意错误先替换为安全文案。充值与赠送钱包由DeepSeek纯解析器处理。
 

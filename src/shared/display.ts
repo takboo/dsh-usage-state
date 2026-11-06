@@ -1,5 +1,6 @@
 import type { DisplayConfig, ModelMode, UsageStateConfig } from './config.ts'
 import type { BalanceAmount, SnapshotError, UsageMode, UsageSnapshot } from './types.ts'
+import { utcMonthStart } from './period.ts'
 
 export const OPENAI_BILLING_URL = 'https://platform.openai.com/settings/organization/billing/overview'
 
@@ -17,7 +18,7 @@ export interface SourceCatalogEntry {
   requiresBaseUrl: boolean
   defaultBaseUrl: Partial<Record<UsageMode, string>>
   credentialRefs: Partial<Record<UsageMode, string[]>>
-  /** Informational capability only: no adapter, credential discovery, or polling. */
+  /** Normal-key/auto limitation; an explicit Admin mode may still be served. */
   unavailable?: { reason: 'openai-public-api'; billingUrl: typeof OPENAI_BILLING_URL }
 }
 
@@ -55,6 +56,7 @@ export type StatusSegment =
       errorDetail?: string
     }
   | { kind: 'balance'; amount: string; currency: string; granted?: number; toppedUp?: number }
+  | { kind: 'spend'; amount: string | null; currency: 'USD'; scope: 'organization'; monthStart: number; monthEnd: number }
   | {
       kind: 'window'
       windowId: string
@@ -148,6 +150,12 @@ export function describeStatus(input: StatusInput): StatusSegment[] {
   if (status.kind === 'unsupported') return [{ kind: 'state', state: 'unsupported' }]
   if (status.kind === 'capability-unavailable') return [{ kind: 'state', state: 'capability-unavailable' }]
 
+  // A retained previous month must never masquerade as the current month while
+  // the next Host poll/refresh is pending, even if the Client spans UTC midnight.
+  if (snapshot?.currentMonthSpend !== undefined && snapshot.currentMonthSpend.monthStart !== utcMonthStart(now)) {
+    return [{ kind: 'label', text: input.sourceLabel }, { kind: 'state', state: 'loading' }]
+  }
+
   const label: StatusSegment =
     snapshot?.stale === true
       ? {
@@ -164,7 +172,7 @@ export function describeStatus(input: StatusInput): StatusSegment[] {
 
   if (snapshot === undefined) return [label, { kind: 'state', state: 'loading' }]
 
-  if (snapshot.balances.length === 0 && snapshot.windows.length === 0) {
+  if (snapshot.balances.length === 0 && snapshot.windows.length === 0 && snapshot.currentMonthSpend === undefined) {
     return [
       label,
       snapshot.error === undefined
@@ -179,6 +187,13 @@ export function describeStatus(input: StatusInput): StatusSegment[] {
   }
 
   const segments: StatusSegment[] = [label]
+  if (snapshot.currentMonthSpend !== undefined) {
+    const spend = snapshot.currentMonthSpend
+    segments.push({
+      kind: 'spend', ...spend,
+      amount: spend.amount === null ? null : formatBalance({ amount: spend.amount, currency: spend.currency }),
+    })
+  }
   for (const balance of snapshot.balances) {
     segments.push({
       kind: 'balance',

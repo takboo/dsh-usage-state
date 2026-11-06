@@ -106,3 +106,23 @@ test('a balance tooltip carries the provider split when the endpoint reports one
 
   assert.equal(parts[0]?.tooltip, 'Granted 0 · Topped up 58.13 · Source DeepSeek · Mode API Key balance')
 })
+
+for (const amount of ['$12.34', '$0.00', null]) {
+  test(`organization spend keeps ${String(amount)} distinct and labels its actual UTC month`, () => {
+    const monthStart = Date.UTC(2026, 0, 1)
+    const monthEnd = Date.UTC(2026, 1, 1)
+    const fetchedAt = Date.UTC(2026, 0, 10, 6)
+    const parts = statusParts({
+      segments: [{ kind: 'spend', amount, currency: 'USD', scope: 'organization', monthStart, monthEnd }],
+      t, now: Date.UTC(2026, 1, 2), fetchedAt, sourceLabel: 'OpenAI', modeLabel: t('modeAdmin'),
+    })
+    assert.equal(partsToText(parts), `Organization 2026-01 spend ${amount ?? 'No data'}`)
+    assert.equal(parts[0]?.kind, 'spend')
+    assert.match(parts[0]?.tooltip ?? '', /UTC calendar month \[2026-01-01T00:00:00\.000Z, 2026-02-01T00:00:00\.000Z\), end exclusive/)
+    assert.match(parts[0]?.tooltip ?? '', /Fetched as of 2026-01-10T06:00:00\.000Z/)
+    assert.match(parts[0]?.tooltip ?? '', /Organization-wide spend, not the current model or session cost/)
+    assert.match(parts[0]?.tooltip ?? '', /Reporting may be delayed; not a balance, not real-time cost, and not a final invoice/)
+    assert.match(parts[0]?.tooltip ?? '', /Source OpenAI · Mode Organization spend \(Admin Key\)/)
+    if (amount === null) assert.doesNotMatch(partsToText(parts), /\$0\.00/)
+  })
+}

@@ -20,6 +20,7 @@ export type StatusPart =
   | { kind: 'label'; text: string; stale: boolean; tooltip?: string }
   | { kind: 'age'; text: string; tooltip?: string }
   | { kind: 'balance'; text: string; currency: string; tooltip?: string }
+  | { kind: 'spend'; text: string; tooltip?: string }
   | {
       kind: 'window'
       id: string
@@ -56,6 +57,8 @@ export interface StatusPartsInput {
   sourceLabel?: string
   /** Already-localized mode name, for the tooltip. */
   modeLabel?: string
+  /** Actual successful fetch instant, never the browser's current time. */
+  fetchedAt?: number
 }
 
 /** Join the pieces of a tooltip, dropping the ones that do not apply. */
@@ -126,6 +129,22 @@ export function statusParts(input: StatusPartsInput): StatusPart[] {
           text: segment.amount,
           currency: segment.currency,
           ...(tooltipOf([split, context]) === undefined ? {} : { tooltip: tooltipOf([split, context]) as string }),
+        })
+        break
+      }
+      case 'spend': {
+        const start = new Date(segment.monthStart).toISOString()
+        const end = new Date(segment.monthEnd).toISOString()
+        parts.push({
+          kind: 'spend',
+          text: t('organizationSpend', { month: start.slice(0, 7), amount: segment.amount ?? t('spendNoData') }),
+          tooltip: tooltipOf([
+            t('tipSpendPeriod', { start, end }),
+            input.fetchedAt === undefined ? undefined : t('tipSpendAsOf', { time: new Date(input.fetchedAt).toISOString() }),
+            t('tipSpendScope'),
+            t('tipSpendCaveat'),
+            context,
+          ]) as string,
         })
         break
       }

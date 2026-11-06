@@ -50,19 +50,21 @@ The settings entry and draft workflow below belong to the current development br
 
 1. Open **Plugins → Balance & Quota → Configure**, rather than the global settings sidebar.
 2. Each provider has one compact row. Choose Auto, a supported API Key balance / Account balance / Coding Plan mode, or Hidden from its dropdown. The row shows the detected mode, source and status; models and advanced overrides stay collapsed.
-3. Sub2API reuses the provider's existing endpoint. Expand advanced settings only when an address is missing or an override is needed. Harness manages account-mode sign-in, with no API key input. Official OpenAI shows its API limitation and a billing link only.
+3. Sub2API reuses the provider's existing endpoint. Expand advanced settings only when an address is missing or an override is needed. Harness manages account-mode sign-in, with no API key input. Ordinary OpenAI keys still cannot query a balance; explicitly select “Organization spend (Admin Key)” and configure a separate Admin credential to opt in.
 4. Click **Save settings** to apply mode, order, endpoint, refresh and display changes together. **Reset** adopts the latest saved configuration; leaving the page discards unsaved edits. Draft configuration does not change the line above the composer.
 5. **Refresh now** explicitly queries readings for the **saved configuration**; it does not save edits. Check the row's reason and the [troubleshooting guide (Chinese)](https://github.com/takboo/dsh-usage-state/blob/main/docs/troubleshooting.md) on failure.
+
+**A credential name is not the secret itself.** Use a name such as `OAI_USAGE_READONLY`, matching `[A-Za-z_][A-Za-z0-9_]*`: start with an ASCII letter or underscore, followed by letters, digits, or underscores. Hyphens, spaces, and non-ASCII characters are not supported. Invalid API Key or Admin credential names show a validation message and block settings saves and key writes/deletions. Correct the name; a restart does not fix invalid syntax.
 
 **Configuration and credentials save separately.** **Save key now / Clear key now** are immediate actions and are not undone by resetting configuration. After editing a provider's mode, source, endpoint or credential name, save settings and wait for the current target's permission description before editing its key. Display or order drafts do not block independent key actions. API Key advanced settings offer endpoint, credential name and key controls. Explicit provider overrides take precedence over legacy source defaults, and descriptions and requests share the candidate order. Pinned endpoints do not try mirrors; configuration or credential identity changes discard previous-identity readings. Configuration and credential permissions are separate. Pending saves prevent duplicate submissions, and failed saves preserve the draft. If another page changes configuration, reset and reapply your edits rather than silently overwriting external changes.
 
 ## Sources
 
-| Source | Balance reading | Coding-plan reading | Main credential |
+| Source | Balance / spend reading | Coding-plan reading | Main credential |
 |---|---|---|---|
 | DeepSeek official API Key | CNY/USD balance | — | DEEPSEEK_API_KEY |
 | DeepSeek account sign-in | CNY/USD recharge and bonus balance | — | Current Harness login |
-| Official OpenAI API Key | No documented ordinary-key balance API; explanation and billing link only | — | No key lookup for balance queries |
+| Official OpenAI | No ordinary-key balance API; explicit Admin mode reports organization-wide UTC-month USD spend, not balance | — | Separate manual adminKeyRef; no auto key lookup |
 | z.ai / Zhipu GLM | — | 5h / 7d used % | ZAI_API_KEY and related refs |
 | Kimi / Moonshot | CNY balance | Kimi Code subscription windows | MOONSHOT_API_KEY / KIMI_CODING_API_KEY |
 | OpenCode Zen Go | — | 5h / 7d / 30d used % | OPENCODE_GO_API_KEY / OPENCODE_API_KEY |
@@ -70,7 +72,13 @@ The settings entry and draft workflow below belong to the current development br
 
 **DeepSeek Desktop account sign-in:** `deepseek-account` automatically uses “Account balance” through the Harness account service, adding recharge and bonus wallets. `deepseek-official` uses “API Key balance”. Queries and caches are separate; account mode never probes or falls back to `DEEPSEEK_API_KEY`. Sign in through Harness account settings. Account mode requires the host account service; older hosts without it need an upgrade. Harness owns the endpoint and login grant; account mode has no API key fields.
 
-**Official OpenAI API Key:** the plugin recognizes the official provider and explains that no documented ordinary-key balance API is available, with a link to [official billing](https://platform.openai.com/settings/organization/billing/overview). It neither reads a key nor sends balance requests. The official [Usage / Costs administration API](https://developers.openai.com/api/reference/resources/admin/subresources/organization/subresources/usage/methods/costs.md) requires an Admin key and reports historical spending, not remaining balance. Browser session tokens, private billing endpoints and rate limits are not balance substitutes. OpenAI-compatible gateways require their own documented balance protocol; model names do not identify it.
+**Official OpenAI:** auto and ordinary-key modes still explain the balance API limitation and link to [official billing](https://platform.openai.com/settings/organization/billing/overview), without looking up an ordinary key or probing a balance endpoint. To opt into spend reporting:
+
+1. An organization owner creates a key in [Admin keys](https://platform.openai.com/settings/organization/admin-keys), granting only read access to Usage where possible. Ordinary project/inference keys cannot replace it; do not automatically expand permissions after a 403.
+2. Explicitly select “Organization spend (Admin Key)”, enter a **separate Admin credential name**, and save settings first. Then save the key immediately in the credential area, or reference a credential already managed by Harness. Secrets never enter plugin config; inference credentials are not discovered or reused for this mode.
+3. The official [Costs API](https://developers.openai.com/api/reference/resources/admin/subresources/organization/subresources/usage/methods/costs.md) reports **organization-wide USD spend reported so far in the current UTC calendar month**. This is not project-, model-, session-, or key-specific, and is not a balance, remaining budget, or final invoice. The tooltip shows the actual month and query time; ingestion may lag, and the query timestamp is not an ingestion watermark. A complete query without cost rows shows “No cost data”; only an explicitly returned numeric zero displays zero. Costs use UTC daily buckets; requests omit a current-second `end_time` so today's costs are not excluded. Returned buckets are still validated against the captured clock, within the current month through that day.
+
+Official-source detection uses the exact parsed hostname `api.openai.com`, not model names, protocol compatibility, or substring matching. Third-party gateways require their own balance protocol. Admin transport is stricter: it always uses `https://api.openai.com/v1/organization/costs` with redirects rejected, ignoring HTTP/custom-port/gateway endpoint overrides. Explicitly select the OpenAI source to associate a gateway model route with official organization spend; the plugin cannot infer that these accounts match. Credential changes and UTC month rollover clear old spend; failures retain values only for the same identity and month. Only the first effective provider owns each source+mode target; this is not independent multi-organization support.
 
 Kimi Code routes `kimi-code`, `kimi-coding`, and `kimi-for-coding`, plus custom providers declaring `api.kimi.com` / `api.kimi.ai`, automatically read subscription usage. The plugin displays only returned windows: 5h, 7d, monthly total, and monthly code usage. Moonshot regional APIs retain CNY balance mode. Explicit settings take precedence.
 
@@ -82,7 +90,7 @@ OpenCode Zen Go's three windows on the independent line above the input:
 
 ![Account readings above the input](https://raw.githubusercontent.com/takboo/dsh-usage-state/main/assets/screenshots/status-line.webp)
 
-Actual development-build screenshots on Desktop 0.2.1-rc.5, with the private sidebar cropped out. Light theme: compact provider rows, mode dropdowns and collapsed advanced controls. Official OpenAI shows its API limitation inline:
+Actual settings-migration screenshots on Desktop 0.2.1-rc.5, with the private sidebar cropped out. These captures predate Admin mode and do not show its credential controls. Light theme: compact provider rows, mode dropdowns and collapsed advanced controls. OpenAI auto mode shows its balance API limitation inline:
 
 ![Compact provider settings](https://raw.githubusercontent.com/takboo/dsh-usage-state/main/assets/screenshots/settings-providers.webp)
 

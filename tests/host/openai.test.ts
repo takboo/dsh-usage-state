@@ -28,14 +28,14 @@ test('official OpenAI is recognized without mistaking OpenAI-compatible gateways
   ]) assert.equal(suggestSourceId('openai', endpoint), 'sub2api')
 })
 
-test('OpenAI is an informational, RPC-safe capability entry, not a fake UsageSource', () => {
-  assert.equal(findSource('openai'), undefined)
-  assert.equal(ALL_SOURCES.some(source => source.id === 'openai'), false)
+test('OpenAI catalog is RPC-safe and separates explicit Admin from the normal-key limitation', () => {
+  assert.deepEqual(findSource('openai')?.modes, ['admin'])
+  assert.equal(ALL_SOURCES.filter(source => source.id === 'openai').length, 1)
   const sources = toSourceCatalog()
   const entry = sources.find(source => source.id === 'openai')
   assert.deepEqual(entry, {
-    id: 'openai', displayName: 'OpenAI', modes: [], requiresBaseUrl: false,
-    defaultBaseUrl: {}, credentialRefs: {},
+    id: 'openai', displayName: 'OpenAI', modes: ['admin'], requiresBaseUrl: false,
+    defaultBaseUrl: { admin: 'https://api.openai.com' }, credentialRefs: { admin: [] },
     unavailable: { reason: 'openai-public-api', billingUrl: BILLING_URL },
   })
   const view = { sources, snapshots: {}, checkedAt: 0 }
@@ -74,7 +74,7 @@ test('a gateway override on the OpenAI provider stays owned by that gateway; an 
     config: official, catalog: toSourceCatalog(),
   })
   assert.equal(row?.resolution.reason, 'capability-unavailable')
-  assert.deepEqual(row?.modes, ['auto', 'hidden'])
+  assert.deepEqual(row?.modes, ['auto', 'admin', 'hidden'])
 })
 
 test('DeepSeek account mode still ignores irrelevant API endpoint and key overrides', () => {

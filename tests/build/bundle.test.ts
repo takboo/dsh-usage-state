@@ -287,6 +287,102 @@ test('the built browser bundle mounts its RPC contribution through the real 0.2 
   assert.equal(configuration.render({ view: 'summary', t: key => key }), 'configSummary', 'summary returns inline text, not an editor or nested paragraph')
 })
 
+test('shipped Admin Costs pagination and codec preserve spend, zero and no-data without leaking credentials', async () => {
+  requireBuilt()
+  const { createUsageState } = await import(HOST.href)
+  const { TYPERT: contract } = await import(TYPERT.href)
+  const now = Date.UTC(2026, 10, 6, 9)
+  const monthStart = Date.UTC(2026, 10, 1)
+  const monthEnd = Date.UTC(2026, 11, 1)
+  for (const amount of [1.25, 0, null]) {
+    const refs: string[] = []
+    const requests: URL[] = []
+    const ctx = {
+      get: (name: string) => name === 'llm' ? { listProviders: () => [{ id: 'openai' }] }
+        : name === 'credentials' ? { resolve: async (ref: string) => { refs.push(ref); return { value: 'fake-bundle-admin-secret', source: 'store' } } }
+        : undefined,
+      on: () => () => {}, effect: (fn: () => void) => fn(), provide: () => {},
+      timeout: () => () => {}, interval: () => () => {},
+    }
+    const service = createUsageState(ctx, {
+      config: { get: () => ({ providers: { openai: { mode: 'admin', sourceId: 'openai', adminKeyRef: 'MANUAL_ADMIN', apiKeyRef: 'INFERENCE', baseUrl: 'https://gateway.example' } } }) },
+      now: () => now,
+      credentialFallback: false,
+      fetch: async (url: string, init: { headers: Record<string, string>; redirect?: string }) => {
+        const parsed = new URL(url)
+        requests.push(parsed)
+        assert.equal(parsed.origin, 'https://api.openai.com')
+        assert.equal(parsed.pathname, '/v1/organization/costs')
+        assert.equal(init.redirect, 'error')
+        assert.equal(init.headers.authorization, 'Bearer fake-bundle-admin-secret')
+        const first = requests.length === 1
+        return { ok: true, status: 200, json: async () => ({ object: 'page', data: [{
+          object: 'bucket', start_time: monthStart / 1000 + (first ? 0 : 86400), end_time: monthStart / 1000 + (first ? 86400 : 172800),
+          results: amount === null ? [] : [{ object: 'organization.costs.result', amount: { value: amount / 2, currency: 'usd' } }],
+        }], has_more: first, next_page: first ? 'fake-private-cursor' : null }) }
+      },
+    })
+    const state = await service.getState(false)
+    const wire = contract.invocations.find((entry: { method: string }) => entry.method === 'getState').result.schema.parse(state)
+    assert.equal(wire.snapshots['openai:admin'].mode, 'admin')
+    assert.deepEqual(wire.snapshots['openai:admin'].currentMonthSpend, { amount, currency: 'USD', scope: 'organization', monthStart, monthEnd })
+    assert.deepEqual(wire.snapshots['openai:admin'].balances, [])
+    assert.deepEqual(wire.snapshots['openai:admin'].windows, [])
+    assert.deepEqual(refs, ['MANUAL_ADMIN'])
+    assert.equal(requests.length, 2)
+    assert.equal(requests[0]?.searchParams.get('start_time'), String(monthStart / 1000))
+    assert.equal(requests[0]?.searchParams.has('end_time'), false)
+    assert.equal(requests[1]?.searchParams.get('start_time'), requests[0]?.searchParams.get('start_time'))
+    assert.equal(requests[1]?.searchParams.get('end_time'), requests[0]?.searchParams.get('end_time'))
+    assert.equal(requests[1]?.searchParams.get('page'), 'fake-private-cursor')
+    assert.doesNotMatch(JSON.stringify(wire), /fake-bundle-admin-secret|fake-private-cursor|INFERENCE/)
+  }
+})
+
+test('shipped Admin Costs today survives the captured cutoff regression through RPC and display', async () => {
+  requireBuilt()
+  const { createUsageState } = await import(HOST.href)
+  const { TYPERT: contract } = await import(TYPERT.href)
+  const { describeStatus } = await import('../../src/shared/display.ts')
+  const { DEFAULT_CONFIG } = await import('../../src/shared/config.ts')
+  const now = Date.UTC(2026, 10, 6, 10, 30)
+  const requests: URL[] = []
+  const ctx = {
+    get: (name: string) => name === 'llm' ? { listProviders: () => [{ id: 'openai' }] }
+      : name === 'credentials' ? { resolve: async () => ({ value: 'fake-cutoff-admin', source: 'store' }) }
+      : undefined,
+    on: () => () => {}, effect: (fn: () => void) => fn(), provide: () => {},
+    timeout: () => () => {}, interval: () => () => {},
+  }
+  const service = createUsageState(ctx, {
+    config: { get: () => ({ providers: { openai: { mode: 'admin', adminKeyRef: 'MANUAL_ADMIN' } } }) },
+    now: () => now, credentialFallback: false,
+    fetch: async (url: string) => {
+      const parsed = new URL(url)
+      requests.push(parsed)
+      const end = parsed.searchParams.get('end_time')
+      assert.ok(end === null || end === String(now / 1000))
+      // Sanitized pair captured from curl with/without the current-second end_time.
+      const data = [{ object: 'bucket', start_time: 1793836800, end_time: 1793923200, results: [] as unknown[] }]
+      if (end === null) data.push({ object: 'bucket', start_time: 1793923200, end_time: 1794009600,
+        results: [{ object: 'organization.costs.result', amount: { currency: 'usd', value: 50.174514 }, line_item: null }],
+      })
+      return { ok: true, status: 200, json: async () => ({ object: 'page', data, has_more: false, next_page: null }) }
+    },
+  })
+  const state = await service.getState(false)
+  const wire = contract.invocations.find((entry: { method: string }) => entry.method === 'getState').result.schema.parse(state)
+  const snapshot = wire.snapshots['openai:admin']
+  assert.equal(snapshot.currentMonthSpend.amount, 50.174514)
+  assert.equal(snapshot.error, undefined)
+  const segments = describeStatus({ sourceLabel: 'OpenAI', status: { kind: 'ready', key: 'openai:admin', sourceId: 'openai', mode: 'admin' }, snapshot, display: DEFAULT_CONFIG.display, now })
+  assert.equal(segments.find(segment => segment.kind === 'spend')?.amount, '$50.17')
+  assert.equal(requests.length, 1)
+  assert.equal(requests[0]?.searchParams.get('start_time'), '1793491200')
+  assert.equal(requests[0]?.searchParams.has('end_time'), false)
+  assert.doesNotMatch(JSON.stringify(wire), /fake-cutoff-admin/)
+})
+
 test('the shipped bundle supports account login without an API key and encodes account mode over RPC', async () => {
   requireBuilt()
   const { createUsageState } = await import(HOST.href)

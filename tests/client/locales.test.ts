@@ -33,3 +33,15 @@ test('the dictionaries stay bilingual where it matters most', () => {
   assert.equal(en.nav, 'Balance & Quota')
   assert.notEqual(zh['state.unconfigured'], en['state.unconfigured'])
 })
+
+test('Admin and spend copy is bilingual, explicit about privilege, scope and reporting limits', () => {
+  for (const key of ['modeAdmin', 'adminWarning', 'adminKeyRef', 'adminKeyRefRequired', 'organizationSpend', 'spendNoData', 'tipSpendPeriod', 'tipSpendAsOf', 'tipSpendScope', 'tipSpendCaveat'] as const) {
+    assert.notEqual(zh[key], en[key], `${key} must be localized`)
+  }
+  assert.match(en.adminWarning, /high-privilege.*read-only Usage permission/)
+  assert.match(zh.adminWarning, /权限较高.*只读 Usage 权限/)
+  assert.match(en.adminKeyRefRequired, /save settings before pasting/)
+  assert.match(en.tipSpendCaveat, /delayed.*not a balance.*not real-time.*not a final invoice/)
+  assert.match(zh.tipSpendCaveat, /延迟.*不是余额.*不是实时.*不是最终账单/)
+  assert.match(en.organizationSpend, /Organization.*\{month\}.*\{amount\}/)
+})

@@ -19,6 +19,8 @@ export interface ProviderConfigEntry {
   baseUrl?: string
   /** Credential ref override for this provider. */
   apiKeyRef?: string
+  /** Explicit organization Admin credential; never inherits inference refs. */
+  adminKeyRef?: string
 }
 
 /**
@@ -95,7 +97,7 @@ export const DEFAULT_CONFIG: UsageStateConfig = {
 }
 
 const MODES: readonly ModelMode[] = ['api', 'account', 'coding-plan', 'hidden']
-const PROVIDER_MODES: readonly ProviderMode[] = ['api', 'account', 'coding-plan', 'hidden', 'auto']
+const PROVIDER_MODES: readonly ProviderMode[] = ['api', 'account', 'coding-plan', 'admin', 'hidden', 'auto']
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -204,6 +206,8 @@ function normalizeProviders(value: unknown): Record<string, ProviderConfigEntry>
     if (baseUrl !== '') normalized.baseUrl = baseUrl
     const apiKeyRef = cleanString(entry.apiKeyRef)
     if (apiKeyRef !== '') normalized.apiKeyRef = apiKeyRef
+    const adminKeyRef = cleanString(entry.adminKeyRef)
+    if (adminKeyRef !== '') normalized.adminKeyRef = adminKeyRef
 
     providers[id] = normalized
   }

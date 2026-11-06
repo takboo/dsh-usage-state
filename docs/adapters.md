@@ -1,6 +1,6 @@
 # 数据源适配器
 
-当前支持DeepSeek、z.ai、Kimi/Moonshot、OpenCode和Sub2API；OpenAI官方 API Key 仅识别来源并说明余额查询限制，不属于可查询适配器。用户排查见 [指南](https://github.com/takboo/dsh-usage-state/blob/main/docs/troubleshooting.md)，代码入口见 [架构](https://github.com/takboo/dsh-usage-state/blob/main/docs/architecture.md)，未验证项见 [待办](https://github.com/takboo/dsh-usage-state/blob/main/docs/backlog.md)。本文随npm分发。
+当前支持DeepSeek、z.ai、Kimi/Moonshot、OpenCode和Sub2API；OpenAI官方普通 API Key 仅说明余额查询限制，显式 `admin` 模式可查询组织级本月消费（不是余额）。用户排查见 [指南](https://github.com/takboo/dsh-usage-state/blob/main/docs/troubleshooting.md)，代码入口见 [架构](https://github.com/takboo/dsh-usage-state/blob/main/docs/architecture.md)，未验证项见 [待办](https://github.com/takboo/dsh-usage-state/blob/main/docs/backlog.md)。本文随npm分发。
 
 ## HTTP来源契约
 
@@ -20,9 +20,22 @@ HTTP401/403归auth；JSON语法错归parse，响应体超时/中断归network。
 | Kimi Code | GET `https://api.kimi.com/coding/v1/usages`，Bearer；区域镜像 | usages比例池或旧usage/limits计数；支持5h/7d/月总/编程月；仅显示实际返回窗口 |
 | Moonshot | GET `{base}/v1/users/me/balance`，Bearer | available_balance单位为人民币元，不按数值大小推测分/元 |
 | OpenCode Zen Go | GET `{base}/zen/go/usage`，Bearer及浏览器UA | rolling/weekly/monthly归一为5h/7d/30d；percent已是0–100 |
+| OpenAI Admin | 固定 GET `https://api.openai.com/v1/organization/costs`，独立手动 Admin Bearer | 整个组织当前 UTC 月已报告 USD 消费，分页完整成功后才发布；null区别于明确零，非余额 |
 | Sub2API | GET `{base}/v1/usage`，Bearer；需实例地址 | Key配额/余额与实例实际返回的订阅窗口；不把无限值当可用金额 |
 
 厂商语义优先依 [DeepSeek官方余额接口](https://api-docs.deepseek.com/api/get-user-balance) 与 [Moonshot官方余额定义](https://platform.kimi.com/docs/api/balance.md)。Kimi契约与兼容样本见 [实现](https://github.com/takboo/dsh-usage-state/blob/main/src/host/sources/kimi.ts) 和 [源测试](https://github.com/takboo/dsh-usage-state/blob/main/tests/sources/kimi.test.ts)。社区接口与历史逆向证据在 [归档](https://github.com/takboo/dsh-usage-state/blob/main/docs/archive/README.md)，使用前重新核验。
+
+## OpenAI Admin 本月消费
+
+仅 provider 显式 `mode: 'admin'` 且有效来源为 `openai` 时启用；独立 `adminKeyRef` 映射到内部目标，不继承 source/provider 的 `apiKeyRef`、推理环境引用或默认 Admin 名称。普通模式继续不可查询余额。组织 owner 创建 Admin Key，建议最小只读 Usage 权限；403 不触发提权。
+
+固定 GET `https://api.openai.com/v1/organization/costs`、Bearer、`redirect: 'error'`；不接受任何网关、端点、HTTP、端口、镜像或项目过滤。一次读取只捕获一次注入时钟：`start_time` 是当前 UTC 月初秒，`bucket_width=1d`，省略 `end_time`，避免显式当前秒截断导致当天整日桶被排除；返回桶仍须符合捕获时钟和月份校验。月初首个不足一秒的区间不请求并返回暂无数据。分页沿用同一请求参数和捕获时钟，最多64页，不保证服务端省略上界时的跨页快照一致性；整次查询受一个总超时约束，超时截止时间用真实墙钟而不是报告用注入时钟计算。
+
+严格校验 `page`／`bucket`／`organization.costs.result`，金额必须是有限数值主单位且币种为 USD（接受 usd），允许有符号／亚分金额，先求和再显示舍入；不把请求量乘价格。拒绝非法币种、溢出、重复／重叠／跨月桶和矛盾／循环游标。当天桶可截至查询秒或下个 UTC 零点；空中间页继续翻页。所有页成功才产生结果，任一页失败／取消不能发布部分合计。
+
+归一化为独立 `currentMonthSpend`，`balances/windows` 为空；完整月边界为毫秒 `[monthStart,monthEnd)`，`amount:null` 表示完整查询无金额行，明确零保留0。每次重查整月，不做增量账本。组织范围、实际 UTC 月份、查询时间与可能入账延迟在提示中可见，不承诺快照一致性、入账 SLA 或最终发票。月份进入缓存身份，跨月清旧值并拒绝晚响应；Client 在下一次Host轮询前也隐藏过期月金额。
+
+契约依据：[Costs reference](https://developers.openai.com/api/reference/resources/admin/subresources/organization/subresources/usage/methods/costs.md)、[Admin keys](https://help.openai.com/en/articles/9687866-admin-and-audit-logs-api-for-the-api-platform)、[RBAC](https://developers.openai.com/api/docs/guides/rbac.md)。真实组织核对仍在待办，不由fixture代替。
 
 ## DeepSeek Harness 账号与 API Key
 
