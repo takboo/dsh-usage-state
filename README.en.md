@@ -111,6 +111,6 @@ See the [development guide (Chinese)](https://github.com/takboo/dsh-usage-state/
 
 ## Acknowledgements and license
 
-Thanks to [dsh-cost-meter](https://github.com/Han-1413141/dsh-cost-meter) by Han-1413141 (MIT) for data-source behavior references. This TypeScript implementation was written independently; endpoint, field and compatibility provenance is recorded in the [upstream analysis](https://github.com/takboo/dsh-usage-state/blob/main/docs/archive/research/dsh-cost-meter-analysis.md). DSH provides the settings, credentials, RPC, slots and UI primitives.
+Thanks to [dsh-cost-meter](https://github.com/Han-1413141/dsh-cost-meter) by Han-1413141 (MIT) for data-source behavior references. This TypeScript implementation was written independently; endpoint, field and compatibility provenance is recorded in the [upstream analysis](https://github.com/takboo/dsh-usage-state/blob/main/docs/archive/research/dsh-cost-meter-analysis.md). DSH provides settings, credentials, RPC, slots and theme tokens; UI controls are implemented by the plugin. The original balance/quota icon is distributed under the project's MIT license.
 
 [MIT](LICENSE). Report problems or attribution suggestions through [Issues](https://github.com/takboo/dsh-usage-state/issues).

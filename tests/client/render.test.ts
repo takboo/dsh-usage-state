@@ -18,9 +18,7 @@ import type { CredentialDescription } from '../../src/shared/rpc.ts'
  * Server-side renders of the real components. Effects (polling, settings
  * subscriptions) do not run here — the markup reflects the initial snapshot,
  * which is exactly the code path that has to be right on first paint.
- *
- * `@deepseek-ai/dsh-client-ui-primitives` is replaced by a stub through
- * `tests/support/client-render-hook.mjs` (see `npm test`).
+ * Controls and tooltips are the plugin's real native implementations, not stubs.
  */
 
 const t = (key: string, params?: Record<string, unknown>): string => {
@@ -167,7 +165,8 @@ test('the status line renders a balance for the session model', () => {
   assert.match(html, /DeepSeek/)
   assert.match(html, /¥66\.28/)
   // Hovering the line explains where the number comes from.
-  assert.match(html, /data-tooltip="Source DeepSeek · Mode API Key balance"/)
+  assert.match(html, /role="tooltip"/)
+  assert.match(html, /Source DeepSeek · Mode API Key balance/)
 })
 
 test('the dock line is a full-width block of its own, aligned with the input card', () => {

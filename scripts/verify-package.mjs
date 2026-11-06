@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { parseArgs } from 'node:util'
-import { ROOT, SEMVER, command, npm, packageJson, publishedFiles, relativeFile } from './verify-support.mjs'
+import { ROOT, SEMVER, command, npm, packageJson, publishedFiles, relativeFile, verifyIcon } from './verify-support.mjs'
 
 const { values } = parseArgs({ options: {
   'out-dir': { type: 'string' }, tarball: { type: 'string' },
@@ -43,6 +43,7 @@ if (values['expected-version']) assert.equal(manifest.version, values['expected-
 if (!values.tarball) assert.equal(manifest.version, sourceManifest.version)
 assert.deepEqual([...files.keys()].sort(), [...publishedFiles(manifest)].sort(), 'tarball differs from explicit publication whitelist')
 for (const [file, bytes] of files) assert.ok(bytes.length > 0, `published file is empty: ${file}`)
+verifyIcon(manifest, file => files.get(file))
 const patch = files.get(relativeFile(manifest.dsh.bundle.patch, 'bundle patch')).toString('utf8')
 assert.match(patch, /-\s*insert:/, 'bundle patch must insert the plugin entry')
 assert.match(patch, /id:\s*usage-state\b/, 'bundle patch settings namespace differs')

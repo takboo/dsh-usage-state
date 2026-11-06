@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Button, Input, Switch, Tag } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, ControlStyles, Input, Switch, Tag } from './controls.tsx'
 
 import { buildProviderRows, reorderProviders, setProviderMode, type ProviderRow } from './provider-rows.ts'
 import { useSettingsValue, useStoreState } from './hooks.ts'
@@ -82,6 +82,7 @@ function windowModeLabel(mode: UsageMode, t: Translate): string {
  */
 function DraftInput(props: {
   value: string
+  label: string
   type?: string
   placeholder?: string
   disabled?: boolean
@@ -102,6 +103,7 @@ function DraftInput(props: {
   return (
     <Input
       type={props.type ?? 'text'}
+      aria-label={props.label}
       value={shown}
       placeholder={props.placeholder}
       disabled={props.disabled}
@@ -212,6 +214,7 @@ function CredentialPanel(props: {
           value={draft}
           disabled={pending || !writable || props.credentials === undefined}
           placeholder={t('credentialPlaceholder')}
+          aria-label={t('credential')}
           onChange={event => setDraft((event.target as HTMLInputElement).value)}
           style={{ maxWidth: '280px' }}
         />
@@ -355,6 +358,7 @@ function ProviderCard(props: {
               <DraftInput
                 disabled={props.disabled}
                 value={entry?.baseUrl ?? ''}
+                label={t('baseUrl')}
                 placeholder={
                   row.resolution.baseUrl ?? (row.resolution.mode === null
                     ? t('baseUrlPlaceholder')
@@ -379,6 +383,7 @@ function ProviderCard(props: {
               <DraftInput
                 disabled={props.disabled}
                 value={entry?.apiKeyRef ?? ''}
+                label={t('apiKeyRef')}
                 width="220px"
                 onCommit={value => {
                   if (value === '') props.onClearField(['providers', row.provider, 'apiKeyRef'])
@@ -447,6 +452,7 @@ export function SettingsSection(props: SettingsSectionProps) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', maxWidth: '760px' }}>
+      <ControlStyles />
       <header style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
         <h3 style={{ margin: 0 }}>{t('title')}</h3>
         <p style={{ ...MUTED, margin: 0 }}>{t('intro')}</p>
@@ -507,6 +513,7 @@ export function SettingsSection(props: SettingsSectionProps) {
             type="number"
             disabled={!snapshot.writable}
             value={String(config.display.thresholdWarnPercent)}
+            label={t('thresholdWarn')}
             width="90px"
             onCommit={value => write(['display', 'thresholdWarnPercent'], Number(value))}
           />
@@ -515,6 +522,7 @@ export function SettingsSection(props: SettingsSectionProps) {
             type="number"
             disabled={!snapshot.writable}
             value={String(config.display.thresholdCriticalPercent)}
+            label={t('thresholdCritical')}
             width="90px"
             onCommit={value => write(['display', 'thresholdCriticalPercent'], Number(value))}
           />
@@ -525,6 +533,7 @@ export function SettingsSection(props: SettingsSectionProps) {
             type="number"
             disabled={!snapshot.writable}
             value={String(config.refresh.intervalMinutes)}
+            label={t('intervalMinutes')}
             width="90px"
             onCommit={value => write(['refresh', 'intervalMinutes'], Number(value))}
           />

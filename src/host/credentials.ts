@@ -14,6 +14,8 @@ export interface CredentialOptions {
   overrideRef?: string
   /** Refs discovered from the provider's own configuration, e.g. its `apiKeyEnv`. */
   preferredRefs?: readonly string[]
+  /** Only probe source defaults when the endpoint is a known source origin. */
+  allowDefaultRefs?: boolean
 }
 
 export interface ResolvedApiKey {
@@ -44,7 +46,7 @@ export function orderedCredentialRefs(
   options: CredentialOptions = {},
 ): string[] {
   const ordered: string[] = []
-  for (const candidate of [clean(options.overrideRef), ...(options.preferredRefs ?? []), ...source.credentialRefs(mode)]) {
+  for (const candidate of [clean(options.overrideRef), ...(options.preferredRefs ?? []), ...(options.allowDefaultRefs === false ? [] : source.credentialRefs(mode))]) {
     const ref = clean(candidate)
     if (ref === undefined || ordered.includes(ref)) continue
     ordered.push(ref)

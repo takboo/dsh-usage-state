@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
-import { ROOT, SEMVER, npm, packageJson, publishedFiles, readJson } from './verify-support.mjs'
+import { ROOT, SEMVER, npm, packageJson, publishedFiles, readJson, verifyIcon } from './verify-support.mjs'
 
 const manifest = packageJson()
 const lock = readJson(path.join(ROOT, 'package-lock.json'))
@@ -28,6 +28,7 @@ for (const lifecycle of ['prepare', 'prepack', 'install', 'postinstall']) {
   assert.equal(manifest.scripts?.[lifecycle], undefined, `${lifecycle} would change the prebuilt installation contract`)
 }
 publishedFiles(manifest)
+verifyIcon(manifest, file => readFileSync(path.join(ROOT, file)))
 for (const language of ['en', 'zh']) {
   const file = `locale/${language}.json`
   assert.equal(manifest.exports?.[`./${file}`], `./${file}`, `display metadata export missing: ${language}`)

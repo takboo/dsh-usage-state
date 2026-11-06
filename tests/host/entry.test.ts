@@ -187,6 +187,140 @@ test('Sub2API discovery and source overrides reuse the provider endpoint and key
   }
 })
 
+test('the first displayed provider owns both the endpoint and its credential', async () => {
+  const settings = {
+    order: ['relay', 'trusted'],
+    providers: { relay: { sourceId: 'sub2api', mode: 'api' }, trusted: { sourceId: 'sub2api', mode: 'api' } },
+  }
+  const host = contextStub({ settings: {
+    'usage-state': settings,
+    'llm-pi-ai': { providers: {
+      trusted: { baseURL: 'https://trusted.example/v1', apiKeyEnv: 'TRUSTED_KEY' },
+      relay: { baseURL: 'https://relay.example/v1', apiKeyEnv: 'RELAY_KEY' },
+    } },
+  }, credentials: { TRUSTED_KEY: 'fake-trusted-key', RELAY_KEY: 'fake-relay-key' } })
+  const requests: Array<{ url: string; authorization: string | undefined }> = []
+  const service = createUsageState(host.ctx, deps(host, { fetch: async (url, init) => {
+    requests.push({ url, authorization: init.headers.authorization })
+    return { ok: true, status: 200, json: async () => ({ balance: 10 }) }
+  } }))
+  try {
+    await service.getState(true)
+    assert.deepEqual(requests, [{ url: 'https://relay.example/v1/usage', authorization: 'Bearer fake-relay-key' }])
+    assert.equal((await service.describeCredentials()).credentials['sub2api:api']?.ref, 'RELAY_KEY')
+    settings.order = ['trusted', 'relay']
+    host.emit('loader/volatile-update')
+    await service.getState(true)
+    assert.deepEqual(requests[1], { url: 'https://trusted.example/v1/usage', authorization: 'Bearer fake-trusted-key' })
+  } finally {
+    host.dispose()
+  }
+})
+
+test('a custom-origin owner with a missing key cannot borrow another provider or source default', async () => {
+  for (const sourceId of ['sub2api', 'deepseek']) {
+    for (const declaredRef of ['MISSING_OWNER_KEY', undefined]) {
+      const host = contextStub({ settings: {
+        'usage-state': { order: ['owner', 'other'], providers: {
+          owner: { sourceId, mode: 'api' }, other: { sourceId, mode: 'api' },
+        } },
+        'llm-deepseek': { apiKeyEnv: 'DEEPSEEK_NAMESPACE_KEY' },
+        'llm-pi-ai': { providers: {
+          other: { baseURL: 'https://other.example/v1', apiKeyEnv: 'OTHER_KEY' },
+          owner: { baseURL: 'https://owner.example/v1', ...(declaredRef === undefined ? {} : { apiKeyEnv: declaredRef }) },
+        } },
+      }, credentials: { OTHER_KEY: 'fake-other-key', SUB2API_API_KEY: 'fake-default-key', DEEPSEEK_API_KEY: 'fake-default-key', DEEPSEEK_NAMESPACE_KEY: 'fake-namespace-key' } })
+      const { fetch, urls } = fetchStub()
+      const service = createUsageState(host.ctx, deps(host, { fetch }))
+      try {
+        const state = await service.getState(true)
+        assert.deepEqual(urls, [], `${sourceId}: ${declaredRef ?? 'no owner ref'}`)
+        assert.equal(state.snapshots[`${sourceId}:api`]?.error?.kind, 'config')
+        assert.equal((await service.describeCredentials()).credentials[`${sourceId}:api`]?.configured, false)
+      } finally {
+        host.dispose()
+      }
+    }
+  }
+})
+
+test('explicit provider and legacy source credential refs remain valid at custom origins', async () => {
+  for (const legacy of [false, true]) {
+    const override = { baseUrl: 'https://custom.example', apiKeyRef: 'EXPLICIT_KEY' }
+    const host = contextStub({ settings: { 'usage-state': {
+      providers: { deepseek: { mode: 'api', ...(legacy ? {} : override) } },
+      ...(legacy ? { sources: { deepseek: override } } : {}),
+    } }, credentials: { EXPLICIT_KEY: 'fake-explicit-key', DEEPSEEK_API_KEY: 'fake-default-key' } })
+    const requests: Array<{ url: string; authorization: string | undefined }> = []
+    const service = createUsageState(host.ctx, deps(host, { fetch: async (url, init) => {
+      requests.push({ url, authorization: init.headers.authorization })
+      return { ok: true, status: 200, json: async () => BALANCE_BODY }
+    } }))
+    try {
+      await service.getState(true)
+      assert.deepEqual(requests, [{ url: 'https://custom.example/user/balance', authorization: 'Bearer fake-explicit-key' }])
+      assert.equal((await service.describeCredentials()).credentials['deepseek:api']?.ref, 'EXPLICIT_KEY')
+    } finally {
+      host.dispose()
+    }
+  }
+})
+
+test('official defaults work without an owner ref but do not replace a missing declared owner ref', async () => {
+  for (const declared of [false, true]) {
+    const host = contextStub({ settings: {
+      'usage-state': { providers: { 'deepseek-official': { mode: 'api' } } },
+      ...(declared ? { 'llm-pi-ai': { providers: { 'deepseek-official': { baseURL: 'https://api.deepseek.com/v1', apiKeyEnv: 'MISSING_OWNER_KEY' } } } } : {}),
+    }, credentials: { DEEPSEEK_API_KEY: 'fake-default-key' } })
+    const { fetch, urls } = fetchStub()
+    const service = createUsageState(host.ctx, deps(host, { fetch }))
+    try {
+      const state = await service.getState(true)
+      assert.deepEqual(urls, declared ? [] : ['https://api.deepseek.com/user/balance'])
+      assert.equal(state.snapshots['deepseek:api']?.error?.kind, declared ? 'config' : undefined)
+    } finally {
+      host.dispose()
+    }
+  }
+})
+
+test('disposing the plugin aborts its pending HTTP request', async () => {
+  const host = contextStub({ settings: CONFIGURED, credentials: { DEEPSEEK_API_KEY: 'fake-key' } })
+  let signal: AbortSignal | undefined
+  let release: (() => void) | undefined
+  const response = new Promise<void>(resolve => { release = resolve })
+  const service = createUsageState(host.ctx, deps(host, { fetch: async (_url, init) => {
+    signal = init.signal
+    await response
+    return { ok: true, status: 200, json: async () => BALANCE_BODY }
+  } }))
+  const pending = service.getState(true)
+  await new Promise<void>(resolve => setImmediate(resolve))
+  host.dispose()
+  release?.()
+  const state = await pending
+  assert.equal(signal?.aborted, true)
+  assert.deepEqual(state.snapshots, {})
+})
+
+test('disposing the plugin prevents mirror requests after a late HTTP failure', async () => {
+  const host = contextStub({ settings: { 'usage-state': { providers: { 'glm-coding': {} } } }, credentials: { ZAI_API_KEY: 'fake-key' } })
+  let release: (() => void) | undefined
+  const response = new Promise<void>(resolve => { release = resolve })
+  const urls: string[] = []
+  const service = createUsageState(host.ctx, deps(host, { fetch: async url => {
+    urls.push(url)
+    if (urls.length === 1) await response
+    return { ok: false, status: 401, json: async () => ({}) }
+  } }))
+  const pending = service.getState(true)
+  await new Promise<void>(resolve => setImmediate(resolve))
+  host.dispose()
+  release?.()
+  await pending
+  assert.deepEqual(urls, ['https://open.bigmodel.cn/api/monitor/usage/quota/limit'])
+})
+
 test('a malformed balance response keeps the last successful reading and exposes a parse failure', async () => {
   const host = contextStub({ settings: CONFIGURED, credentials: { DEEPSEEK_API_KEY: 'sk-test' } })
   let malformed = false
@@ -276,7 +410,7 @@ test('changing the DSH-declared credential ref invalidates an in-flight account 
 })
 
 test('disposing the plugin prevents a superseded response from starting another account request', async () => {
-  const settings = { providers: { deepseek: { mode: 'api', baseUrl: 'https://first.example' } } }
+  const settings = { providers: { deepseek: { mode: 'api', baseUrl: 'https://first.example', apiKeyRef: 'DEEPSEEK_API_KEY' } } }
   const host = contextStub({ settings: { 'usage-state': settings }, credentials: { DEEPSEEK_API_KEY: 'sk-test' } })
   let release: (() => void) | undefined
   const gate = new Promise<void>(resolve => { release = resolve })
@@ -563,7 +697,7 @@ test('explicit provider account settings win over legacy source defaults', async
 })
 
 test('changing the provider endpoint does not reuse the previous account reading', async () => {
-  const settings = { providers: { deepseek: { mode: 'api', baseUrl: 'https://first.example' } } }
+  const settings = { providers: { deepseek: { mode: 'api', baseUrl: 'https://first.example', apiKeyRef: 'DEEPSEEK_API_KEY' } } }
   const host = contextStub({ settings: { 'usage-state': settings }, credentials: { DEEPSEEK_API_KEY: 'account-test-key' } })
   const urls: string[] = []
   const service = createUsageState(host.ctx, deps(host, {
@@ -585,7 +719,7 @@ test('changing the provider endpoint does not reuse the previous account reading
 })
 
 test('a late response from the previous endpoint cannot replace the new account reading', async () => {
-  const settings = { providers: { deepseek: { mode: 'api', baseUrl: 'https://first.example' } } }
+  const settings = { providers: { deepseek: { mode: 'api', baseUrl: 'https://first.example', apiKeyRef: 'DEEPSEEK_API_KEY' } } }
   const host = contextStub({ settings: { 'usage-state': settings }, credentials: { DEEPSEEK_API_KEY: 'account-test-key' } })
   let release: (() => void) | undefined
   const firstResponse = new Promise<void>(resolve => { release = resolve })
@@ -610,7 +744,7 @@ test('a late response from the previous endpoint cannot replace the new account 
 })
 
 test('returning to an earlier endpoint still rejects its older in-flight response', async () => {
-  const settings = { providers: { deepseek: { mode: 'api', baseUrl: 'https://first.example' } } }
+  const settings = { providers: { deepseek: { mode: 'api', baseUrl: 'https://first.example', apiKeyRef: 'DEEPSEEK_API_KEY' } } }
   const host = contextStub({ settings: { 'usage-state': settings }, credentials: { DEEPSEEK_API_KEY: 'account-test-key' } })
   let release: (() => void) | undefined
   const firstResponse = new Promise<void>(resolve => { release = resolve })
@@ -676,7 +810,7 @@ test('editing the idle interval reschedules the running host timer', async () =>
 })
 
 test('a configuration edit invalidates an in-flight response before the next browser poll', async () => {
-  const settings = { providers: { deepseek: { mode: 'api', baseUrl: 'https://first.example' } } }
+  const settings = { providers: { deepseek: { mode: 'api', baseUrl: 'https://first.example', apiKeyRef: 'DEEPSEEK_API_KEY' } } }
   const host = contextStub({ settings: { 'usage-state': settings }, credentials: { DEEPSEEK_API_KEY: 'account-test-key' } })
   let release: (() => void) | undefined
   const firstResponse = new Promise<void>(resolve => { release = resolve })

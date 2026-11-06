@@ -1,4 +1,5 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import ts from 'typescript'
 
 import test from 'node:test'
 import assert from 'node:assert/strict'
@@ -30,11 +31,6 @@ const ALLOWED_CLIENT_REQUIRES = new Set([
   'react/jsx-runtime',
   'react-dom',
   'react-dom/client',
-  '@deepseek-ai/cordis',
-  '@deepseek-ai/dsh-client-store',
-  '@deepseek-ai/dsh-client-ui-slots',
-  '@deepseek-ai/dsh-client-ui-primitives',
-  '@deepseek-ai/dsh-client-ui-dockkit',
 ])
 
 function requireBuilt(): void {
@@ -63,7 +59,38 @@ test('the browser bundle requires nothing outside the shell module table', t => 
   for (const specifier of requires) {
     assert.ok(ALLOWED_CLIENT_REQUIRES.has(specifier as string), `unexpected client require: ${specifier}`)
   }
-  assert.doesNotMatch(code, /from\s*"node:/, 'the browser bundle must not reference node builtins')
+  assert.doesNotMatch(code, /from\s*["']node:/, 'the browser bundle must not reference node builtins')
+  assert.doesNotMatch(code, /["']@deepseek-ai\/dsh-client(?:-[^"']*)?(?:\/[^"']*)?["']/,
+    'the shipped client must not import, require, or dynamically load Harness Client packages')
+})
+
+test('client source cannot hide Harness runtime imports by bundling them inline', () => {
+  const root = new URL('../../src/client/', import.meta.url)
+  const forbidden = /^@deepseek-ai\/dsh-client(?:-|\/|$)/
+  for (const path of readdirSync(root, { recursive: true, encoding: 'utf8' }).filter(path => /\.tsx?$/.test(path))) {
+    const source = ts.createSourceFile(path, readFileSync(new URL(path, root), 'utf8'), ts.ScriptTarget.Latest, true)
+    const visit = (node: ts.Node) => {
+      if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
+        const typeOnly = ts.isImportDeclaration(node)
+          ? node.importClause?.isTypeOnly || (node.importClause?.name === undefined && node.importClause?.namedBindings !== undefined
+            && ts.isNamedImports(node.importClause.namedBindings) && node.importClause.namedBindings.elements.length > 0
+            && node.importClause.namedBindings.elements.every(item => item.isTypeOnly))
+          : node.isTypeOnly
+        if (!typeOnly && node.moduleSpecifier !== undefined && ts.isStringLiteral(node.moduleSpecifier)) {
+          assert.ok(!forbidden.test(node.moduleSpecifier.text), `${path} imports a Harness Client runtime package`)
+        }
+      }
+      if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword
+        || (ts.isIdentifier(node.expression) && node.expression.text === 'require'))) {
+        const argument = node.arguments[0]
+        if (argument !== undefined && ts.isStringLiteral(argument)) {
+          assert.ok(!forbidden.test(argument.text), `${path} loads a Harness Client runtime package`)
+        }
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(source)
+  }
 })
 
 test('the host bundle is ESM exporting the cordis entry points', t => {

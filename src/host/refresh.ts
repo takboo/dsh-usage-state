@@ -43,7 +43,7 @@ export interface UsageStateStoreDeps {
     resolve(target: UsageTarget): Promise<ResolvedTargetCredential | undefined>
   }
   /** Perform the HTTP request and parse the payload. */
-  read(target: UsageTarget, credentials: ResolvedTargetCredential, source: UsageSource): Promise<UsageReading>
+  read(target: UsageTarget, credentials: ResolvedTargetCredential, source: UsageSource, signal: AbortSignal): Promise<UsageReading>
 }
 
 function toSnapshotError(error: unknown, secret?: string): SnapshotError {
@@ -55,7 +55,7 @@ function toSnapshotError(error: unknown, secret?: string): SnapshotError {
 
 function targetSignature(target: UsageTarget | undefined): string {
   return JSON.stringify(target === undefined ? null : [
-    target.key, target.sourceId, target.mode, target.baseUrl, target.baseUrlPinned === true, target.apiKeyRef, target.preferredRefs,
+    target.key, target.sourceId, target.provider, target.mode, target.baseUrl, target.baseUrlPinned === true, target.apiKeyRef, target.preferredRefs,
   ])
 }
 
@@ -80,6 +80,7 @@ export class UsageStateStore {
   private readonly generations = new Map<string, number>()
   private readonly targetSignatures = new Map<string, string>()
   private readonly inflight = new Map<string, Promise<UsageSnapshot>>()
+  private owner = new AbortController()
   private turnEndCancel: (() => void) | undefined
   private idleCancel: (() => void) | undefined
   private idleIntervalMs: number | undefined
@@ -145,11 +146,8 @@ export class UsageStateStore {
    * not elapsed yet, unless `force` is set.
    */
   async refresh(key: string, options: { force?: boolean; onlyIfMissing?: boolean } = {}): Promise<UsageSnapshot> {
-    if (this.stopped) return {
-      sourceId: key.split(':')[0] ?? '', mode: key.endsWith(':account') ? 'account' : key.endsWith(':coding-plan') ? 'coding-plan' : 'api',
-      balances: [], windows: [], fetchedAt: this.deps.clock.now(),
-      error: { kind: 'config', detail: 'refresh stopped' },
-    }
+    if (this.stopped) return this.stoppedSnapshot(key)
+    const signal = this.owner.signal
     const target = this.currentTargets().find(candidate => candidate.key === key)
     if (target === undefined) {
       return {
@@ -170,14 +168,14 @@ export class UsageStateStore {
     try {
       credential = await this.deps.credentials.resolve(target)
     } catch (error) {
-      if (this.stopped) return this.refresh(key, options)
+      if (signal.aborted) return this.stoppedSnapshot(key)
       const current = this.currentTargets().find(candidate => candidate.key === key)
       if (signature !== targetSignature(current) || (this.generations.get(key) ?? 0) !== generationAtLookup) {
         return this.refresh(key, options)
       }
       return this.fail(target, toSnapshotError(error), this.readings.get(key))
     }
-    if (this.stopped) return this.refresh(key, options)
+    if (signal.aborted) return this.stoppedSnapshot(key)
     const current = this.currentTargets().find(candidate => candidate.key === key)
     if (signature !== targetSignature(current)) return this.refresh(key, options)
     const identity = createHash('sha256').update(JSON.stringify([
@@ -219,7 +217,7 @@ export class UsageStateStore {
     if (running !== undefined) return running
 
     const generation = this.generations.get(key) ?? 0
-    const promise = this.run(target, credential, source, generation).finally(() => {
+    const promise = this.run(target, credential, source, generation, signal).finally(() => {
       if (this.inflight.get(key) === promise) this.inflight.delete(key)
     })
     this.inflight.set(key, promise)
@@ -231,10 +229,12 @@ export class UsageStateStore {
     credential: ResolvedTargetCredential,
     source: UsageSource,
     generation: number,
+    signal: AbortSignal,
   ): Promise<UsageSnapshot> {
     const previous = this.readings.get(target.key)
     try {
-      const reading = await this.deps.read(target, credential, source)
+      const reading = await this.deps.read(target, credential, source, signal)
+      if (signal.aborted) return this.stoppedSnapshot(target.key)
       if (this.generations.get(target.key) !== generation) return this.refresh(target.key)
       const fetchedAt = this.deps.clock.now()
       const snapshot: UsageSnapshot = {
@@ -248,8 +248,17 @@ export class UsageStateStore {
       this.succeededAt.set(target.key, fetchedAt)
       return snapshot
     } catch (error) {
+      if (signal.aborted) return this.stoppedSnapshot(target.key)
       if (this.generations.get(target.key) !== generation) return this.refresh(target.key)
       return this.fail(target, toSnapshotError(error, credential.apiKey), previous)
+    }
+  }
+
+  private stoppedSnapshot(key: string): UsageSnapshot {
+    return {
+      sourceId: key.split(':')[0] ?? '', mode: key.endsWith(':account') ? 'account' : key.endsWith(':coding-plan') ? 'coding-plan' : 'api',
+      balances: [], windows: [], fetchedAt: this.deps.clock.now(),
+      error: { kind: 'config', detail: 'refresh stopped' },
     }
   }
 
@@ -296,6 +305,7 @@ export class UsageStateStore {
   /** Start the idle fallback timer; returns a stop function. */
   start(): () => void {
     this.stopped = false
+    if (this.owner.signal.aborted) this.owner = new AbortController()
     if (this.idleCancel === undefined) {
       const intervalMs = this.deps.policy().intervalMinutes * 60_000
       this.idleIntervalMs = intervalMs
@@ -308,6 +318,7 @@ export class UsageStateStore {
 
   stop(): void {
     this.stopped = true
+    this.owner.abort()
     for (const key of this.targetSignatures.keys()) this.invalidate(key)
     this.turnEndCancel?.()
     this.turnEndCancel = undefined

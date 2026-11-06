@@ -1,5 +1,5 @@
 import { DEFAULT_CONFIG, type UsageStateConfig } from '../shared/config.ts'
-import { resolveProvider } from '../shared/providers.ts'
+import { originOf, resolveProvider } from '../shared/providers.ts'
 import type { UsageMode } from '../shared/types.ts'
 import { toSourceCatalog } from './catalog.ts'
 
@@ -11,6 +11,10 @@ const CATALOG = toSourceCatalog()
  */
 export interface ProviderCredentialRefsInput {
   sourceId: string
+  /** Target owner. Omitting it never searches unrelated provider profiles. */
+  provider?: string
+  /** Effective request origin; a changed origin needs an explicit credential ref. */
+  baseUrl?: string
   mode?: UsageMode
   config?: UsageStateConfig
   /** The `llm-deepseek` settings namespace, when the host has it. */
@@ -25,43 +29,26 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
     : undefined
 }
 
-/**
- * The `apiKeyEnv` values the user already declared for the providers that feed a
- * data source. These are probed before the source's built-in ref names, so a
- * provider configured with a custom environment variable works without any
- * extra configuration in this plugin.
- */
+/** Discover only the target owner's declared ref, never another provider's key. */
 export function providerCredentialRefs(input: ProviderCredentialRefsInput): string[] {
-  if (input.mode === 'account') return []
+  if (input.mode === 'account' || input.provider === undefined) return []
   const config = input.config ?? DEFAULT_CONFIG
-  const refs: string[] = []
-  const push = (value: unknown): void => {
-    if (typeof value !== 'string') return
-    const ref = value.trim()
-    if (ref === '' || refs.includes(ref)) return
-    refs.push(ref)
-  }
-
-  if (input.sourceId === 'deepseek') {
-    push(asRecord(input.deepseekSettings)?.apiKeyEnv)
-  }
-
   const providers = asRecord(asRecord(input.piAiSettings)?.providers)
-  if (providers === undefined) return refs
-
-  for (const [providerId, raw] of Object.entries(providers)) {
-    const profile = asRecord(raw)
-    if (profile === undefined) continue
+  const profile = asRecord(providers?.[input.provider])
+  let ref: unknown
+  if (profile !== undefined) {
     const baseUrl = typeof profile.baseURL === 'string' ? profile.baseURL : undefined
-    // Use the same effective source/mode as polling and display, including source
-    // overrides and hidden providers. Guessing again can lose a relay's own key.
-    const resolution = resolveProvider({ provider: providerId, endpointHint: baseUrl, config, catalog: CATALOG })
-    if (resolution.sourceId !== input.sourceId || resolution.mode === null) continue
-    if (input.mode !== undefined && resolution.mode !== input.mode) continue
-    push(profile.apiKeyEnv)
+    const resolution = resolveProvider({ provider: input.provider, endpointHint: baseUrl, config, catalog: CATALOG })
+    if (resolution.sourceId !== input.sourceId || resolution.mode === null) return []
+    if (input.mode !== undefined && resolution.mode !== input.mode) return []
+    if (input.baseUrl !== undefined && originOf(input.baseUrl) !== originOf(baseUrl)) return []
+    ref = profile.apiKeyEnv
+  } else if (input.sourceId === 'deepseek' && ['deepseek', 'deepseek-official'].includes(input.provider)) {
+    // The native DeepSeek plugin owns these ids, not every DeepSeek-like relay.
+    if (input.baseUrl !== undefined && originOf(input.baseUrl) !== 'https://api.deepseek.com') return []
+    ref = asRecord(input.deepseekSettings)?.apiKeyEnv
   }
-
-  return refs
+  return typeof ref === 'string' && ref.trim() !== '' ? [ref.trim()] : []
 }
 
 /**

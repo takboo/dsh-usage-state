@@ -1,4 +1,4 @@
-import { Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Tooltip } from './controls.tsx'
 
 import { describeStatus, type ModelStatus, type Severity, type StatusSegment } from '../shared/display.ts'
 import { resolveProvider } from '../shared/providers.ts'
@@ -121,7 +121,7 @@ function severityColor(severity: Severity): string {
   return 'var(--dsw-alias-label-secondary)'
 }
 
-/** Wrap one part in the platform tooltip when it has something more to say. */
+/** Wrap one part in the plugin tooltip when it has something more to say. */
 function withTooltip(node: ReturnType<typeof renderPart>, tooltip: string | undefined, key: number) {
   if (tooltip === undefined) return node
   return (

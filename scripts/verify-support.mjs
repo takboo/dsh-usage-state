@@ -46,6 +46,14 @@ export function exportFiles(manifest) {
   return files
 }
 
+export function verifyIcon(manifest, readBytes) {
+  assert.equal(manifest.exports?.['./icon'], './icon.svg', 'plugin icon export missing')
+  assert.ok(publishedFiles(manifest).has('icon.svg'), 'plugin icon not declared in files')
+  const bytes = readBytes('icon.svg')
+  assert.ok(bytes?.length > 0 && bytes.length <= 256 * 1024, 'plugin icon must be nonempty and at most 256 KiB')
+  assert.match(bytes.toString('utf8'), /^<svg\b[^>]*xmlns="http:\/\/www\.w3\.org\/2000\/svg"[^>]*>[\s\S]*<\/svg>\s*$/, 'plugin icon must have an SVG document envelope')
+}
+
 export function publishedFiles(manifest) {
   const files = new Set(['package.json', 'README.md', 'LICENSE'])
   const exports = exportFiles(manifest)

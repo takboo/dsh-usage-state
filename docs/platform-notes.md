@@ -7,9 +7,9 @@
 - Host清单导出named `TYPERT`并通过package的 `./typert` 暴露；strict codec使用真实zod v4 schema，zod是运行依赖。
 - `typertRemote.service`是服务对象，serviceKey为注册名，namespace与线上命名空间一致；否则gateway拒绝绑定。
 - 0.2客户端非src-json codec需要 `create()` 工厂；可选force参数仍显式传值或undefined并声明acceptsUndefined。
-- 自己贡献的remote命名空间通过 `ctx.get` 读取，挂载失败展示错误。客户端依赖由shell模块表提供，浏览器UI包的CSS入口不直接在Node运行。
+- 自己贡献的remote命名空间通过 `ctx.get` 读取，挂载失败展示错误。Client运行时只使用模块表公开的共享依赖，不导入Harness Client包；服务声明使用类型导入，按钮、输入框、开关及Tooltip由插件实现并复用宿主主题token。
 
-从0.4.11起，插件导出 `./locale/en.json` 与 `./locale/zh.json`，以官方 `meta.title` / `meta.description` 提供中英文显示名和说明，技术包名与设置标识不变。旧宿主若未实现该能力，可以回退显示包名；自动兼容性检查允许此回退，双语展示的专门复验另行强制断言本地化元数据。
+从0.4.11起，插件导出 `./locale/en.json` 与 `./locale/zh.json`，以官方 `meta.title` / `meta.description` 提供中英文显示名和说明，技术包名与设置标识不变。当前工作树另通过 `./icon` 导出原创SVG，纳入发布白名单，metadata及实际tarball检查覆盖导出、文件、格式包络与256 KiB上限。旧宿主若未实现展示元数据能力，可以回退显示包名；自动兼容性检查允许此回退，双语展示的专门复验另行强制断言本地化元数据。
 
 契约由 [Host测试](../tests/host/typert.test.ts)、[客户端贡献](../tests/client/contribution.test.ts) 和 [bundle测试](../tests/build/bundle.test.ts) 检查。SSR桩件检查标记，React交互检查回调与effects，实际布局仍需浏览器验收。
 

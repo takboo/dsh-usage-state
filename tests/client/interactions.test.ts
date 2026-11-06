@@ -252,10 +252,35 @@ test('clearing an endpoint override restores inheritance without persisting the 
   assert.doesNotMatch(text(renderer), /Using the provider endpoint/)
 })
 
+test('native progress switch writes through configForms and reflects its checked state', async context => {
+  const { renderer, writes, form } = await page(context)
+  const previous = form.getSnapshot().value.display.progressBar
+  const control = renderer.root.findByProps({ role: 'switch' })
+  assert.equal(control.props['aria-label'], translate('progressBar'))
+  assert.equal(control.props['aria-checked'], previous)
+  await act(async () => { control.props.onClick(); await flush() })
+  assert.deepEqual(writes, [[{ op: 'set', path: ['display', 'progressBar'], value: !previous }]])
+  assert.equal(renderer.root.findByProps({ role: 'switch' }).props['aria-checked'], !previous)
+})
+
+test('labelled native draft input commits once through blur when Enter is pressed', async context => {
+  const { renderer, writes } = await page(context)
+  const input = () => renderer.root.findAllByType('input').find(node => node.props['aria-label'] === translate('thresholdWarn'))!
+  assert.ok(input())
+  act(() => input().props.onChange({ target: { value: '61' } }))
+  await act(async () => {
+    input().props.onKeyDown({ key: 'Enter', target: { blur: () => input().props.onBlur() } })
+    await flush()
+  })
+  act(() => input().props.onBlur())
+  assert.deepEqual(writes, [[{ op: 'set', path: ['display', 'thresholdWarnPercent'], value: 61 }]])
+})
+
 test('read-only configuration disables provider edits without changing credential permissions', async context => {
   const { renderer, writes } = await page(context, { writable: false })
 
   assert.equal(button(renderer, 'Hidden').props.disabled, true)
+  assert.equal(renderer.root.findByProps({ role: 'switch' }).props.disabled, true)
   assert.equal(password(renderer).props.disabled, false)
   await act(async () => { button(renderer, 'Hidden').props.onClick(); await flush() })
   assert.deepEqual(writes, [])

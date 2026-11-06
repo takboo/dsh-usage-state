@@ -227,6 +227,8 @@ export function createUsageState(ctx: PluginContextLike, deps: UsageStateDeps = 
       ...target,
       preferredRefs: providerCredentialRefs({
         sourceId: target.sourceId,
+        provider: target.provider,
+        baseUrl: target.baseUrl,
         mode: target.mode,
         config,
         deepseekSettings: readNamespace(ctx, 'llm-deepseek') ?? readNamespace(ctx, 'llm-deepseek-api-key'),
@@ -236,9 +238,19 @@ export function createUsageState(ctx: PluginContextLike, deps: UsageStateDeps = 
   }
   const optionsFor = (target: UsageTarget) => {
     const overrideRef = target.apiKeyRef
+    const source = findSource(target.sourceId)
+    const origin = originOf(target.baseUrl)
+    // Default ref names identify a vendor, not a custom endpoint's account.
+    // Only built-in origins (including declared regional mirrors) may use them.
+    const defaultOrigins = source === undefined ? [] : [
+      originOf(source.defaultBaseUrl(target.mode)),
+      ...(source.fallbackRequests?.({ mode: target.mode, apiKey: '' }) ?? []).map(request => originOf(request.url)),
+    ]
     return {
       ...(overrideRef === undefined ? {} : { overrideRef }),
       preferredRefs: target.preferredRefs ?? [],
+      allowDefaultRefs: (target.preferredRefs?.length ?? 0) === 0 &&
+        (target.baseUrl === undefined || (origin !== undefined && defaultOrigins.includes(origin))),
     }
   }
 
@@ -268,9 +280,9 @@ export function createUsageState(ctx: PluginContextLike, deps: UsageStateDeps = 
         }
       },
     },
-    read: (target, credential, source) => target.sourceId === 'deepseek' && target.mode === 'account'
+    read: (target, credential, source, signal) => target.sourceId === 'deepseek' && target.mode === 'account'
       ? readAccountBalance(account(), credential, () => store.clear(target.key))
-      : httpReader(target, credential, source),
+      : httpReader(target, credential, source, signal),
   })
 
   reconfigure = () => store.reconfigure()

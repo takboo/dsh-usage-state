@@ -111,6 +111,6 @@ npm test
 
 ## 致谢与许可
 
-感谢 [dsh-cost-meter](https://github.com/Han-1413141/dsh-cost-meter)（Han-1413141，MIT）提供的数据源行为参考。本实现独立编写；历史端点与行为溯源见 [归档上游分析](https://github.com/takboo/dsh-usage-state/blob/main/docs/archive/research/dsh-cost-meter-analysis.md)。宿主平台为DSH，使用其设置、凭据、RPC、插槽和UI原语。
+感谢 [dsh-cost-meter](https://github.com/Han-1413141/dsh-cost-meter)（Han-1413141，MIT）提供的数据源行为参考。本实现独立编写；历史端点与行为溯源见 [归档上游分析](https://github.com/takboo/dsh-usage-state/blob/main/docs/archive/research/dsh-cost-meter-analysis.md)。宿主平台为DSH，使用其设置、凭据、RPC、插槽和主题 token；UI控件由插件实现。余额/额度图标为本项目原创，与代码一同按MIT许可分发。
 
 [MIT](LICENSE)。问题和署名建议通过 [Issues](https://github.com/takboo/dsh-usage-state/issues) 提交。

@@ -18,7 +18,7 @@
 
 ## 身份与隐私
 
-API Key使用provider覆盖、旧source默认及宿主声明的候选顺序；宿主凭据服务的回答优先。服务不可用时的直接回退与版本差异见 [平台说明](platform-notes.md)。账号模式只在Host中使用登录grant的摘要隔离身份，原始grant不进入API Key字段、RPC、配置和错误详情。
+API Key显式provider覆盖、旧source覆盖优先；自动发现只读取目标owner在同一origin声明的凭据名，不聚合同来源其他provider的候选。仅在owner未声明凭据名时，适配器默认凭据名才用于其内建官方origin/镜像；已声明的owner凭据缺值时不再退回默认密钥。自定义origin需同一owner声明或显式覆盖。宿主凭据服务的回答优先；服务不可用时的直接回退与版本差异见 [平台说明](platform-notes.md)。账号模式只在Host中使用登录grant的摘要隔离身份，原始grant不进入API Key字段、RPC、配置和错误详情。
 
 端点、ref、有效凭据或登录身份改变后清旧值；代次检查阻止晚lookup、晚HTTP或旧RPC恢复旧身份。失败只保留同身份成功值，并显示年龄和原因。RPC只传归一化读数、来源元数据和origin-only提示；秘密和私有身份摘要留在Host。
 

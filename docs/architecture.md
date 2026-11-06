@@ -35,13 +35,13 @@ flowchart LR
 | [host/settings.ts](../src/host/settings.ts)、[shared/config.ts](../src/shared/config.ts) | volatile Config、归一化与legacy迁移 |
 | [client/index.tsx](../src/client/index.tsx)、[contribution.ts](../src/client/contribution.ts) | UI挂载、configForms、词典和RPC贡献 |
 | [client/store.ts](../src/client/store.ts)、[settings-form.ts](../src/client/settings-form.ts) | 浏览器镜像/错误/在途、配置快照及写入 |
-| [SettingsSection.tsx](../src/client/SettingsSection.tsx)、[StatusLine.tsx](../src/client/StatusLine.tsx) | provider设置与当前模型读数；账号模式显示登录提示 |
+| [SettingsSection.tsx](../src/client/SettingsSection.tsx)、[StatusLine.tsx](../src/client/StatusLine.tsx)、[controls.tsx](../src/client/controls.tsx) | provider设置与当前模型读数；插件自有语义控件与Tooltip，账号模式显示登录提示 |
 | [shared/display.ts](../src/shared/display.ts)、[client/status-text.ts](../src/client/status-text.ts) | 格式化、severity、状态文字和提示 |
 | [tsdown.config.ts](../tsdown.config.ts)、[cordis.patch.yml](../cordis.patch.yml) | 三个预构建入口、客户端模块表、usage-state配置条目 |
 
 ## 关键边界
 
-`UsageStateStore`在每次读取时重新解析目标和有效凭据。endpoint/pin/ref/preferredRefs构成目标签名，有效密钥或账号身份摘要进入私有缓存身份。配置代次变化拒绝旧结果；失败保留同身份成功读数。source+mode合并仍不是独立多账户注册。
+`UsageStateStore`在每次读取时重新解析目标和有效凭据。目标的端点和自动发现凭据由同一owner provider持有，自定义origin不使用未显式绑定的适配器默认密钥。endpoint/pin/ref/preferredRefs构成目标签名，有效密钥或账号身份摘要进入私有缓存身份。配置代次变化拒绝旧结果；失败保留同身份成功读数。stop另取消本生命周期在途HTTP，阻止延迟凭据查询和镜像回退在卸载后继续发请求，重新start使用新signal。source+mode合并仍不是独立多账户注册。
 
 账号路径先以 `getPlatformSession()` 获取Host内身份摘要，再调用 `getBalance(client)`，并复核身份。账号模式不执行API Key候选查找或Adapter的HTTP request；签出清缓存，Host任意错误先替换为安全文案。充值与赠送钱包由DeepSeek纯解析器处理。
 

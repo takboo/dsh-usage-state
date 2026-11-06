@@ -10,6 +10,8 @@ export interface UsageTarget {
   /** Stable key, also used by the browser to look a snapshot up. */
   key: string
   sourceId: string
+  /** The first displayed provider owns both the endpoint and implicit credentials. */
+  provider?: string
   mode: UsageMode
   /** Endpoint override: the plugin's own setting, else the provider's declared origin. */
   baseUrl?: string
@@ -55,7 +57,7 @@ export function resolveTargets(
   const targets: UsageTarget[] = []
   const seen = new Set<string>()
 
-  const push = (sourceId: string, mode: UsageMode, endpoint?: { baseUrl?: string; pinned?: boolean; apiKeyRef?: string }): void => {
+  const push = (sourceId: string, mode: UsageMode, endpoint?: { provider?: string; baseUrl?: string; pinned?: boolean; apiKeyRef?: string }): void => {
     const source = sources.find(candidate => candidate.id === sourceId)
     if (source === undefined || !source.modes.includes(mode)) return
     const key = targetKey(sourceId, mode)
@@ -66,6 +68,7 @@ export function resolveTargets(
     targets.push({
       key,
       sourceId,
+      provider: endpoint?.provider,
       mode,
       ...(endpoint?.baseUrl === undefined ? {} : { baseUrl: endpoint.baseUrl }),
       ...(endpoint?.pinned === true ? { baseUrlPinned: true } : {}),
@@ -99,6 +102,7 @@ export function resolveTargets(
     })
     if (resolution.sourceId !== null && resolution.mode !== null) {
       push(resolution.sourceId, resolution.mode, {
+        provider,
         ...(resolution.baseUrl === undefined ? {} : { baseUrl: resolution.baseUrl }),
         ...(resolution.baseUrlPinned === true ? { pinned: true } : {}),
         ...(resolution.apiKeyRef === undefined ? {} : { apiKeyRef: resolution.apiKeyRef }),

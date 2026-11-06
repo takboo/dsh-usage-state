@@ -55,11 +55,9 @@ export function shellModuleTable() {
     jsxs: (type, props) => ({ type, props }),
     Fragment: Symbol('Fragment'),
   }
-  const primitives = new Proxy({}, { get: (_target, key) => props => ({ type: String(key), props }) })
   return specifier => {
     if (specifier === 'react') return react
     if (specifier === 'react/jsx-runtime') return jsxRuntime
-    if (specifier === '@deepseek-ai/dsh-client-ui-primitives') return primitives
     throw new Error(`unexpected client require: ${specifier}`)
   }
 }

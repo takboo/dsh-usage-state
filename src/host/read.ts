@@ -17,8 +17,10 @@ export interface FetchLike {
 
 export interface ReaderDeps {
   fetch: FetchLike
-  /** Hard timeout for one provider call. `0` disables the signal entirely. */
+  /** Hard timeout for one provider call. `0` disables only the timeout. */
   timeoutMs?: number
+  /** The store lifetime that owns this reading, including any mirror attempts. */
+  signal?: AbortSignal
 }
 
 export interface ReadInput {
@@ -53,6 +55,7 @@ function messageOf(error: unknown): string {
  * every failure into a `SourceError` the UI knows how to phrase.
  */
 export async function readUsage(input: ReadInput, deps: ReaderDeps): Promise<UsageReading> {
+  ensureActive(deps.signal)
   const requestInput = {
     mode: input.mode,
     apiKey: input.apiKey,
@@ -63,10 +66,13 @@ export async function readUsage(input: ReadInput, deps: ReaderDeps): Promise<Usa
 
   const failures: SourceError[] = []
   for (const [index, request] of candidates.entries()) {
+    ensureActive(deps.signal)
     try {
       const payload = await fetchPayload(request, deps)
+      ensureActive(deps.signal)
       return input.source.parse(payload, input.mode)
     } catch (error) {
+      ensureActive(deps.signal)
       const failure = toSourceError(error)
       failures.push(failure)
       if (index === candidates.length - 1) break
@@ -82,37 +88,57 @@ function toSourceError(error: unknown): SourceError {
   return error instanceof SourceError ? error : new SourceError('network', messageOf(error))
 }
 
+function ensureActive(signal: AbortSignal | undefined): void {
+  if (signal?.aborted === true) throw new SourceError('network', 'request aborted')
+}
+
 async function fetchPayload(request: { url: string; headers: Record<string, string> }, deps: ReaderDeps): Promise<unknown> {
+  ensureActive(deps.signal)
   const timeoutMs = deps.timeoutMs ?? DEFAULT_TIMEOUT_MS
-  const signal = timeoutMs > 0 ? AbortSignal.timeout(timeoutMs) : undefined
-
-  let response: HttpResponseLike
-  try {
-    response = await deps.fetch(
-      request.url,
-      signal === undefined ? { headers: request.headers } : { headers: request.headers, signal },
-    )
-  } catch (error) {
-    throw new SourceError('network', messageOf(error))
+  const timeout = timeoutMs > 0 ? AbortSignal.timeout(timeoutMs) : undefined
+  // Bridge instead of AbortSignal.any, which is absent in Node 20.0–20.2.
+  const controller = deps.signal !== undefined && timeout !== undefined ? new AbortController() : undefined
+  const abortOwner = (): void => controller?.abort(deps.signal?.reason)
+  const abortTimeout = (): void => controller?.abort(timeout?.reason)
+  if (controller !== undefined) {
+    deps.signal?.addEventListener('abort', abortOwner, { once: true })
+    timeout?.addEventListener('abort', abortTimeout, { once: true })
   }
-
-  if (!response.ok) {
-    throw new SourceError(failureKindForStatus(response.status), `HTTP ${response.status}`)
-  }
+  const signal = controller?.signal ?? deps.signal ?? timeout
 
   try {
-    return await response.json()
-  } catch (error) {
-    if (error instanceof SyntaxError) {
-      throw new SourceError('parse', `invalid JSON: ${messageOf(error)}`)
+    let response: HttpResponseLike
+    try {
+      response = await deps.fetch(
+        request.url,
+        signal === undefined ? { headers: request.headers } : { headers: request.headers, signal },
+      )
+    } catch (error) {
+      throw new SourceError('network', messageOf(error))
     }
-    throw new SourceError('network', messageOf(error))
+
+    ensureActive(deps.signal)
+    if (!response.ok) {
+      throw new SourceError(failureKindForStatus(response.status), `HTTP ${response.status}`)
+    }
+
+    try {
+      return await response.json()
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        throw new SourceError('parse', `invalid JSON: ${messageOf(error)}`)
+      }
+      throw new SourceError('network', messageOf(error))
+    }
+  } finally {
+    deps.signal?.removeEventListener('abort', abortOwner)
+    timeout?.removeEventListener('abort', abortTimeout)
   }
 }
 
 /** Adapt `readUsage` to the shape `UsageStateStore` expects. */
 export function createTargetReader(deps: ReaderDeps) {
-  return (target: UsageTarget, credentials: ResolvedTargetCredential, source: UsageSource): Promise<UsageReading> =>
+  return (target: UsageTarget, credentials: ResolvedTargetCredential, source: UsageSource, signal?: AbortSignal): Promise<UsageReading> =>
     readUsage(
       {
         source,
@@ -121,6 +147,6 @@ export function createTargetReader(deps: ReaderDeps) {
         ...(credentials.baseUrl === undefined ? {} : { baseUrl: credentials.baseUrl }),
         ...(credentials.baseUrlPinned === true ? { pinnedBaseUrl: true } : {}),
       },
-      deps,
+      signal === undefined ? deps : { ...deps, signal },
     )
 }

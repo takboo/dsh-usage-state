@@ -103,8 +103,8 @@ test('resolveTargets skips hidden models, unconfigured models and unsupported mo
   )
 
   assert.deepEqual(targets, [
-    { key: 'deepseek:api', sourceId: 'deepseek', mode: 'api' },
-    { key: 'kimi:coding-plan', sourceId: 'kimi', mode: 'coding-plan' },
+    { key: 'deepseek:api', sourceId: 'deepseek', provider: 'deepseek-official', mode: 'api' },
+    { key: 'kimi:coding-plan', sourceId: 'kimi', provider: 'kimi', mode: 'coding-plan' },
   ])
 })
 
@@ -125,7 +125,7 @@ test('resolveTargets carries the endpoint a provider declares', () => {
   })
 
   assert.deepEqual(targets, [
-    { key: 'zai:coding-plan', sourceId: 'zai', mode: 'coding-plan', baseUrl: 'https://api.z.ai' },
+    { key: 'zai:coding-plan', sourceId: 'zai', provider: 'zai-cn', mode: 'coding-plan', baseUrl: 'https://api.z.ai' },
   ])
 })
 
