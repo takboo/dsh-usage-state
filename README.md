@@ -59,12 +59,15 @@ DSH0.1使用历史版本0.3.2；该版本不适配0.2。0.4.0有RPC挂载缺陷�
 |---|---|---|---|
 | DeepSeek官方 API Key | CNY/USD余额 | — | DEEPSEEK_API_KEY |
 | DeepSeek账号登录 | CNY/USD充值与赠送余额 | — | Harness当前登录账号 |
+| OpenAI官方 API Key | 官方普通 API Key 暂无余额查询接口；显示说明与账单入口 | — | 不为余额查询读取密钥 |
 | z.ai / 智谱GLM | — | 5h / 7d已用% | ZAI_API_KEY等 |
 | Kimi / Moonshot | 人民币余额 | Kimi Code订阅窗口 | MOONSHOT_API_KEY / KIMI_CODING_API_KEY |
 | OpenCode Zen Go | — | 5h / 7d / 30d已用% | OPENCODE_GO_API_KEY / OPENCODE_API_KEY |
 | Sub2API | 余额或key配额 | 按实例响应，如5h / 1d / 7d / 30d | SUB2API_API_KEY及实例地址 |
 
 **DeepSeek 桌面端账号登录**：`deepseek-account` 路由自动选择「账号余额」，通过 Harness 登录服务读取充值与赠送余额之和，无需 API Key；`deepseek-official` 路由选择「API Key 余额」。两者独立查询和缓存，账号模式不会探测或回退使用 `DEEPSEEK_API_KEY`。请在 Harness 账号设置中登录；账号模式要求宿主提供账号服务；旧宿主缺少该服务时需升级宿主。账号模式的端点与登录凭据由宿主管理，高级区不提供 API Key 输入。
+
+**OpenAI 官方 API Key：** 插件识别官方来源并提示“暂无余额查询接口”，提供[官方账单入口](https://platform.openai.com/settings/organization/billing/overview)，不读取密钥或发起余额请求。官方 [Usage / Costs 管理接口](https://developers.openai.com/api/reference/resources/admin/subresources/organization/subresources/usage/methods/costs.md) 使用管理密钥，返回历史消费，不是剩余余额；不借用浏览器登录 token、探测私有计费接口或把速率限制当额度。兼容 OpenAI 协议的第三方平台仍按该平台实际余额协议接入，不能由模型名称推断。
 
 Kimi Code 的 `kimi-code`、`kimi-coding`、`kimi-for-coding` provider，以及声明 `api.kimi.com` / `api.kimi.ai` 的自定义 provider，会自动读取套餐用量。支持 5h、7d、月总额度及编程月用量，仅展示账户实际返回的窗口。Moonshot 国内/国际 API 继续显示人民币余额；可在设置中显式选择模式。
 

@@ -1,6 +1,8 @@
 import type { DisplayConfig, ModelMode, UsageStateConfig } from './config.ts'
 import type { BalanceAmount, SnapshotError, UsageMode, UsageSnapshot } from './types.ts'
 
+export const OPENAI_BILLING_URL = 'https://platform.openai.com/settings/organization/billing/overview'
+
 /**
  * Plain description of a data source, produced host-side and shipped to the
  * browser. The browser half must not import host adapters (that would drag Node
@@ -15,6 +17,8 @@ export interface SourceCatalogEntry {
   requiresBaseUrl: boolean
   defaultBaseUrl: Partial<Record<UsageMode, string>>
   credentialRefs: Partial<Record<UsageMode, string[]>>
+  /** Informational capability only: no adapter, credential discovery, or polling. */
+  unavailable?: { reason: 'openai-public-api'; billingUrl: typeof OPENAI_BILLING_URL }
 }
 
 export type SourceCatalog = SourceCatalogEntry[]
@@ -35,6 +39,7 @@ export type ModelStatus =
   | { kind: 'unconfigured' }
   | { kind: 'needs-endpoint' }
   | { kind: 'unsupported' }
+  | { kind: 'capability-unavailable' }
   | { kind: 'ready'; key: string; sourceId: string; mode: UsageMode }
 
 export type Severity = 'normal' | 'warn' | 'critical'
@@ -65,7 +70,7 @@ export type StatusSegment =
     }
   | {
       kind: 'state'
-      state: 'loading' | 'unconfigured' | 'unsupported' | 'needs-endpoint' | 'error'
+      state: 'loading' | 'unconfigured' | 'unsupported' | 'needs-endpoint' | 'capability-unavailable' | 'error'
       errorKind?: SnapshotError['kind']
       /** Raw provider/network text, for the tooltip — the label stays localized. */
       errorDetail?: string
@@ -141,6 +146,7 @@ export function describeStatus(input: StatusInput): StatusSegment[] {
   if (status.kind === 'unconfigured') return [{ kind: 'state', state: 'unconfigured' }]
   if (status.kind === 'needs-endpoint') return [{ kind: 'state', state: 'needs-endpoint' }]
   if (status.kind === 'unsupported') return [{ kind: 'state', state: 'unsupported' }]
+  if (status.kind === 'capability-unavailable') return [{ kind: 'state', state: 'capability-unavailable' }]
 
   const label: StatusSegment =
     snapshot?.stale === true

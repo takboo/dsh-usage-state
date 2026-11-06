@@ -45,6 +45,10 @@ test('toSourceCatalog gives every served mode a default endpoint, except where t
   const catalog = toSourceCatalog(ALL_SOURCES)
 
   for (const entry of catalog) {
+    if (entry.unavailable !== undefined) {
+      assert.deepEqual(entry.modes, [], `${entry.id} must not claim a served mode`)
+      continue
+    }
     assert.ok(entry.modes.length > 0, `${entry.id} declares no mode`)
     const modesWithDefault = Object.keys(entry.defaultBaseUrl)
     if (entry.requiresBaseUrl) {

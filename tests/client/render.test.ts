@@ -118,6 +118,37 @@ const CREDENTIALS: CredentialsRemoteLike = {
   unset: async () => ({ ok: true, value: undefined }),
 }
 
+test('official OpenAI shows the API limitation and fixed Billing link, not fake zero or credential errors', () => {
+  const store = storeWith({
+    catalog: toSourceCatalog(), endpointHints: { openai: 'https://api.openai.com/v1' },
+    models: [{ provider: 'openai', providerName: 'OpenAI', model: 'gpt-test', name: 'GPT test' }],
+    // Old gateway failures/readings must not leak into the informational state.
+    snapshots: { 'sub2api:api': {
+      sourceId: 'sub2api', mode: 'api', balances: [{ amount: 0, currency: 'USD' }], windows: [], fetchedAt: 1,
+      error: { kind: 'auth', detail: 'HTTP 401' },
+    } },
+  })
+  const settings = settingsWith(configWith({ openai: { mode: 'api' } }))
+  const line = renderToStaticMarkup(h(StatusLine, {
+    t, usageState: store, settings, useProjection: projectionOf({ provider: 'openai', model: 'gpt-test' }),
+  }))
+  const page = renderToStaticMarkup(h(SettingsSection, { t, usageState: store, settings, credentials: CREDENTIALS, close: () => {} }))
+  for (const html of [line, page]) {
+    assert.match(html, /OpenAI/)
+    assert.match(html, /no documented public endpoint/)
+    assert.match(html, /ChatGPT\/Codex/)
+    assert.match(html, /href="https:\/\/platform\.openai\.com\/settings\/organization\/billing\/overview"/)
+    assert.match(html, /rel="noopener noreferrer"/)
+    assert.doesNotMatch(html, /\$0\.00|Key rejected|HTTP 401|Not configured|Reading…/)
+  }
+  assert.doesNotMatch(page, /Paste the key|Credential name \(optional\)|API Key balance<\/button>/)
+  const hidden = renderToStaticMarkup(h(StatusLine, {
+    t, usageState: store, settings: settingsWith(configWith({ openai: { mode: 'hidden' } })),
+    useProjection: projectionOf({ provider: 'openai', model: 'gpt-test' }),
+  }))
+  assert.equal(hidden, '')
+})
+
 test('a provider recognized by the host endpoint renders consistently in the line and settings', () => {
   const store = storeWith({
     catalog: CATALOG,

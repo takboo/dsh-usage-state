@@ -135,6 +135,44 @@ function fetchStub(): { fetch: FetchLike; urls: string[] } {
   }
 }
 
+test('official OpenAI skips HTTP and credential access on startup, force, credential report, turn and interval refreshes', async () => {
+  for (const scenario of [
+    { provider: 'openai', providerConfig: {}, pluginConfig: {} },
+    { provider: 'custom', providerConfig: { baseURL: 'https://api.openai.com/v1', apiKeyEnv: 'OPENAI_API_KEY' }, pluginConfig: {} },
+    { provider: 'custom', providerConfig: {}, pluginConfig: { providers: { custom: {
+      mode: 'api', sourceId: 'sub2api', baseUrl: 'https://api.openai.com/v1', apiKeyRef: 'OPENAI_API_KEY',
+    } } } },
+    { provider: 'sub2api-openai', providerConfig: {}, pluginConfig: { sources: { sub2api: { baseUrl: 'https://api.openai.com' } } } },
+  ]) {
+    const host = contextStub({ settings: {
+      'usage-state': scenario.pluginConfig,
+      'llm-pi-ai': { providers: { [scenario.provider]: scenario.providerConfig } },
+    } })
+    let credentialReads = 0
+    const get = host.ctx.get.bind(host.ctx)
+    host.ctx.get = name => name === 'llm' ? { listProviders: () => [{ id: scenario.provider }] }
+      : name === 'credentials' ? {
+        resolve: async () => { credentialReads++; return { value: 'fake-openai-key', source: 'store' } },
+        describe: async () => { credentialReads++; return { configured: true, writable: true } },
+      } : get(name)
+    const http = fetchStub()
+    const service = createUsageState(host.ctx, deps(host, { fetch: http.fetch }))
+    try {
+      for (const force of [false, true]) {
+        const state = await service.getState(force)
+        assert.deepEqual(state.snapshots, {}, scenario.provider)
+        assert.equal(state.sources.find(source => source.id === 'openai')?.unavailable?.reason, 'openai-public-api')
+        assert.equal(JSON.stringify(state).includes('fake-openai-key'), false)
+      }
+      assert.deepEqual(await service.describeCredentials(), { credentials: {} })
+      host.emit('session/event', 'fake-session', { type: 'turn/end' })
+      await host.advance(60 * 60 * 1_000)
+      assert.deepEqual(http.urls, [], scenario.provider)
+      assert.equal(credentialReads, 0, scenario.provider)
+    } finally { host.dispose() }
+  }
+})
+
 test('state exposes origin-only hints for providers recognized from their declared endpoint', async () => {
   const host = contextStub({
     settings: { 'llm-pi-ai': { providers: { 'custom-account': {
@@ -498,7 +536,8 @@ test('getState reads the configured model and returns its balance', async () => 
 
   assert.deepEqual(urls, ['https://api.deepseek.com/user/balance'])
   assert.deepEqual(state.snapshots['deepseek:api']?.balances, [{ amount: 66.28, currency: 'CNY' }])
-  assert.equal(state.sources.length, 5)
+  assert.equal(state.sources.length, 6)
+  assert.equal(state.sources.find(source => source.id === 'openai')?.unavailable?.reason, 'openai-public-api')
 })
 
 const OPENCODE_BODY = {

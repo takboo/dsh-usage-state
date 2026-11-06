@@ -13,7 +13,8 @@
 - `api`：以API Key查询账户余额；`account`：通过Harness当前登录账户查询余额；`coding-plan`：查询套餐窗口。`auto`和`hidden`是配置选择。
 - DeepSeek `deepseek-account` 自动使用账号余额；`deepseek-official` 使用API Key余额。账号服务负责登录、目的地址、超时与失效；账号模式忽略API Key/端点覆盖，不回退到API Key。
 - Kimi Code路由及官方Code端点自动使用套餐模式，Moonshot使用余额模式。其他来源按目录能力选默认模式，显式配置优先。
-- 路由ID包含Sub2API时优先识别为网关来源，其中的Kimi、GLM等模型厂商名不改变余额来源。手动来源覆盖同样用于凭据发现；未覆盖接口地址时复用供应商声明端点的origin，设置页显示继承地址，仅在有效地址缺失时要求填写。
+- 路由ID包含Sub2API时优先识别为网关来源，其中的Kimi、GLM等模型厂商名不改变余额来源；实际端点为官方 `api.openai.com` 时只显示其接口限制，不探测网关余额协议。手动来源覆盖同样用于凭据发现；未覆盖接口地址时复用供应商声明端点的origin，设置页显示继承地址，仅在有效地址缺失时要求填写。
+- OpenAI官方 API Key 仅识别来源并显示余额查询能力限制及官方账单入口；普通 API Key 没有文档化的当前余额接口，不解析凭据、不轮询或构造零余额。Admin Usage/Costs历史消费、浏览器会话token与速率限制均不替代余额。第三方OpenAI兼容平台按实际端点和余额协议识别，不因OpenAI名称或模型视为官方来源。
 - 当前每个source+mode只保留一个目标，由首个有效provider拥有；不据厂商同名断言不同密钥或实例属于同一账户。
 
 ## 身份与隐私

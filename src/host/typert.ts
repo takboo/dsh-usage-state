@@ -66,6 +66,10 @@ const catalogEntrySchema = z.object({
   requiresBaseUrl: z.boolean(),
   defaultBaseUrl: z.record(z.string(), z.string()),
   credentialRefs: z.record(z.string(), z.array(z.string())),
+  unavailable: z.object({
+    reason: z.literal('openai-public-api'),
+    billingUrl: z.literal('https://platform.openai.com/settings/organization/billing/overview'),
+  }).optional(),
 })
 
 const credentialCandidateSchema = z.object({

@@ -277,18 +277,31 @@ const HOST_HINTS: ReadonlyArray<{ sourceId: string; pattern: RegExp }> = [
   { sourceId: 'opencode', pattern: /(^|\.)opencode\.ai$/ },
 ]
 
+/** Exact official API host only: OpenAI-compatible gateway names do not count. */
+export function isOfficialOpenAIEndpoint(baseUrl: string | undefined): boolean {
+  if (baseUrl === undefined) return false
+  try {
+    const url = new URL(baseUrl.trim())
+    return (url.protocol === 'https:' || url.protocol === 'http:') && url.hostname === 'api.openai.com'
+  } catch {
+    return false
+  }
+}
+
 /**
- * Best guess at which data source backs a DSH provider. Provider id first (cheap
- * and usually right), then the endpoint host. Because any unrecognised endpoint is
- * most likely a self-hosted gateway, that is the last resort rather than `undefined`.
+ * Official OpenAI cannot be polled, regardless of a provider's route label.
+ * Other sources keep their provider-id priority, followed by endpoint hints and
+ * the self-hosted gateway fallback. A built-in OpenAI id without an endpoint is
+ * informational too; a custom endpoint still belongs to its gateway.
  */
 export function suggestSourceId(providerId: string, baseUrl?: string): string | undefined {
+  if (isOfficialOpenAIEndpoint(baseUrl)) return 'openai'
   const normalized = providerId.trim().toLowerCase()
   for (const hint of PROVIDER_HINTS) {
     if (hint.pattern.test(normalized)) return hint.sourceId
   }
 
-  if (baseUrl === undefined) return undefined
+  if (baseUrl === undefined) return normalized === 'openai' || normalized === 'openai-official' ? 'openai' : undefined
   let host: string
   try {
     host = new URL(baseUrl.trim()).host.toLowerCase()

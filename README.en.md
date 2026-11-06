@@ -59,12 +59,15 @@ Advanced controls offer source selection; API Key mode also provides endpoint, c
 |---|---|---|---|
 | DeepSeek official API Key | CNY/USD balance | — | DEEPSEEK_API_KEY |
 | DeepSeek account sign-in | CNY/USD recharge and bonus balance | — | Current Harness login |
+| Official OpenAI API Key | No documented ordinary-key balance API; explanation and billing link only | — | No key lookup for balance queries |
 | z.ai / Zhipu GLM | — | 5h / 7d used % | ZAI_API_KEY and related refs |
 | Kimi / Moonshot | CNY balance | Kimi Code subscription windows | MOONSHOT_API_KEY / KIMI_CODING_API_KEY |
 | OpenCode Zen Go | — | 5h / 7d / 30d used % | OPENCODE_GO_API_KEY / OPENCODE_API_KEY |
 | Sub2API | Balance or key allowance | Depends on the instance, e.g. 5h / 1d / 7d / 30d | SUB2API_API_KEY and instance URL |
 
 **DeepSeek Desktop account sign-in:** `deepseek-account` automatically uses “Account balance” through the Harness account service, adding recharge and bonus wallets. `deepseek-official` uses “API Key balance”. Queries and caches are separate; account mode never probes or falls back to `DEEPSEEK_API_KEY`. Sign in through Harness account settings. Account mode requires the host account service; older hosts without it need an upgrade. Harness owns the endpoint and login grant; account mode has no API key fields.
+
+**Official OpenAI API Key:** the plugin recognizes the official provider and explains that no documented ordinary-key balance API is available, with a link to [official billing](https://platform.openai.com/settings/organization/billing/overview). It neither reads a key nor sends balance requests. The official [Usage / Costs administration API](https://developers.openai.com/api/reference/resources/admin/subresources/organization/subresources/usage/methods/costs.md) requires an Admin key and reports historical spending, not remaining balance. Browser session tokens, private billing endpoints and rate limits are not balance substitutes. OpenAI-compatible gateways require their own documented balance protocol; model names do not identify it.
 
 Kimi Code routes `kimi-code`, `kimi-coding`, and `kimi-for-coding`, plus custom providers declaring `api.kimi.com` / `api.kimi.ai`, automatically read subscription usage. The plugin displays only returned windows: 5h, 7d, monthly total, and monthly code usage. Moonshot regional APIs retain CNY balance mode. Explicit settings take precedence.
 

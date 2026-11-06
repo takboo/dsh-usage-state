@@ -72,7 +72,11 @@ export function buildProviderRows(input: BuildProviderRowsInput): ProviderRow[] 
     const entry = input.config.providers[provider]
     const endpointHint = input.endpointHints?.[provider]
 
-    const sourceId = entry?.sourceId ?? suggestSourceId(provider, endpointHint) ?? null
+    const resolution = resolveProvider({
+      provider, config: input.config, catalog: input.catalog,
+      ...(endpointHint === undefined ? {} : { endpointHint }),
+    })
+    const sourceId = resolution.sourceId ?? entry?.sourceId ?? suggestSourceId(provider, entry?.baseUrl ?? endpointHint) ?? null
     const source = sourceId === null ? undefined : input.catalog.find(candidate => candidate.id === sourceId)
     const modes: ProviderMode[] = ['auto', ...(source?.modes ?? (['api', 'coding-plan'] as const)), 'hidden']
 
@@ -80,12 +84,7 @@ export function buildProviderRows(input: BuildProviderRowsInput): ProviderRow[] 
       provider,
       providerName: group?.providerName ?? provider,
       models: group?.models ?? [],
-      resolution: resolveProvider({
-        provider,
-        config: input.config,
-        catalog: input.catalog,
-        ...(endpointHint === undefined ? {} : { endpointHint }),
-      }),
+      resolution,
       selected: entry?.mode ?? 'auto',
       modes: [...new Set(modes)],
     }

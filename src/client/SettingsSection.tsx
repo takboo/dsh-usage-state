@@ -241,6 +241,7 @@ function resolutionLabel(row: ProviderRow, catalog: SourceCatalog, t: Translate)
   if (resolution.reason === 'hidden') return t('modeHidden')
   if (resolution.reason === 'needs-endpoint') return t('needsEndpoint')
   if (resolution.reason === 'unknown-source') return t('unknownSource')
+  if (resolution.reason === 'capability-unavailable') return t('openaiUsageUnavailable')
   if (resolution.reason === 'unsupported' || resolution.mode === null || resolution.sourceId === null) {
     return t('modeUnsupported')
   }
@@ -318,6 +319,9 @@ function ProviderCard(props: {
       </div>
 
       <span style={MUTED}>{resolutionLabel(row, props.catalog, t)}</span>
+      {resolvedSource?.unavailable === undefined ? null : (
+        <a href={resolvedSource.unavailable.billingUrl} target="_blank" rel="noopener noreferrer" style={MUTED}>{t('openaiBilling')}</a>
+      )}
       {props.failure === undefined ? null : (
         <span style={MUTED}>
           ⚠ {t(accountMode && props.failure.kind === 'config' ? 'accountSignInRequired' : accountMode && props.failure.kind === 'auth' ? 'accountAuthFailed' : `error.${props.failure.kind}`)}
@@ -352,7 +356,7 @@ function ProviderCard(props: {
             </select>
           </div>
 
-          {accountMode ? <span style={MUTED}>{t('accountHint')}</span> : (<>
+          {accountMode ? <span style={MUTED}>{t('accountHint')}</span> : resolvedSource?.unavailable !== undefined ? null : (<>
             <div style={ROW}>
               <span style={MUTED}>{t('baseUrl')}</span>
               <DraftInput

@@ -1,6 +1,6 @@
 # 数据源适配器
 
-当前支持DeepSeek、z.ai、Kimi/Moonshot、OpenCode和Sub2API。用户排查见 [指南](https://github.com/takboo/dsh-usage-state/blob/main/docs/troubleshooting.md)，代码入口见 [架构](https://github.com/takboo/dsh-usage-state/blob/main/docs/architecture.md)，未验证项见 [待办](https://github.com/takboo/dsh-usage-state/blob/main/docs/backlog.md)。本文随npm分发。
+当前支持DeepSeek、z.ai、Kimi/Moonshot、OpenCode和Sub2API；OpenAI官方 API Key 仅识别来源并说明余额查询限制，不属于可查询适配器。用户排查见 [指南](https://github.com/takboo/dsh-usage-state/blob/main/docs/troubleshooting.md)，代码入口见 [架构](https://github.com/takboo/dsh-usage-state/blob/main/docs/architecture.md)，未验证项见 [待办](https://github.com/takboo/dsh-usage-state/blob/main/docs/backlog.md)。本文随npm分发。
 
 ## HTTP来源契约
 

@@ -1,6 +1,6 @@
 import { Tooltip } from './controls.tsx'
 
-import { describeStatus, type ModelStatus, type Severity, type StatusSegment } from '../shared/display.ts'
+import { describeStatus, OPENAI_BILLING_URL, type ModelStatus, type Severity, type StatusSegment } from '../shared/display.ts'
 import { resolveProvider } from '../shared/providers.ts'
 import type { UsageStateConfig } from '../shared/config.ts'
 import type { UsageStateSnapshotSource } from './status-source.ts'
@@ -165,6 +165,7 @@ function renderPart(part: StatusPart, t: Translate, key: number) {
       return (
         <span key={key} style={LABEL_STYLE}>
           {part.text}
+          {part.state === 'capability-unavailable' ? <> · <a href={OPENAI_BILLING_URL} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit' }}>{t('openaiBilling')}</a></> : null}
         </span>
       )
   }
@@ -177,6 +178,8 @@ function statusOf(resolution: ReturnType<typeof resolveProvider>, catalogEmpty: 
       return { kind: 'hidden' }
     case 'needs-endpoint':
       return { kind: 'needs-endpoint' }
+    case 'capability-unavailable':
+      return { kind: 'capability-unavailable' }
     case 'unknown-source':
     case 'unsupported':
       // No source could be suggested at all, so this one is genuinely the user's to

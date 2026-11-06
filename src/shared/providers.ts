@@ -1,4 +1,4 @@
-import { suggestSourceId, type UsageStateConfig } from './config.ts'
+import { isOfficialOpenAIEndpoint, suggestSourceId, type UsageStateConfig } from './config.ts'
 import type { SourceCatalog } from './display.ts'
 import type { UsageMode } from './types.ts'
 
@@ -24,6 +24,8 @@ export type ProviderResolutionReason =
   | 'unknown-source'
   /** The data source cannot serve the requested mode. */
   | 'unsupported'
+  /** The official service exposes no usable public balance/quota capability. */
+  | 'capability-unavailable'
   /** A self-hosted source needs an endpoint before anything can be read. */
   | 'needs-endpoint'
 
@@ -89,7 +91,8 @@ function withTarget(resolution: ProviderResolution): ProviderResolution {
  */
 export function resolveProvider(input: ResolveProviderInput): ProviderResolution {
   const entry = input.config.providers[input.provider]
-  const sourceId = entry?.sourceId ?? suggestSourceId(input.provider, input.endpointHint) ?? null
+  const accountMode = entry?.mode === 'account' || ((entry?.mode ?? 'auto') === 'auto' && input.provider === 'deepseek-account')
+  let sourceId = entry?.sourceId ?? suggestSourceId(input.provider, accountMode ? undefined : entry?.baseUrl ?? input.endpointHint) ?? null
   const defaults = sourceId === null ? undefined : input.config.sources[sourceId]
   const declared = originOf(input.endpointHint)
   const explicitBaseUrl = entry?.baseUrl ?? defaults?.baseUrl
@@ -106,6 +109,11 @@ export function resolveProvider(input: ResolveProviderInput): ProviderResolution
     return { ...base, sourceId: null, mode: null, reason: 'hidden' }
   }
 
+  // Even an explicit gateway adapter must never send credentials to a guessed
+  // /v1/usage endpoint on official OpenAI. A pinned third-party URL remains a gateway.
+  // Account-only DeepSeek reads ignore API endpoints and keys altogether.
+  if (!(accountMode && sourceId === 'deepseek') && isOfficialOpenAIEndpoint(baseUrl)) sourceId = 'openai'
+
   if (sourceId === null) {
     return { ...base, sourceId: null, mode: null, reason: 'unknown-source' }
   }
@@ -113,6 +121,10 @@ export function resolveProvider(input: ResolveProviderInput): ProviderResolution
   const source = input.catalog.find(candidate => candidate.id === sourceId)
   if (source === undefined) {
     return { ...base, sourceId, mode: null, reason: 'unknown-source' }
+  }
+
+  if (source.unavailable !== undefined) {
+    return { ...base, sourceId, mode: null, reason: 'capability-unavailable' }
   }
 
   if (entry?.mode === 'api' || entry?.mode === 'account' || entry?.mode === 'coding-plan') {

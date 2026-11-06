@@ -33,7 +33,7 @@ export type StatusPart =
     }
   | {
       kind: 'state'
-      state: 'loading' | 'unconfigured' | 'unsupported' | 'needs-endpoint' | 'error'
+      state: 'loading' | 'unconfigured' | 'unsupported' | 'needs-endpoint' | 'capability-unavailable' | 'error'
       text: string
       errorKind?: string
       errorDetail?: string
@@ -145,7 +145,8 @@ export function statusParts(input: StatusPartsInput): StatusPart[] {
         break
       }
       case 'state': {
-        const reason = failureReason(segment.errorKind, segment.errorDetail, t)
+        const reason = segment.state === 'capability-unavailable'
+          ? t('openaiUsageUnavailable') : failureReason(segment.errorKind, segment.errorDetail, t)
         parts.push({
           kind: 'state',
           state: segment.state,
