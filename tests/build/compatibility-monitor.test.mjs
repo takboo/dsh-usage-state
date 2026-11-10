@@ -228,6 +228,32 @@ test('fixture rejects the environment credential and accepts the distinct saved 
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
 
+test('shared host fixture keeps credentials and trace in the provided isolation directories', t => {
+  const root = mkdtempSync(join(tmpdir(), 'dsh-shared-fixture-test-'))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  const program = `
+    import assert from 'node:assert/strict'
+    import { join } from 'node:path'
+    import { readFileSync } from 'node:fs'
+    import { prepareHost, installHostFixture } from './scripts/compatibility/engineering-web-probe.mjs'
+    const fixtureDir = process.argv[1]
+    const context = { dshHome: fixtureDir, fixtureDir }
+    const { patch, fakeApiKeys } = prepareHost(context)
+    assert.ok(patch.includes(JSON.stringify(join(fixtureDir, 'documents'))))
+    assert.equal(fakeApiKeys.DEEPSEEK_API_KEY, 'compat-env-key')
+    assert.match(readFileSync(join(fixtureDir, '.credentials.yaml'), 'utf8'), /DEEPSEEK_API_KEY: compat-file-key/)
+    installHostFixture(context)
+    const response = await fetch('https://api.deepseek.com/user/balance', {
+      headers: { authorization: 'Bearer compat-file-key' },
+    })
+    assert.equal(response.status, 200)
+    const trace = readFileSync(join(fixtureDir, 'fixture.jsonl'), 'utf8')
+    assert.deepEqual(JSON.parse(trace), { endpoint: 'balance', source: 'file' })
+  `
+  const run = spawnSync(process.execPath, ['--input-type=module', '--eval', program, root], { encoding: 'utf8' })
+  assert.equal(run.status, 0, run.stderr)
+})
+
 test('baseline and contract subprocess timeouts and launch failures remain retryable', () => {
   const timeout = spawnSync(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { timeout: 100 })
   const missing = spawnSync(join(tmpdir(), 'dsh-monitor-missing-executable'))

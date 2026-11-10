@@ -6,6 +6,7 @@ import { createRequire } from 'node:module'
 import { exactVersion } from './state.mjs'
 import { inventory, verifyIntegrity } from './packages.mjs'
 import { browserAcceptance } from './browser-acceptance.mjs'
+import { prepareHost } from './engineering-web-probe.mjs'
 
 const { DSH_VERSION: version, DSH_WEB_ROOT: root, DSH_REPORT_DIR: output } = process.env
 try {
@@ -53,13 +54,11 @@ try {
   command('install tarball', dsh, ['plugin', '--profile', 'compat', 'add', join(pack, archive)], {}, root)
   const profile = JSON.parse(readFileSync(join(state, 'profiles/compat/package.json'), 'utf8'))
   if (!String(profile.dependencies?.['dsh-usage-state'] || '').startsWith('file:')) throw new Error('Profile did not install the plugin tarball')
-  const documents = join(root, 'documents')
-  mkdirSync(documents, { recursive: true })
+  const { patch, fakeApiKeys } = prepareHost({ dshHome: state, fixtureDir: root })
   const overlay = join(root, 'workspace-overlay.yml')
-  writeFileSync(overlay, `- id: workspace-controller\n  name: '@deepseek-ai/dsh-api-workspace-controller'\n  config:\n    documentsDirectory: ${JSON.stringify(documents)}\n`)
-  writeFileSync(join(state, '.credentials.yaml'), 'version: 1\nrefs:\n  DEEPSEEK_API_KEY: compat-file-key\n', { mode: 0o600 })
+  writeFileSync(overlay, patch)
   const fixture = pathToFileURL(resolve('scripts/compatibility/fetch-fixture.mjs')).href
-  child = spawn(dsh, ['--profile', 'compat', '--patch', overlay, '--port', '0', '--no-open'], { cwd: root, env: { ...env, DEEPSEEK_API_KEY: 'compat-env-key', DSH_FIXTURE_TRACE: join(output, 'fixture.jsonl'), NODE_OPTIONS: `--import=${fixture}` }, stdio: ['ignore', 'pipe', 'pipe'] })
+  child = spawn(dsh, ['--profile', 'compat', '--patch', overlay, '--port', '0', '--no-open'], { cwd: root, env: { ...env, ...fakeApiKeys, DSH_FIXTURE_TRACE: join(output, 'fixture.jsonl'), NODE_OPTIONS: `--import=${fixture}` }, stdio: ['ignore', 'pipe', 'pipe'] })
   let raw = ''
   const url = await new Promise((resolveUrl, reject) => {
     const timer = setTimeout(() => reject(new Error('Web host did not print its URL within 90 seconds')), 90000)

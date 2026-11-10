@@ -55,9 +55,11 @@ test('shared engineering uses the locked tag for docs and gates the CLI before e
 
   const advancedCommit = git('rev-parse', 'HEAD')
   git('update-ref', `refs/tags/${lock.tag}`, advancedCommit)
-  const wrongTag = run('cli', 'candidate.tgz', report)
-  assert.equal(wrongTag.status, 1)
-  assert.match(wrongTag.stderr, new RegExp(`resolves to ${advancedCommit}, expected ${lockedCommit}`))
+  for (const mode of ['cli', 'all']) {
+    const wrongTag = run(mode, 'candidate.tgz', report)
+    assert.equal(wrongTag.status, 1)
+    assert.match(wrongTag.stderr, new RegExp(`resolves to ${advancedCommit}, expected ${lockedCommit}`))
+  }
   assert.equal(existsSync(executed), false)
   assert.equal(existsSync(report), false)
 })

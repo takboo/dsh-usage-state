@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { assertFixtureBalanceAboveComposer } from './engineering-web-probe.mjs'
 
 /** Exercise the installed client through real browser/Host RPC, not test doubles. */
 export async function browserAcceptance(page, url, { timeoutMs = 60000, noticeTimeoutMs = 15000, expectDisplayMetadata = false } = {}) {
@@ -46,10 +47,7 @@ export async function browserAcceptance(page, url, { timeoutMs = 60000, noticeTi
   await waitForEvidence(evidence, ['selection'], timeoutMs)
   await page.locator('[contenteditable="true"]').first().click()
   await page.getByText('Compatibility Pro', { exact: true }).first().waitFor({ state: 'visible', timeout: timeoutMs })
-  await balance.waitFor({ state: 'visible', timeout: timeoutMs })
-  const lineBox = await balance.boundingBox()
-  const editorBox = await page.locator('[contenteditable="true"]').first().boundingBox()
-  assert.ok(lineBox && editorBox && lineBox.y < editorBox.y, 'balance line must appear above the composer')
+  await assertFixtureBalanceAboveComposer(page, timeoutMs)
 
   // The migrated page comes from the real keyed plugin-row contribution. Do not
   // silently fall back to the old Settings entry when testing an older host.

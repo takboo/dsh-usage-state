@@ -10,7 +10,7 @@ const httpsRepository = /^https:\/\/github\.com\/([\w.-]+\/[\w.-]+)$/i
 const sshRepository = /^(?:git@github\.com:|ssh:\/\/git@github\.com\/)([\w.-]+\/[\w.-]+)$/i
 const commitSha = /^[0-9a-f]{40}$/
 const usage = 'Usage: node scripts/verify-engineering.mjs docs <base-checkout> <contract-path>\n' +
-  '       node scripts/verify-engineering.mjs cli <base-checkout> <candidate.tgz> <report.json>'
+  '       node scripts/verify-engineering.mjs cli|all <base-checkout> <candidate.tgz> <report.json>'
 const contractFiles = [
   '.agents/skills/dsh-plugin-onboarding/SKILL.md',
   'docs/base-versions.md',
@@ -47,7 +47,7 @@ function lockedBase(checkout) {
   return { commit, git, blob: file => git(['show', `${commit}:${file}`], { encoding: 'buffer' }) }
 }
 
-function verifyCli(base, tarball, reportPath) {
+function verifyContainer(mode, base, tarball, reportPath) {
   const sourceCommit = command('git', ['rev-parse', 'HEAD']).trim()
   assert.equal(command('git', ['status', '--porcelain', '--untracked-files=all']).trim(), '',
     'Run from the clean candidate source checkout')
@@ -55,7 +55,7 @@ function verifyCli(base, tarball, reportPath) {
   const candidate = JSON.parse(command(process.execPath, [join(ROOT, 'scripts/verify-package.mjs'),
     '--tarball', tarball, '--require-report', '--expected-version', packageJson().version, '--expected-commit', sourceCommit]))
   const targets = join(ROOT, 'scripts/compatibility/engineering-targets.json')
-  const inputs = { mode: 'cli', sourceCommit, targetsSha256: sha256(readFileSync(targets)), tarballSha256: candidate.sha256 }
+  const inputs = { mode, sourceCommit, targetsSha256: sha256(readFileSync(targets)), tarballSha256: candidate.sha256 }
 
   const scratch = mkdtempSync(join(tmpdir(), 'dsh-usage-state-engineering-'))
   try {
@@ -64,15 +64,19 @@ function verifyCli(base, tarball, reportPath) {
     command('tar', ['-xf', archive, '-C', scratch])
     assert.equal(readFileSync(join(scratch, '.engineering-revision'), 'utf8').trim(), base.commit,
       'Base archive revision differs from the lock')
-    const files = Object.fromEntries(runnerFiles.map(file => {
+    const runWeb = mode === 'all'
+    const paths = runWeb ? [...runnerFiles, 'environments/Web.Dockerfile'] : runnerFiles
+    const files = Object.fromEntries(paths.map(file => {
       const digest = sha256(base.blob(file))
       assert.equal(sha256(readFileSync(join(scratch, file))), digest, `Base archive changed ${file}`)
       return [file, digest]
     }))
 
-    // The fixed CLI mode requires a positional probe path but does not read it.
-    const result = spawnSync('bash', [join(scratch, 'scripts/run-container.sh'), 'cli', targets,
-      join(scratch, 'unused-probe.mjs'), tarball, sourceCommit, reportPath], { stdio: 'inherit' })
+    // CLI requires the positional probe path but does not read it.
+    const probe = join(ROOT, 'scripts/compatibility/engineering-web-probe.mjs')
+    if (runWeb) inputs.probeSha256 = sha256(readFileSync(probe))
+    const result = spawnSync('bash', [join(scratch, 'scripts/run-container.sh'), mode, targets,
+      probe, tarball, sourceCommit, reportPath], { stdio: 'inherit' })
     if (result.error) throw result.error
     if (lstatSync(reportPath, { throwIfNoEntry: false })) {
       const report = readJson(reportPath)
@@ -91,11 +95,11 @@ function verifyCli(base, tarball, reportPath) {
 try {
   const [mode, checkout, input, report, ...extra] = process.argv.slice(2)
   const validMode = (mode === 'docs' && report === undefined && contractFiles.includes(input)) ||
-    (mode === 'cli' && report && extra.length === 0)
+    (['cli', 'all'].includes(mode) && report && extra.length === 0)
   assert.ok(checkout && input && validMode, usage)
   const base = lockedBase(checkout)
   if (mode === 'docs') process.stdout.write(base.blob(input))
-  else process.exitCode = verifyCli(base, resolve(input), resolve(report))
+  else process.exitCode = verifyContainer(mode, base, resolve(input), resolve(report))
 } catch (error) {
   console.error(`Shared engineering verification: ${error.message}`)
   process.exitCode = 1
