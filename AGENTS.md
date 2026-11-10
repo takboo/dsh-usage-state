@@ -16,6 +16,7 @@ DSH 的余额与额度插件：Host 查询账户读数，Client 在设置页和�
 - 新增或修改厂商数据源：看 [适配器指南](docs/adapters.md)，同步来源目录、配置、双语文案与单位/窗口 fixture。
 - 改 Client、配置表单或本地 HMR：看 [开发指南](docs/development.md)；不要用直接 DOM 操作或绕过 configForms 的独立配置写入路径。
 - 打包、发版或安装验收：看 [发布流程](docs/release.md)。真实账户、凭据落盘和视觉待验项记录在 [Backlog](docs/backlog.md)；历史研究仅按需从 [文档导航](docs/index.md) 查找。
+- 接入、复跑或升级共享基座：先读 [项目版本锁](dsh-engineering.lock.json)。
 
 ## 开发与验证
 

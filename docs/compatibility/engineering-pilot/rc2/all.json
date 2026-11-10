@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "mode": "all",
+  "image": "sha256:4ed32e3fe08ba97f9dda137427ca84cc17efbb633248f753ad512dedb2974744",
+  "nodeImage": "docker.io/library/node:24.22.2-bookworm-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9",
+  "browserImage": "mcr.microsoft.com/playwright:v1.56.1-noble@sha256:f1e7e01021efd65dd1a2c56064be399f3e4de00fd021ac561325f2bfbb2b837a",
+  "startedAt": "2026-11-10T09:40:04.901Z",
+  "platform": {
+    "os": "linux",
+    "arch": "arm64",
+    "release": "7.0.14-linuxkit",
+    "node": "v24.22.2"
+  },
+  "plugin": {
+    "sourceCommit": "37dea9a923c586b791790ae993cf05f76881b09c",
+    "sha256": "27ee488e14c4f3fa733570cca38eeebe02e5b4d055cd9c87cbcddf8939becd66",
+    "name": "dsh-usage-state",
+    "version": "0.4.15",
+    "enginesDsh": "^0.2.0-rc.2 || ^0.2.1-rc.1"
+  },
+  "pnpm": "11.28.5",
+  "playwright": "1.56.1",
+  "checks": [
+    {
+      "expectation": "admit",
+      "version": "0.2.1-rc.5",
+      "integrity": "sha512-WkyJZv4zl9sCAxSzRctGm58m0rilGqwR6pniBiLOz5CPDfHfDuAUicg0AAazXI7oj/Cph6/cjNTncA/rpLTXpw==",
+      "upstreamCommit": "b830ec950faba0a46dda564be3e2d854afed94f1",
+      "carrier": "npm-dsh-web",
+      "stages": {
+        "setup": "passed",
+        "admission": "passed",
+        "webFixture": "passed",
+        "browser": "passed",
+        "webBoot": "passed",
+        "webNavigation": "passed",
+        "webReady": "passed",
+        "web": "passed",
+        "uninstall": "passed"
+      },
+      "runtimeVersion": "0.2.1-rc.5",
+      "browser": "141.0.7390.37",
+      "observed": {
+        "balanceAboveComposer": true,
+        "balanceRequestCredentialSource": "file"
+      },
+      "outcome": "passed"
+    },
+    {
+      "expectation": "refuse",
+      "version": "0.2.0-rc.1",
+      "integrity": "sha512-F6hKNVoGgBDIzSiyRaIlobq4UD6cwxUjh+nwXqcDmufDh87TE1izsYzs8L5cZNpF2JmPnFM1mXRNnRJ0cs43ng==",
+      "upstreamCommit": "4878cdabd87d4041bdaff61d04c966883b9fd07a",
+      "carrier": "npm-dsh-web",
+      "stages": {
+        "setup": "passed",
+        "admission": "refused-as-expected"
+      },
+      "runtimeVersion": "0.2.0-rc.1",
+      "refusal": "dsh: installation rejected: Plugin dsh-usage-state@0.4.15 is incompatible with dsh 0.2.0-rc.1: peerDependencies {\"@deepseek-ai/dsh-settings\":\"^0.2.0-rc.2 || ^0.2.1-rc.1\"}. Running it may cause crashes or data loss. Update the plugin or install a plugin version compatible with this dsh runtime. To accept this risk explicitly, grant the exact-version exemption for dsh-usage-state@0.4.15 on dsh 0.2.0-rc.1 with `dsh plugin allow-version` or the plugin manager, then retry the installation or restart dsh. Exact-version exemption: not active.",
+      "outcome": "passed"
+    }
+  ],
+  "outcome": "passed",
+  "finishedAt": "2026-11-10T09:41:11.841Z",
+  "provenance": {
+    "producer": {
+      "source": "git-archive",
+      "commit": "964317558a1723b68cb9c2ee692c5cdd4c80534e",
+      "files": {
+        "scripts/run-container.sh": "b26d16aac46e9a1375d5a733dba8ae2f9c1ff6a8d7aa614f40a891dec7a8f001",
+        "scripts/stage-container-inputs.mjs": "bb55c29ab0f85ce649922c0e74c2b7811f44470bdadf5956224b4d4acd5380c2",
+        "scripts/collect-container-report.mjs": "9ab78515b34f4d2a643274f6742e4fb7e923c57a6e320d2f84afb3f5cbbdbea3",
+        "scripts/verify-host.mjs": "1018550ea695af2f47e5d2609a1cf86c257b702a896d13c94e913487b044bbcb",
+        "environments/Web.Dockerfile": "041b8e64b3389d6e75455e925c52a79e04ab192e31b187149cf0a7637a4080ab"
+      }
+    },
+    "inputs": {
+      "mode": "all",
+      "sourceCommit": "37dea9a923c586b791790ae993cf05f76881b09c",
+      "targetsSha256": "82e8fe471e18631a011c8237556a3e47666ca6cafe964216dd8709cd58750cdf",
+      "tarballSha256": "27ee488e14c4f3fa733570cca38eeebe02e5b4d055cd9c87cbcddf8939becd66",
+      "probeSha256": "d1f512beb0268770e050e1da9e2cd105d5fba55e080182f5b1dcb57d1ef6ecfe"
+    }
+  }
+}

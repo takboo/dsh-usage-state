@@ -1,0 +1,11 @@
+{
+  "sourceCommit": "ad40b109e5fed623beb0fd2de993cd44db69736c",
+  "sha256": "27ee488e14c4f3fa733570cca38eeebe02e5b4d055cd9c87cbcddf8939becd66",
+  "host": "0.2.0-rc.1",
+  "integrity": "sha512-F6hKNVoGgBDIzSiyRaIlobq4UD6cwxUjh+nwXqcDmufDh87TE1izsYzs8L5cZNpF2JmPnFM1mXRNnRJ0cs43ng==",
+  "exitCode": 1,
+  "diagnostic": "dsh: installation rejected: Plugin dsh-usage-state@0.4.15 is incompatible with dsh 0.2.0-rc.1: peerDependencies {\"@deepseek-ai/dsh-settings\":\"^0.2.0-rc.2 || ^0.2.1-rc.1\"}. Running it may cause crashes or data loss. Update the plugin or install a plugin version compatible with this dsh runtime. To accept this risk explicitly, grant the exact-version exemption for dsh-usage-state@0.4.15 on dsh 0.2.0-rc.1 with `dsh plugin allow-version` or the plugin manager, then retry the installation or restart dsh. Exact-version exemption: not active.",
+  "profileManifestUnchanged": true,
+  "profileLockUnchanged": true,
+  "bundleAbsentFromComposedProfile": true
+}
