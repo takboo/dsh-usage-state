@@ -30,7 +30,22 @@ node scripts/verify-engineering.mjs cli "$base_checkout" "$tarball" "$candidate_
 
 复用已有候选时保留同目录的 `verification.json` 与 `.sha256` 文件，直接运行最后一条并选用新的报告路径。已有 `npm run verify` 也会生成一份候选，直接使用其输出的 tarball 路径。入口将 `verification.json` 中的干净源码提交与当前 HEAD 核对，使用现有包门禁复验字节，校验报告记录的实际基座提交、执行文件摘要和容器输入摘要。旧发布与兼容性巡检继续走各自的 [发布流程](../release.md) 和 [监测流程](../compatibility-monitor.md)。
 
-[精确目标](../../scripts/compatibility/engineering-targets.json) 采用本项目已记录的 npm integrity。`0.2.1-rc.5` 属于包声明范围并有隔离 Web 安装证据。`0.2.2-rc.1` 是本项目的契约观察候选，超出当前候选 `engines.dsh`，用于检查官方 CLI 的正常拒绝及 profile 恢复。支持边界以实际候选为准。[rc.5 项目证据](0.2.1-rc.5.md) · [rc.1 项目证据](0.2.2-rc.1.md)
+[精确目标](../../scripts/compatibility/engineering-targets.json) 的允许对照为 `0.2.1-rc.5`，复用项目已有的隔离 Web 安装证据和 npm integrity。拒绝对照为紧邻项目既有下界 `0.2.0-rc.2` 的 `0.2.0-rc.1`，其精确 integrity 来自 npm registry，源码提交由官方 tag 固定。`0.2.2-rc.1` 启用了 `includePrerelease`，落在当前候选的 caret 范围内。[rc.5 项目证据](0.2.1-rc.5.md) · [项目历史下界](../archive/platform-compatibility-2026-10-17.md#dsh-021-compatibility) · [0.2.0-rc.1 官方 tag](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.0-rc.1) · [0.2.2-rc.1 兼容规则](https://github.com/deepseek-ai/deepseek-harness/blob/66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db/packages/boot/app-boot/src/plugin-compatibility.ts#L45-L64)
+
+### 旧宿主拒绝复核
+
+`0.2.0-rc.1` 的官方 CLI 通过 `peerDependencies` 报告拒绝，当前基座要求诊断包含 `engines.dsh`，因此共享入口会保留原始报告和非零退出。用刚生成的可信报告取同一个固定 Linux 镜像，在独立容器中核对候选字节、官方 CLI 非零退出、拒绝原因、profile manifest 与 lockfile 原样，以及拒绝后配置合成无残留。[旧宿主兼容规则](https://github.com/deepseek-ai/deepseek-harness/blob/4878cdabd87d4041bdaff61d04c966883b9fd07a/packages/boot/app-boot/src/plugin-compatibility.ts)
+
+```sh
+cli_report="$candidate_dir/engineering-cli.json"
+image=$(node -p 'require(process.argv[1]).image' "$cli_report")
+docker run --init --rm --cap-drop=ALL --security-opt=no-new-privileges \
+  --user "$(id -u):$(id -g)" \
+  --mount "type=bind,src=$cli_report,dst=/inputs/cli.json,readonly" \
+  --mount "type=bind,src=$tarball,dst=/inputs/plugin.tgz,readonly" \
+  --mount "type=bind,src=$PWD/scripts/compatibility/engineering-peer-refusal.mjs,dst=/inputs/probe.mjs,readonly" \
+  "$image" node /inputs/probe.mjs /inputs/cli.json /inputs/plugin.tgz
+```
 
 ## Web 缺口
 

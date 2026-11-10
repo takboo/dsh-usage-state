@@ -5,8 +5,8 @@
     "upstreamCommit": "b830ec950faba0a46dda564be3e2d854afed94f1"
   },
   "refuse": {
-    "version": "0.2.2-rc.1",
-    "integrity": "sha512-ijR9UEVYkG15Q/Q79JzvzLBzQOQfc63VLr9n6flpwHPhr5IKn2UxthnSoto/P9l7qGd7pPvI1Ra6TW7LH3oKpg==",
-    "upstreamCommit": "66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db"
+    "version": "0.2.0-rc.1",
+    "integrity": "sha512-F6hKNVoGgBDIzSiyRaIlobq4UD6cwxUjh+nwXqcDmufDh87TE1izsYzs8L5cZNpF2JmPnFM1mXRNnRJ0cs43ng==",
+    "upstreamCommit": "4878cdabd87d4041bdaff61d04c966883b9fd07a"
   }
 }
