@@ -2,9 +2,25 @@
 
 [项目锁文件](../../dsh-engineering.lock.json) 固定基座仓库、分发 tag 和完整提交。项目入口共用这个锁。版本检查先核对显式 checkout 的 `origin` 和完整 tag ref，再读取文档或导出工具。基座工作树停留在维护者自己的分支即可。
 
+## 2026-11-10 验收记录
+
+- 从干净项目提交 `ad40b109e5fed623beb0fd2de993cd44db69736c` 构建并打包 `dsh-usage-state@0.4.15`。SHA-256 为 `27ee488e14c4f3fa733570cca38eeebe02e5b4d055cd9c87cbcddf8939becd66`。初选对照改正后，重新核对了干净提交与候选，包字节与初测逐字节一致。[打包记录](engineering-pilot/candidate.json)
+- 用 `v0.1.0-rc.1` 的完整 tag ref 解引用到 `c816092f91447bd3856a23715c708c42ea18a2b1`。六份文档通过项目 `docs` 入口逐字节比对同一提交的 `git show` 输出。项目 `cli` 入口在执行前把 `git archive` 中的四个执行文件逐一与同提交 blob 比对，收集后再核对 `provenance.producer.commit`、四个摘要、精确目标文件和同包摘要。[文档 SHA-256](engineering-pilot/contracts.sha256) · [基座原始 CLI 报告及执行文件 SHA-256](engineering-pilot/cli.json)
+- 在独立临时 checkout 把完整 tag ref 指向另一个提交，项目 CLI 对同一个候选退出 `1`。Git trace 未进入 `git archive`，没有生成容器报告。回归另覆盖 SSH origin、错误 origin、附注 tag、同名分支和变化后的基座工作树。
+- 项目用 Node 24.22.2 与 npm 11.19.1 完成 `npm run verify`，共 494 项测试、三个提交内 bundle 一致性和 13 文件的包白名单均通过。`smoke:runtime` 的预构建 fixture 和同一份 tarball 使用 schemastery 3.18.3 的隔离安装均通过。执行时显式把项目工具链放到 PATH 首位并使用临时 npm cache。
+
+两个容器使用基座报告记录的同一镜像摘要，在 Linux arm64、Node 24.22.2、pnpm 11.28.5 下运行同一份候选包。宿主包在安装前核对 SHA-512，CLI 回读精确版本。
+
+| 路径 | 精确宿主 | 观察与结果 |
+| --- | --- | --- |
+| 锁定基座 CLI | `0.2.1-rc.5` | 官方安装通过，`--dump-config` 包含插件，卸载后依赖和合成配置均无残留。 |
+| 锁定基座 CLI | `0.2.0-rc.1` | 官方 CLI 以旧 peer 诊断拒绝。基座要求 `engines.dsh` 诊断，报告原样保留 `admission: failed`，共享 CLI 退出 `1`。 |
+| 项目同镜像补验 | `0.2.0-rc.1` | 官方 CLI 退出 `1`，明确指出 `@deepseek-ai/dsh-settings` 不兼容。profile manifest 与 lockfile 逐字节相同，配置合成无候选 bundle。[补验报告](engineering-pilot/peer-refusal.json) |
+| 共享 Web | `0.2.1-rc.5` | 待基座提供受控的宿主启动前 fixture 接口，见下文。 |
+
 ## 复跑
 
-在拥有基座 Git 只读权限的环境中准备现有 checkout。在候选源码提交的干净工作树用项目固定 Node/npm 运行下列命令。需要 Docker Linux 引擎和容器内 npm registry 访问。若复跑历史报告，先在独立检出定位报告里的项目 `sourceCommit`。
+在拥有基座 Git 只读权限的环境中准备现有 checkout。在候选源码提交的干净工作树用项目固定 Node/npm 运行下列命令。缺少项目依赖时先运行 `npm ci`。需要 Docker Linux 引擎和容器内 npm registry 访问。若复跑历史报告，先在独立检出定位报告里的项目 `sourceCommit`。
 
 ```sh
 base_checkout=/path/to/dsh-plugin-engineering
@@ -55,4 +71,4 @@ docker run --init --rm --cap-drop=ALL --security-opt=no-new-privileges \
 
 ## 升级和回滚待验收
 
-第二个分发版本就绪后，在项目试点分支核对旧、新两个 tag 与完整 SHA，读取各自的固定契约。更新锁文件，按新契约同步必要的入口改动，从升级提交复跑上面的 `docs` 与 `cli`，记录新基座摘要和精确宿主阶段。再在独立检出定位旧项目提交，使用其旧锁文件和保留的旧候选包复跑同一入口，核对旧生产者摘要与阶段。保留两轮报告各自的版本和产物身份。
+第二个分发版本就绪后，在项目试点分支核对旧、新两个 tag 与完整 SHA，读取各自的固定契约。更新锁文件，按新契约同步必要的入口改动，从升级提交复跑上面的 `docs` 与 `cli`，记录新基座摘要和精确宿主阶段。再在独立检出定位旧项目提交，使用其旧锁文件和保留的旧候选包复跑同一入口，核对旧生产者摘要、原始阶段与项目补验。保留两轮报告各自的版本和产物身份。

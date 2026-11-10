@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "mode": "cli",
+  "image": "docker.io/library/node:24.22.2-bookworm-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9",
+  "nodeImage": "docker.io/library/node:24.22.2-bookworm-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9",
+  "startedAt": "2026-11-10T09:09:58.130Z",
+  "platform": {
+    "os": "linux",
+    "arch": "arm64",
+    "release": "7.0.14-linuxkit",
+    "node": "v24.22.2"
+  },
+  "plugin": {
+    "sourceCommit": "ad40b109e5fed623beb0fd2de993cd44db69736c",
+    "sha256": "27ee488e14c4f3fa733570cca38eeebe02e5b4d055cd9c87cbcddf8939becd66",
+    "name": "dsh-usage-state",
+    "version": "0.4.15",
+    "enginesDsh": "^0.2.0-rc.2 || ^0.2.1-rc.1"
+  },
+  "pnpm": "11.28.5",
+  "checks": [
+    {
+      "expectation": "admit",
+      "version": "0.2.1-rc.5",
+      "integrity": "sha512-WkyJZv4zl9sCAxSzRctGm58m0rilGqwR6pniBiLOz5CPDfHfDuAUicg0AAazXI7oj/Cph6/cjNTncA/rpLTXpw==",
+      "upstreamCommit": "b830ec950faba0a46dda564be3e2d854afed94f1",
+      "carrier": "npm-dsh-web",
+      "stages": {
+        "setup": "passed",
+        "admission": "passed",
+        "uninstall": "passed"
+      },
+      "runtimeVersion": "0.2.1-rc.5",
+      "outcome": "passed"
+    },
+    {
+      "expectation": "refuse",
+      "version": "0.2.0-rc.1",
+      "integrity": "sha512-F6hKNVoGgBDIzSiyRaIlobq4UD6cwxUjh+nwXqcDmufDh87TE1izsYzs8L5cZNpF2JmPnFM1mXRNnRJ0cs43ng==",
+      "upstreamCommit": "4878cdabd87d4041bdaff61d04c966883b9fd07a",
+      "carrier": "npm-dsh-web",
+      "stages": {
+        "setup": "passed",
+        "admission": "failed"
+      },
+      "runtimeVersion": "0.2.0-rc.1",
+      "outcome": "failed",
+      "detail": "Expected a DSH compatibility refusal. Actual output:\nProgress: resolved 0, reused 1, downloaded 0, added 0\n[WARN] Issues with peer dependencies found. Run \"pnpm peers check\" to list them.\nPackages: +2\n++\nPackages are hard linked from the content-addressable store to the virtual store.\n  Content-addressable store is at: <isolated>/refuse/home/.local/share/pnpm/store/v11\n  Virtual store is at:             node_modules/.pnpm\nProgress: resolved 2, reused 1, downloaded 1, added 2, done\n\ndependencies:\n+ dsh-usage-state 0.4.15\n\nDone in 1.2s using pnpm v11.28.5\n\n\ndsh: installation rejected: Plugin dsh-usage-state@0.4.15 is incompatible with dsh 0.2.0-rc.1: peerDependencies {\"@deepseek-ai/dsh-settings\":\"^0.2.0-rc.2 || ^0.2.1-rc.1\"}. Running it may cause crashes or data loss. Update the plugin or install a plugin version compatible with this dsh runtime. To accept this risk explicitly, grant the exact-version exemption for dsh-usage-state@0.4.15 on dsh 0.2.0-rc.1 with `dsh plugin allow-version` or the plugin manager, then retry the installation or restart dsh. Exact-version exemption: not active.\nPlugin dsh-usage-state@0.4.15 is incompatible with dsh 0.2.0-rc.1: peerDependencies {\"@deepseek-ai/dsh-settings\":\"^0.2.0-rc.2 || ^0.2.1-rc.1\"}. Running it may cause crashes or data loss. Update the plugin or install a plugin version compatible with this dsh runtime. To accept this risk explicitly, grant the exact-version exemption for dsh-usage-state@0.4.15 on dsh 0.2.0-rc.1 with `dsh plugin allow-version` or the plugin manager, then retry the installation or restart dsh. Exact-version exemption: not active.\ndsh: restored package.json, pnpm-lock.yaml, and node_modules.\ndsh: to accept the risk, run: dsh plugin --profile probe allow-version dsh-usage-state@0.4.15 --dsh-version 0.2.0-rc.1 --accept-risk\ndsh: to accept the risk, run: dsh plugin --profile probe allow-version dsh-usage-state@0.4.15 --dsh-version 0.2.0-rc.1 --accept-risk\ndsh: plugin command failed; diagnostics: <isolated>/refuse/dsh/profiles/probe/.plugin-manager/logs/operation-nZStAi/pnpm.log\n"
+    }
+  ],
+  "outcome": "incomplete-or-failed",
+  "finishedAt": "2026-11-10T09:11:13.755Z",
+  "provenance": {
+    "producer": {
+      "source": "git-archive",
+      "commit": "c816092f91447bd3856a23715c708c42ea18a2b1",
+      "files": {
+        "scripts/run-container.sh": "b26d16aac46e9a1375d5a733dba8ae2f9c1ff6a8d7aa614f40a891dec7a8f001",
+        "scripts/stage-container-inputs.mjs": "bb55c29ab0f85ce649922c0e74c2b7811f44470bdadf5956224b4d4acd5380c2",
+        "scripts/collect-container-report.mjs": "9ab78515b34f4d2a643274f6742e4fb7e923c57a6e320d2f84afb3f5cbbdbea3",
+        "scripts/verify-host.mjs": "3069fdac2304b152ab8f2fce237b02d74eecbbb8a752dda540a1db0e949be6ec"
+      }
+    },
+    "inputs": {
+      "mode": "cli",
+      "sourceCommit": "ad40b109e5fed623beb0fd2de993cd44db69736c",
+      "targetsSha256": "82e8fe471e18631a011c8237556a3e47666ca6cafe964216dd8709cd58750cdf",
+      "tarballSha256": "27ee488e14c4f3fa733570cca38eeebe02e5b4d055cd9c87cbcddf8939becd66"
+    }
+  }
+}
