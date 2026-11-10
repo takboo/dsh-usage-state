@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { assertFixtureBalanceAboveComposer } from './engineering-web-probe.mjs'
+import { assertFixtureBalanceAboveComposer, selectFixturePro } from './engineering-web-probe.mjs'
 
 /** Exercise the installed client through real browser/Host RPC, not test doubles. */
 export async function browserAcceptance(page, url, { timeoutMs = 60000, noticeTimeoutMs = 15000, expectDisplayMetadata = false } = {}) {
@@ -41,9 +41,7 @@ export async function browserAcceptance(page, url, { timeoutMs = 60000, noticeTi
 
   // Selecting a model in the draft causes DSH to create a local session. Its
   // workspace is redirected to the temporary directory by the host overlay.
-  await page.getByText('Compatibility Flash', { exact: true }).first().click()
-  await page.getByText('Model', { exact: true }).first().click()
-  await page.getByText('Compatibility Pro', { exact: true }).first().click()
+  await selectFixturePro(page)
   await waitForEvidence(evidence, ['selection'], timeoutMs)
   await page.locator('[contenteditable="true"]').first().click()
   await page.getByText('Compatibility Pro', { exact: true }).first().waitFor({ state: 'visible', timeout: timeoutMs })

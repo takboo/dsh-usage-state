@@ -53,6 +53,12 @@ export async function assertFixtureBalanceAboveComposer(page, timeout) {
   assert.ok(lineBox && editorBox && lineBox.y < editorBox.y, 'balance line must appear above the composer')
 }
 
+export async function selectFixturePro(page) {
+  await page.getByText('Compatibility Flash', { exact: true }).first().click()
+  await page.getByText('Model', { exact: true }).first().click()
+  await page.getByText('Compatibility Pro', { exact: true }).first().click()
+}
+
 export async function prepareClient(page, context) {
   assert.ok(context?.fixtureDir, 'The locked base must prepare the Web host fixture')
   const continueButton = page.getByRole('button', { name: 'Continue', exact: true })
@@ -67,6 +73,9 @@ export async function prepareClient(page, context) {
 }
 
 export async function verifyClient(page, { fixtureDir }) {
+  await selectFixturePro(page)
+  await page.locator('[contenteditable="true"]').first().click()
+  await page.getByText('Compatibility Pro', { exact: true }).first().waitFor()
   await assertFixtureBalanceAboveComposer(page, 60000)
   const trace = readFileSync(join(fixtureDir, traceFile), 'utf8').trim().split('\n').map(line => JSON.parse(line))
   assert.ok(trace.some(entry => entry.endpoint === 'balance' && entry.source === 'file'),
