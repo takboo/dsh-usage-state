@@ -2,6 +2,14 @@
 
 [项目锁文件](../../dsh-engineering.lock.json) 固定基座仓库、分发 tag 和完整提交。项目入口共用这个锁。版本检查先核对显式 checkout 的 `origin` 和完整 tag ref，再读取文档或导出工具。基座工作树停留在维护者自己的分支即可。
 
+## rc.3 升级
+
+上游附注 tag `refs/tags/v0.1.0-rc.3` 解引用为 `5178a049eddcf03778125be1db3ae523621f2fc3`，与本机 Git 对象和项目锁一致。[基座发布说明](https://github.com/takboo/dsh-plugin-engineering/releases/tag/v0.1.0-rc.3)
+
+锁文件继续使用 schema 1。rc.3 增加共享 Tart 实验室的路径解析和只读诊断，路径按显式参数、环境变量、本机配置选取。
+
+容器入口已显式传入基座 checkout，仍由项目验证 origin、tag 和 SHA，再从固定提交导出工具。与 rc.2 相比，容器脚本、Web Dockerfile、fixture 接口和报告字段保持一致。`provenance.producer` 继续核对归档的提交和执行文件摘要，`provenance.inputs` 继续核对候选、精确目标和 Web 探针摘要。
+
 ## rc.2 升级与 Web 扩展
 
 - Web 探针适配为 `bf2d102`，锁文件升级单独提交为 `febcdfb`。锁从 `v0.1.0-rc.1` 的 `c816092f91447bd3856a23715c708c42ea18a2b1` 切到 `v0.1.0-rc.2` 的 `964317558a1723b68cb9c2ee692c5cdd4c80534e`。最终探针复用项目原浏览器回归的模型切换，解决首轮直接等待余额行超时。
@@ -32,16 +40,19 @@
 | 项目同镜像补验 | `0.2.0-rc.1` | 官方 CLI 退出 `1`，明确指出 `@deepseek-ai/dsh-settings` 不兼容。profile manifest 与 lockfile 逐字节相同，配置合成无候选 bundle。[补验报告](engineering-pilot/peer-refusal.json) |
 | 共享 Web | `0.2.1-rc.5` | 待基座提供受控的宿主启动前 fixture 接口，见下文。 |
 
-## 复跑 rc.2
+## 复跑当前锁定版本
 
 在拥有基座 Git 只读权限的环境中准备现有 checkout。在候选源码提交的干净工作树用项目固定 Node/npm 运行下列命令。缺少项目依赖时先运行 `npm ci`。需要 Docker Linux 引擎和容器内 npm registry 访问。若复跑历史报告，先在独立检出定位报告里的项目 `sourceCommit`。
 
 ```sh
 base_checkout=/path/to/dsh-plugin-engineering
 base_tag=$(node -p 'require("./dsh-engineering.lock.json").tag')
-# 初次缺少 tag 时，从已核对的 origin 获取，不切换分支。
+# 核对 origin 与锁文件指向同一 GitHub 仓库。
 git -C "$base_checkout" remote get-url origin
-git -C "$base_checkout" fetch --no-tags --no-write-fetch-head origin "refs/tags/$base_tag:refs/tags/$base_tag"
+# 初次缺少 tag 时，从已核对的 origin 获取。
+if ! git -C "$base_checkout" show-ref --verify --quiet "refs/tags/$base_tag"; then
+  git -C "$base_checkout" fetch --no-tags --no-write-fetch-head origin "refs/tags/$base_tag:refs/tags/$base_tag"
+fi
 node scripts/verify-engineering.mjs docs "$base_checkout" .agents/skills/dsh-plugin-onboarding/SKILL.md
 node scripts/verify-engineering.mjs docs "$base_checkout" docs/base-versions.md
 node scripts/verify-engineering.mjs docs "$base_checkout" docs/engineering-contract.md
@@ -49,16 +60,16 @@ node scripts/verify-engineering.mjs docs "$base_checkout" docs/plugin-onboarding
 node scripts/verify-engineering.mjs docs "$base_checkout" docs/test-environments.md
 node scripts/verify-engineering.mjs docs "$base_checkout" docs/distribution.md
 
-npm run build
-npm run verify:artifacts
-candidate_dir=$(mktemp -d /tmp/dsh-usage-state-engineering-candidate.XXXXXX)
-version=$(node -p 'require("./package.json").version')
-npm run verify:package -- --out-dir "$candidate_dir"
-tarball="$candidate_dir/dsh-usage-state-$version.tgz"
+npm run verify
+npm run smoke:runtime
+# 使用 npm run verify 输出的 tarball 路径。
+tarball=/path/from/verify/dsh-usage-state-VERSION.tgz
+candidate_dir=$(dirname "$tarball")
+npm run smoke:runtime -- --tarball "$tarball" --schema-version 3.18.3
 node scripts/verify-engineering.mjs all "$base_checkout" "$tarball" "$candidate_dir/engineering-all.json"
 ```
 
-复用已有候选时保留同目录的 `verification.json` 与 `.sha256` 文件，直接运行最后一条并选用新的报告路径。已有 `npm run verify` 也会生成一份候选，直接使用其输出的 tarball 路径。入口将 `verification.json` 中的干净源码提交与当前 HEAD 核对，使用现有包门禁复验字节，校验报告记录的实际基座提交、执行文件摘要和容器输入摘要。只复跑 CLI 时将 `all` 换成 `cli`。旧发布与兼容性巡检继续走各自的 [发布流程](../release.md) 和 [监测流程](../compatibility-monitor.md)。
+复用已有候选时保留同目录的 `verification.json` 与 `.sha256` 文件，直接运行最后一条并选用新的报告路径。入口将 `verification.json` 中的干净源码提交与当前 HEAD 核对，使用现有包门禁复验字节，校验报告记录的实际基座提交、执行文件摘要和容器输入摘要。只复跑 CLI 时将 `all` 换成 `cli`。旧发布与兼容性巡检继续走各自的 [发布流程](../release.md) 和 [监测流程](../compatibility-monitor.md)。
 
 [精确目标](../../scripts/compatibility/engineering-targets.json) 的允许对照为 `0.2.1-rc.5`，复用项目已有的隔离 Web 安装证据和 npm integrity。拒绝对照为紧邻项目既有下界 `0.2.0-rc.2` 的 `0.2.0-rc.1`，其精确 integrity 来自 npm registry，源码提交由官方 tag 固定。`0.2.2-rc.1` 启用了 `includePrerelease`，落在当前候选的 caret 范围内。[rc.5 项目证据](0.2.1-rc.5.md) · [项目历史下界](../archive/platform-compatibility-2026-10-17.md#dsh-021-compatibility) · [0.2.0-rc.1 官方 tag](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.0-rc.1) · [0.2.2-rc.1 兼容规则](https://github.com/deepseek-ai/deepseek-harness/blob/66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db/packages/boot/app-boot/src/plugin-compatibility.ts#L45-L64)
 
@@ -84,4 +95,4 @@ docker run --init --rm --cap-drop=ALL --security-opt=no-new-privileges \
   "$image" node /inputs/probe.mjs /inputs/cli.json /inputs/plugin.tgz
 ```
 
-共享 Web 证据限于上述 Chromium 场景和合成数据。独立检出复跑验证了历史锁可以继续解析和执行，当前分支仍锁定 rc.2。
+共享 Web 证据限于上述 Chromium 场景和合成数据。独立检出复跑验证了历史锁可以继续解析和执行，当时的项目分支锁定 rc.2。
