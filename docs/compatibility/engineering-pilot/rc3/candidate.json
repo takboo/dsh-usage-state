@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "name": "dsh-usage-state",
+  "version": "0.4.15",
+  "filename": "dsh-usage-state-0.4.15.tgz",
+  "sha256": "570c69c4a957139fbd0976c55aa2a76de9bc2a1b107b2f9bf407e97d5aa15edf",
+  "sourceCommit": "bec9c3c1935d5a96bdb205b83b1ab5962f898af6",
+  "workingTreeDirty": false
+}

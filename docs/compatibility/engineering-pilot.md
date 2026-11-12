@@ -10,6 +10,22 @@
 
 容器入口已显式传入基座 checkout，仍由项目验证 origin、tag 和 SHA，再从固定提交导出工具。与 rc.2 相比，容器脚本、Web Dockerfile、fixture 接口和报告字段保持一致。`provenance.producer` 继续核对归档的提交和执行文件摘要，`provenance.inputs` 继续核对候选、精确目标和 Web 探针摘要。
 
+### 2026-11-12 验收
+
+从干净项目提交 `bec9c3c1935d5a96bdb205b83b1ab5962f898af6` 构建一次 `dsh-usage-state@0.4.15` 候选包。SHA-256 为 `570c69c4a957139fbd0976c55aa2a76de9bc2a1b107b2f9bf407e97d5aa15edf`。与升级前 `main` 的对应 Git 文件逐一比较，包内唯一字节差异是 `CHANGELOG.md`。[候选记录](engineering-pilot/rc3/candidate.json)
+
+项目 `docs` 入口提取的六份契约与 rc.3 Git blob 逐字节一致。Node 24.22.2 / npm 11.19.1 的 `npm run verify` 通过 495 项测试、三个预构建入口一致性和 13 文件包检查。预构建 fixture 与同一 tarball 的隔离安装冒烟均通过，后者使用 schemastery 3.18.3。[契约摘要](engineering-pilot/rc3/contracts.sha256)
+
+项目 `all` 入口在 Linux arm64 容器用同一候选完成以下检查。实际运行 Node 24.22.2、pnpm 11.28.5、Playwright 1.56.1 和 Chromium 141.0.7390.37。报告的 `provenance.producer.commit` 与新锁一致，五个执行文件摘要与 rc.3 Git blob 一致，输入摘要与候选、目标及探针一致。[共享 CLI/Web 原始报告](engineering-pilot/rc3/all.json)
+
+| 路径 | 实际 DSH | 结果 |
+| --- | --- | --- |
+| CLI 安装 | `0.2.1-rc.5` | 官方 CLI 安装、配置合成、卸载及无残留检查通过。 |
+| CLI 拒绝 | `0.2.0-rc.1` | `refused-as-expected`。CLI 正常非零退出，诊断指向 `@deepseek-ai/dsh-settings` peer，profile manifest 与 lockfile 逐字节一致，合成配置无候选 bundle。 |
+| Web | `0.2.1-rc.5` | fixture、浏览器启动、宿主启动、导航、首启和插件断言均通过。切换到 `Compatibility Pro` 后，Chromium 确认输入框上方显示 `¥42.25`，脱敏 trace 确认请求使用假文件凭据。 |
+
+[复跑命令](#复跑当前锁定版本)适用于当前锁。真实账户、凭据落盘和扩展视觉场景仍按[待办](../backlog.md)验收。Tart、原生 Desktop、完整宿主矩阵和分发核验按各自流程另行验证。[发布与验收](../release.md)
+
 ## rc.2 升级与 Web 扩展
 
 - Web 探针适配为 `bf2d102`，锁文件升级单独提交为 `febcdfb`。锁从 `v0.1.0-rc.1` 的 `c816092f91447bd3856a23715c708c42ea18a2b1` 切到 `v0.1.0-rc.2` 的 `964317558a1723b68cb9c2ee692c5cdd4c80534e`。最终探针复用项目原浏览器回归的模型切换，解决首轮直接等待余额行超时。
