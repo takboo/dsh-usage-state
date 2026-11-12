@@ -6,9 +6,12 @@
 
 ## [Unreleased]
 
+## [0.4.16] - 2026-11-12
+
 ### Engineering
 
 - 锁定共享插件工程基座 v0.1.0-rc.3，提供隔离 CLI 安装与拒绝、Web 插件行为的同包复验入口。
+- 将 DSH 0.2.2-rc.2 纳入精确 RPC 回归矩阵，复验隔离 Web 的模型切换、余额展示和插件设置。
 
 ## [0.4.15] - 2026-11-06
 
@@ -233,7 +236,8 @@
 
 0.4.5起建立版本tag/Release；更早发布没有保存这些引用。0.3.0至0.4.4的比较端点来自各npm版本的gitHead；0.2系列引用对应实现提交，不能替代当时没有保存的正式发布产物。早期日期沿用历史版本记录。今后版本应按发布流程建立稳定引用。
 
-[Unreleased]: https://github.com/takboo/dsh-usage-state/compare/v0.4.15...HEAD
+[Unreleased]: https://github.com/takboo/dsh-usage-state/compare/v0.4.16...HEAD
+[0.4.16]: https://github.com/takboo/dsh-usage-state/compare/v0.4.15...v0.4.16
 [0.4.15]: https://github.com/takboo/dsh-usage-state/compare/v0.4.14...v0.4.15
 [0.4.14]: https://github.com/takboo/dsh-usage-state/compare/v0.4.13...v0.4.14
 [0.4.13]: https://github.com/takboo/dsh-usage-state/compare/v0.4.12...v0.4.13
