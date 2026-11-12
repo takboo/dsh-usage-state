@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/dsh-usage-state)](https://www.npmjs.com/package/dsh-usage-state)
 
-> **0.4.15** adds OpenAI organization monthly spend (Admin Key), plugin-row configuration and local Save/Reset drafts. It fixes legacy configuration saves, endpoint editing, credential ownership and lifecycle cancellation while keeping the existing host support declarations. See the [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.15) for the tarball and checksum and the [Changelog](CHANGELOG.md#0415---2026-11-06) for details.
+> **0.4.16** adds DSH 0.2.2-rc.2 to the exact-version RPC regression matrix and verifies plugin installation, balance display and settings in an isolated Web profile on that host. See the [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.16) for the tarball and checksum and the [Changelog](CHANGELOG.md#0416---2026-11-12) for details.
 
 Show the current model provider's **account balance** or **coding-plan quota** above the composer input in [DSH (DeepSeek Harness)](https://github.com/deepseek-ai/deepseek-harness). The line matches the input card's width and preserves the native statistics and context meter.
 

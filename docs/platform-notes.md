@@ -47,6 +47,6 @@ patch及Host代码在启动时读取。client-hmr只在活跃传输与实际产�
 
 ## 验证记录
 
-当前精确契约候选由 [CI清单](../.github/dsh-compatibility.json) 维护；逐版本自动检查的固定提交、integrity和阶段结果保存在 `docs/compatibility/`，[0.2.2-alpha.3](compatibility/0.2.2-alpha.3.md) 与 [0.2.2-rc.1](compatibility/0.2.2-rc.1.md) 证据不扩大支持声明。
+当前精确契约候选由 [CI清单](../.github/dsh-compatibility.json) 维护；逐版本自动检查的固定提交、integrity和阶段结果保存在 `docs/compatibility/`，最新候选的 CLI、RPC 和 Web 验证见 [0.2.2-rc.2](compatibility/0.2.2-rc.2.md)。
 
 DSH 0.2.1-rc.3 的独立安装、动态模型目录、文件凭据及浏览器过程保存在 [0.4.10发布记录](releases/0.4.10.md#宿主浏览器验收与边界)；rc.5 的隔离Web与双语metadata断言、截图保存在 [0.4.11发布记录](releases/0.4.11.md#候选验证)。各版本分发及同包运行验证从 [发布流程](release.md) 进入，未完成的真实验收统一见 [Backlog](backlog.md)。

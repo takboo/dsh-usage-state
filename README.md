@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/dsh-usage-state)](https://www.npmjs.com/package/dsh-usage-state)
 
-> **0.4.15** 新增 OpenAI 组织月消费（Admin Key）、插件内设置与草稿保存／重置，并修复旧配置保存、端点编辑、凭据归属及生命周期取消。宿主支持声明保持不变。安装包及校验文件见 [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.15)，详情见 [更新日志](CHANGELOG.md#0415---2026-11-06)。
+> **0.4.16** 在 DSH 0.2.2-rc.2 的隔离 Web 环境复验安装、余额展示与插件设置，并将该宿主加入精确 RPC 回归矩阵。安装包及校验文件见 [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.16)，详情见 [更新日志](CHANGELOG.md#0416---2026-11-12)。
 
 在 [DSH（DeepSeek Harness）](https://github.com/deepseek-ai/deepseek-harness) 输入框上方显示当前模型供应商的**账户余额**或**套餐额度**。状态行与输入卡片同宽，保留原生统计行和上下文计量器。
 
