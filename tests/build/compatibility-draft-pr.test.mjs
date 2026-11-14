@@ -220,6 +220,8 @@ test('writer workflow is isolated, supports backfill and cannot publish or merge
   const writer = workflow.split('  draft-pr:')[1]
   assert.ok(writer)
   assert.match(workflow, /options: \[check, draft-pr\]/)
+  assert.match(workflow, /tag:\n +description: [^\n]+\n +required: false/)
+  assert.match(writer, /if: inputs\.mode == 'draft-pr' && inputs\.tag == ''\n +run: \|\n +echo [^\n]+\n +exit 1/)
   assert.match(writer, /contents: write/)
   assert.match(writer, /pull-requests: write/)
   assert.ok(!writer.includes('npm ci'))

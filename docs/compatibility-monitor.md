@@ -43,7 +43,7 @@ writer 使用 `contents: write`、`pull-requests: write`、`issues: read`、`act
 
 工作流必须位于默认分支，仓库启用 Actions、Issues，允许所用 actions，并允许报告 job 请求 `issues: write`；仓库默认 token 权限为只读可以保留，由 job 显式申请写权限。定时触发使用 UTC 的每小时第 17 分钟，可能延迟；公开仓库长期不活动时可能被 GitHub 禁用。网络需能访问 GitHub API、npm registry、Playwright 浏览器及其系统依赖源。Artifact 策略需允许 14 天。
 
-Actions → **Monitor DSH releases** → Run workflow，输入例如 `0.2.1-rc.4` 或 `dsh-v0.2.1-rc.3`。只接受官方已发布精确版本；不接受 `next`、范围、URL 或命令。发现服务失败会使 discover 失败且不产生“通过”。check 失败或报告缺失时，report 尽可能保存未完成 Issue；若整个 workflow 被取消或报告 API 自身失败，报告 job 可能不能执行，此时 Actions run 的 cancelled/failed 是未完成证据，需要人工重跑，不能视为通过。本地验证或尚未推送的工作区修改不表示线上流程已更新。
+Actions → **Monitor DSH releases** → Run workflow，选择 `mode=check`。将 `tag` 留空会按定时巡检的规则扫描全部候选；输入 `0.2.1-rc.4` 或 `dsh-v0.2.1-rc.3` 可单独复验官方已发布的精确版本。发现服务失败会使 discover 失败且不产生“通过”。check 失败或报告缺失时，report 尽可能保存未完成 Issue；若整个 workflow 被取消或报告 API 自身失败，报告 job 可能不能执行，此时 Actions run 的 cancelled/failed 是未完成证据，需要人工重跑，不能视为通过。本地验证或尚未推送的工作区修改不表示线上流程已更新。
 
 ## 本地复现宿主启动检查
 

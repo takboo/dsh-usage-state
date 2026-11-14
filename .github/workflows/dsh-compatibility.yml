@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Exact npm version or published GitHub tag, e.g. 0.2.1-rc.4
-        required: true
+        description: Exact version or tag (leave empty in check mode to scan all candidates)
+        required: false
         type: string
       mode:
         description: Run checks or backfill a Draft PR from an existing passed report
@@ -130,6 +130,11 @@ jobs:
       pull-requests: write
       actions: read
     steps:
+      - name: Require an exact version for manual Draft PR backfill
+        if: inputs.mode == 'draft-pr' && inputs.tag == ''
+        run: |
+          echo '::error::An exact version or tag is required in draft-pr mode.'
+          exit 1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
