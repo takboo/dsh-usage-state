@@ -6,6 +6,10 @@
 
 ## [Unreleased]
 
+### Engineering
+
+- 修复兼容性巡检的 Draft PR 补查误报。已合并的本仓库机器人候选 PR 即使正文缺少标记，也会按已处理跳过。
+
 ## [0.4.16] - 2026-11-12
 
 ### Engineering

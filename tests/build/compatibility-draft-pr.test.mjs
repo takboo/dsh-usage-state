@@ -109,6 +109,33 @@ test('closed or ready-for-review PRs remain under human control', async () => {
   }
 })
 
+test('backfill accepts a merged bot PR whose body no longer has the marker', async () => {
+  const existing = pr({ state: 'closed', draft: false, merged_at: '2026-11-05T10:00:00Z', body: 'Reviewed evidence' })
+  const m = mock({ prs: [existing] })
+  assert.deepEqual(await maintainDrafts({ token: 'fixture', repo, request: m.request }), [
+    { version, status: 'human-controlled', number: existing.number, url: existing.html_url },
+  ])
+  assert.deepEqual(m.calls.map(x => x.path), [
+    `/repos/${repo}/issues?state=all&per_page=100&page=1`,
+    `/repos/${repo}`,
+    `/repos/${repo}/pulls?state=all&head=${encodeURIComponent(`takboo:codex/dsh-compat-${version}`)}&per_page=100&page=1`,
+  ])
+})
+
+test('a missing marker is still rejected for unmerged PRs and merged PRs without bot ownership', async () => {
+  const merged = { state: 'closed', draft: false, merged_at: '2026-11-05T10:00:00Z', body: null }
+  for (const existing of [
+    pr({ body: null }),
+    pr({ state: 'closed', merged_at: null, body: null }),
+    pr({ ...merged, user: { login: 'someone' } }),
+    pr({ ...merged, head: { ...pr().head, repo: { full_name: 'someone/dsh-usage-state' } } }),
+  ]) {
+    const m = mock({ prs: [existing] })
+    await assert.rejects(upsertDraft({ token: 'fixture', repo, state: state(), request: m.request }), /not managed by this monitor/)
+    assert.ok(!m.calls.some(x => x.method))
+  }
+})
+
 test('foreign PRs, branches and human commits are never overwritten', async () => {
   for (const options of [{ prs: [pr({ user: { login: 'someone' } })], branch: head }, { branch: head }, { prs: [pr()], branch: 'e'.repeat(40) }, { prs: [pr({ head: { ...pr().head, sha: 'e'.repeat(40) } })], branch: 'e'.repeat(40) }]) {
     const m = mock(options)

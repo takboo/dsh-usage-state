@@ -90,7 +90,10 @@ export async function upsertDraft({ token, repo, state, baseBranch = '', activeR
   if (typeof base !== 'string' || !/^[\w./-]+$/.test(base) || base.includes('..')) throw new Error('Review base branch unavailable or invalid')
   const prs = await allPages(`${root}/pulls?state=all&head=${encodeURIComponent(`${repo.split('/')[0]}:${branch}`)}`, call)
   const matching = prs.filter(p => p.head?.ref === branch)
-  if (matching.some(p => p.user?.login !== bot || p.head?.repo?.full_name !== repo || !p.body?.includes(prMarker(version)))) throw new Error('Candidate branch has a PR not managed by this monitor')
+  if (matching.some(p => {
+    const merged = p.state === 'closed' && p.merged_at
+    return p.user?.login !== bot || p.head?.repo?.full_name !== repo || (!merged && !p.body?.includes(prMarker(version)))
+  })) throw new Error('Candidate branch has a PR not managed by this monitor')
   if (matching.length > 1) throw new Error('Multiple managed PRs for one candidate; manual review required')
   const previous = matching[0]
   if (previous && (previous.state === 'closed' || previous.draft !== true || previous.base?.ref !== base)) return { status: 'human-controlled', number: previous.number, url: previous.html_url }
