@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/dsh-usage-state)](https://www.npmjs.com/package/dsh-usage-state)
 
-> **0.4.16** 在 DSH 0.2.2-rc.2 的隔离 Web 环境复验安装、余额展示与插件设置，并将该宿主加入精确 RPC 回归矩阵。安装包及校验文件见 [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.16)，详情见 [更新日志](CHANGELOG.md#0416---2026-11-12)。
+> **0.4.17** 正式支持 DSH `0.2.2-rc.3`。在 macOS Desktop 核对了真实 DeepSeek 账号余额，并验证了插件设置保存、重新打开及恢复。参见 [Desktop 验收](https://github.com/takboo/dsh-usage-state/blob/main/docs/compatibility/0.2.2-rc.3.md#macos-desktop-验收)、[GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.17)。
 
 在 [DSH（DeepSeek Harness）](https://github.com/deepseek-ai/deepseek-harness) 输入框上方显示当前模型供应商的**账户余额**或**套餐额度**。状态行与输入卡片同宽，保留原生统计行和上下文计量器。
 
@@ -24,7 +24,7 @@ DeepSeek · ¥58.13
 
 ## 安装
 
-要求：DSH版本满足 `^0.2.0-rc.2 || ^0.2.1-rc.1`（已验证0.2.0-rc.2及0.2.1-rc.1/rc.2/rc.3/rc.5），运行预构建插件声明Node≥20，安装到正在使用的 `web` profile。
+DSH 版本需满足 `^0.2.0-rc.2 || ^0.2.1-rc.1 || 0.2.2-rc.3`。预构建插件声明 Node ≥20。下方命令用于 Web 的 `web` profile。Desktop 用户可通过插件管理安装到桌面 profile。
 
 从npm安装：
 
@@ -47,7 +47,7 @@ DSH0.1使用历史版本0.3.2；该版本不适配0.2。0.4.0有RPC挂载缺陷�
 
 ## 快速开始
 
-0.4.15 起使用以下插件内设置入口与草稿操作，0.4.14 及更早版本仍使用原独立设置入口。新入口已在 Desktop 0.2.1-rc.5 实机打开，并在同版隔离浏览器完成保存／重置验证；支持声明中的更早宿主仍待补验该入口，历史 RPC 检查不代表新配置页已验收。
+0.4.15 起使用以下插件内设置入口与草稿操作，0.4.14 及更早版本仍使用原独立设置入口。macOS Desktop 0.2.2-rc.3 已验收设置保存与恢复。Desktop 0.2.1-rc.5 实机打开过该入口，同版隔离浏览器完成了保存和重置验证。更早宿主的配置入口验证见待办。
 
 1. 打开 **插件 → 余额与额度 → 配置**，不再从全局设置侧栏进入。
 2. 每个供应商一行，用下拉菜单选择“自动”、支持的 API Key 余额／账号余额／Coding Plan，或“隐藏”；行内查看检测模式、来源和状态，模型清单与高级覆盖默认折叠。

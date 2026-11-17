@@ -6,6 +6,12 @@
 
 ## [Unreleased]
 
+## [0.4.17] - 2026-11-17
+
+### Added
+
+- 显式支持 DSH `0.2.2-rc.3`，同步宿主版本约束与 `dsh-settings` peer。在 macOS Desktop 使用已发布的 `0.4.16` 实测账号余额、设置保存与恢复。[验收记录](https://github.com/takboo/dsh-usage-state/blob/main/docs/compatibility/0.2.2-rc.3.md#macos-desktop-验收)
+
 ### Engineering
 
 - 修复兼容性巡检的 Draft PR 补查误报。已合并的本仓库机器人候选 PR 即使正文缺少标记，也会按已处理跳过。
@@ -243,7 +249,8 @@
 
 0.4.5起建立版本tag/Release；更早发布没有保存这些引用。0.3.0至0.4.4的比较端点来自各npm版本的gitHead；0.2系列引用对应实现提交，不能替代当时没有保存的正式发布产物。早期日期沿用历史版本记录。今后版本应按发布流程建立稳定引用。
 
-[Unreleased]: https://github.com/takboo/dsh-usage-state/compare/v0.4.16...HEAD
+[Unreleased]: https://github.com/takboo/dsh-usage-state/compare/v0.4.17...HEAD
+[0.4.17]: https://github.com/takboo/dsh-usage-state/compare/v0.4.16...v0.4.17
 [0.4.16]: https://github.com/takboo/dsh-usage-state/compare/v0.4.15...v0.4.16
 [0.4.15]: https://github.com/takboo/dsh-usage-state/compare/v0.4.14...v0.4.15
 [0.4.14]: https://github.com/takboo/dsh-usage-state/compare/v0.4.13...v0.4.14

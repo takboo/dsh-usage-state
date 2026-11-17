@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/takboo/dsh-usage-state/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/dsh-usage-state)](https://www.npmjs.com/package/dsh-usage-state)
 
-> **0.4.16** adds DSH 0.2.2-rc.2 to the exact-version RPC regression matrix and verifies plugin installation, balance display and settings in an isolated Web profile on that host. See the [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.16) for the tarball and checksum and the [Changelog](CHANGELOG.md#0416---2026-11-12) for details.
+> **0.4.17** adds official support for DSH `0.2.2-rc.3`. We verified a signed-in DeepSeek account balance on macOS Desktop and checked that plugin settings persisted after reopening and could be restored. [Desktop verification](https://github.com/takboo/dsh-usage-state/blob/main/docs/compatibility/0.2.2-rc.3.md#macos-desktop-验收) · [GitHub Release](https://github.com/takboo/dsh-usage-state/releases/tag/v0.4.17)
 
 Show the current model provider's **account balance** or **coding-plan quota** above the composer input in [DSH (DeepSeek Harness)](https://github.com/deepseek-ai/deepseek-harness). The line matches the input card's width and preserves the native statistics and context meter.
 
@@ -24,7 +24,7 @@ DeepSeek · ¥58.13
 
 ## Install
 
-Requires DSH matching `^0.2.0-rc.2 || ^0.2.1-rc.1` (verified on 0.2.0-rc.2 and 0.2.1-rc.1/rc.2/rc.3/rc.5). The prebuilt plugin declares Node ≥20. Install into the `web` profile you actually use.
+Requires DSH matching `^0.2.0-rc.2 || ^0.2.1-rc.1 || 0.2.2-rc.3`. The prebuilt plugin declares Node ≥20. The commands below target the Web `web` profile. Desktop users can install into the Desktop profile through the plugin manager.
 
 Install from npm:
 
@@ -47,7 +47,7 @@ Use historical version 0.3.2 on DSH 0.1; it does not work on 0.2. Version 0.4.0 
 
 ## Quick start
 
-Version 0.4.15 introduces the plugin-row settings entry and draft workflow below; 0.4.14 and earlier use the separate settings entry. The new entry has been opened on Desktop 0.2.1-rc.5, with Save/Reset verified in an isolated browser on the same version. Earlier hosts in the declared range still need entry-specific validation; historical RPC checks do not certify the migrated page.
+Version 0.4.15 introduces the plugin-row settings entry and draft workflow below. Version 0.4.14 and earlier use the separate settings entry. Saving and restoring settings passed on macOS Desktop 0.2.2-rc.3. The settings page opened on Desktop 0.2.1-rc.5, with Save and Reset verified in an isolated browser on that version. Earlier hosts still need their own settings-page checks.
 
 1. Open **Plugins → Balance & Quota → Configure**, rather than the global settings sidebar.
 2. Each provider has one compact row. Choose Auto, a supported API Key balance / Account balance / Coding Plan mode, or Hidden from its dropdown. The row shows the detected mode, source and status; models and advanced overrides stay collapsed.
