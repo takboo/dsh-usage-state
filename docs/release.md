@@ -48,6 +48,13 @@ npm run smoke:runtime -- --tarball "$tarball"
 - 下载npm精确版本与GitHub附件，核对SHA-256及包内关键元数据；对正式分发包执行独立安装冒烟。
 - 把实际Actions链接、版本、提交、时间和字节校验记录到发布证据；任何追加的文档提交也跟进CI。未做的真实账户/视觉验收留在待办。
 
+本地同步由发布操作者负责，在最后一笔发布相关提交（包括发布后补写的验收文档）的 CI 全部通过后执行。同步对象是持有 `main` 的日常主检出，发布操作者在当次交付摘要记录实际路径。即使在独立克隆或 worktree 完成发布，仍须回到原日常主检出目录核对。若本次没有指定的日常主检出，记录不适用及原因。
+
+1. 在原目录核对工作区、本地 `main` 和 `origin` URL，通过 `git ls-remote --symref origin HEAD` 确认实际远端默认分支为 `main`，不只依据本地缓存的 `origin/HEAD` 或 `origin/main`。远端默认分支与本项目指定的 `main` 不符时，保留现场并记录待同步原因。
+2. 工作区干净时获取最新远端引用和标签（`git fetch origin --tags`）；确认本地 `main` 可快进或已一致后，切回 `main` 并用 `git merge --ff-only origin/main` 同步。有未提交改动、分叉或其他无法同步的情况时保留现场，在交付摘要记录待同步原因，不自动 stash、覆盖改动、重写分支或强制更新已有标签。
+3. 分别比较本地 `refs/heads/main` 与实际远端 `refs/heads/main` 的 SHA，以及本地、远端 `v<package.version>` 标签最终指向的提交与本次发布提交。用 `refs/tags/v<package.version>^{commit}` 解析本地标签；远端附注标签取解引用提交，轻量标签取其直接提交。`main` 可包含发布后验收文档提交，发布标签保持指向原发布提交。
+4. 把操作者、日常主检出的实际路径、核对时间及时区、最后发布相关提交与 CI 链接、本地和远端分支 SHA、标签解引用 SHA、本次发布提交，以及已同步、待同步及原因或不适用及原因写入当次交付摘要。此项由操作者收尾，无需为本机状态再追加远端提交，也无需将本机同步设为远端 CI 门禁。
+
 ## 功能与宿主验收
 
 独立home/profile安装实际tarball，不使用开发link替代。新home仍继承启动环境，fixture验证清理真实账户环境。核对插件配置、Host激活、客户端设置/模型清单及getState/describeCredentials往返；只看到入口不能证明RPC已挂载。
