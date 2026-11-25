@@ -1,6 +1,14 @@
 # 工作流与验证门禁
 
-本仓库的本地开发门禁以 [`mise.toml`](../mise.toml) 为单一入口，并对齐 [`dsh-engineering.lock.json`](../dsh-engineering.lock.json) 锁定的共享工程基座契约。由于共享工程基座仓库当前为私有仓库，GitHub Actions 的公开 CI（[ci.yml](../.github/workflows/ci.yml)）运行不依赖私有检出的自包含 `npm` 门禁（含锁/外壳回归测试 `tests/build/engineering-shell.test.mjs`、`verify:artifacts` 与 `verify:package`），完整的基座 `check:shell` 在持有本地基座检出的开发环境经 `mise run check` 执行。
+本仓库的本地开发门禁以 [`mise.toml`](../mise.toml) 为单一入口，并对齐 [`dsh-engineering.lock.json`](../dsh-engineering.lock.json) 锁定的 `v0.2.0` 共享工程基座契约（`docs/engineering-contract.md`）。由于共享工程基座仓库当前为私有仓库，GitHub Actions 的公开 CI（[ci.yml](../.github/workflows/ci.yml)）运行不依赖私有检出的自包含 `npm` 门禁（含锁/外壳回归测试 `tests/build/engineering-shell.test.mjs`、`verify:artifacts` 与 `verify:package`），完整的基座 `check:shell` 在持有本地基座检出的开发环境经 `mise run check` 执行。
+
+## 治理原则与文档/交付约定
+
+- **`Verification is all you need`**：不靠口头声明或对话记忆担保；凡可机械验证的不变量、契约与回归模式都固化为自动化门禁与测试，统一经 `mise` 固定运行时入口执行，并以同一候选 `.tgz` 摘要串联 `E1` 与 `E2`/`E3` 证据。
+- **EGM 磁盘真相与文档退场规则**：
+  - **L2 阶段计划（`docs/plans/`）**：须声明单行退场规则，阶段收官沉淀为 L1 权威文档或代码/门禁后删除。
+  - **L3 探索草案（`docs/design/rfc-*.md`）**：须在文件前 20 行标注 `EXPLORATORY / UNVERIFIED` 并附单行退场规则，防止未验证草案被误作事实。
+- **独立只读复核与受控交付边界**：遵循 YAGNI 先做减法，改动在提交前经独立只读复核收敛；未获明确授权不自动执行 `git push` 或打版本 tag。
 
 ## 唯一真实门禁
 
