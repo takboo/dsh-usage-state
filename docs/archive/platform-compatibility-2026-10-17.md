@@ -62,7 +62,7 @@ registerHooks在22.15/23.5引入，22线stripping在22.18默认启用；tsdown�
 
 浏览器primitives包含CSS等模块，其发布形态不适合直接作为普通Node模块运行。当前SSR测试通过hook替换本地桩件。
 
-依据：[render测试](../../tests/client/render.test.ts)、[primitives桩件](../../tests/support/primitives-stub.mjs)。SSR验证初始标记，不运行浏览器布局。新增 [React交互测试](../../tests/client/interactions.test.ts) 覆盖真实hooks/effects下的按钮、只读、pending、失败和草稿事件；仍使用外部服务桩件，不等于真实浏览器或凭据落盘验收。
+依据：[render测试](../../tests/client/render.test.ts)、`tests/support/primitives-stub.mjs`（0.4.15 移除）。SSR验证初始标记，不运行浏览器布局。新增 [React交互测试](../../tests/client/interactions.test.ts) 覆盖真实hooks/effects下的按钮、只读、pending、失败和草稿事件；仍使用外部服务桩件，不等于真实浏览器或凭据落盘验收。
 
 当前ConfigForm写入返回Promise<boolean>，false是未接受写入而非成功；[表单适配器](../../src/client/settings-form.ts) 把false转换为失败反馈。凭据与配置权限分别控制，不能把一个只读状态外推另一项。
 

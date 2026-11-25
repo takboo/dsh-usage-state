@@ -1,3 +1,57 @@
-# Node 版本以 .node-version 为准，与 CI 共用同一固定版本。
-[settings]
-idiomatic_version_file_enable_tools = ["node"]
+min_version = "2026.10.2"
+
+[tools]
+node = "24.22.2"
+
+[tasks.setup]
+description = "安装锁定依赖（npm ci）"
+run = "npm ci"
+
+[tasks."check:shell"]
+description = "校验 v0.2+ 统一插件外壳契约与 EGM 文档（E0）"
+run = 'node "${DSH_ENGINEERING_CHECKOUT:-../dsh-plugin-engineering}/scripts/locked-run.mjs" check-plugin'
+
+[tasks."check:metadata"]
+description = "校验包元数据、锁文件、图标与双语展示清单（E0）"
+run = "npm run verify:metadata"
+
+[tasks.typecheck]
+description = "TypeScript 静态类型检查（E0）"
+run = "npm run typecheck"
+
+[tasks.build]
+description = "构建三个预构建入口到 lib/"
+run = "npm run build"
+
+[tasks.test]
+description = "运行全部单元测试与契约回归（E1）"
+depends = ["build"]
+run = "npm test"
+
+[tasks."smoke:runtime"]
+description = "运行预构建入口运行时冒烟（E1）"
+depends = ["build"]
+run = "npm run smoke:runtime"
+
+[tasks."verify:package"]
+description = "打包并校验发布白名单、图标、locale 与包内链接（E1）"
+depends = ["build"]
+run = "npm run verify:package"
+
+[tasks.check]
+description = "运行本地统一门禁（E0 + E1，需本地基座检出以执行 check:shell）"
+depends = ["check:shell", "check:metadata", "typecheck", "test", "smoke:runtime", "verify:package"]
+
+[tasks."verify:pack"]
+description = "独占检查并归档旧证据后构建、打包与校验唯一候选 tarball（E1），硬链接至固定路径供容器使用"
+run = "node scripts/verify-host-pack.mjs"
+
+[tasks."verify:host:container"]
+description = "在隔离 Linux 容器中用同一已验候选包运行真实宿主 CLI 与 Web 探针（E2）"
+depends = ["verify:pack"]
+run = 'node "${DSH_ENGINEERING_CHECKOUT:-../dsh-plugin-engineering}/scripts/locked-run.mjs" container all scripts/compatibility/engineering-targets.json scripts/compatibility/engineering-web-probe.mjs "${DSH_VERIFY_HOST_DIR:-.tmp/verify-host}/candidate.tgz" HEAD "${DSH_VERIFY_HOST_DIR:-.tmp/verify-host}/host-report.json"'
+
+[tasks."verify:host"]
+description = "串行执行 E1 打包校验、E2 容器真实宿主探针与 E1/E2 同包摘要核对"
+depends = ["verify:host:container"]
+run = "node scripts/verify-host-pack.mjs --verify-report"

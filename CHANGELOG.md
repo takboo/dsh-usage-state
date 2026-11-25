@@ -6,6 +6,10 @@
 
 ## [Unreleased]
 
+### Engineering
+
+- 对齐共享插件工程基座 `v0.2.0-rc.1`（`5380365eedf23e199ce7e8d0cb96b183b8660a80`）：升级 `mise.toml` 接入 `setup` / `check`（含 `check:shell`）/ `verify:host` 串行 DAG，补齐 EGM L1 文档（`docs/README.md`、`docs/workflow.md`、`src/README.md`）与根 `.rgignore` 历史降噪，并由基座 `locked-run.mjs` 替代本地 `verify-engineering.mjs` 脚手架。
+
 ## [0.4.17] - 2026-11-17
 
 ### Added

@@ -122,9 +122,10 @@ npm ci
 npm run typecheck
 npm run build
 npm test
+# 接入本地工程基座时可直接运行统一门禁：mise run check
 ```
 
-本地profile、watch和HMR前提见 [开发指南](https://github.com/takboo/dsh-usage-state/blob/main/docs/development.md)。按任务查找架构、设计、发布、审计和研究材料见 [文档导航](https://github.com/takboo/dsh-usage-state/blob/main/docs/index.md)。
+本地profile、watch和HMR前提见 [开发指南](https://github.com/takboo/dsh-usage-state/blob/main/docs/development.md)，验证门禁与证据等级见 [工作流与验证门禁](https://github.com/takboo/dsh-usage-state/blob/main/docs/workflow.md)。按目录与任务查找架构、设计、发布、审计和研究材料见 [文档索引](https://github.com/takboo/dsh-usage-state/blob/main/docs/README.md) 与 [文档导航](https://github.com/takboo/dsh-usage-state/blob/main/docs/index.md)。
 
 ## 致谢与许可
 
