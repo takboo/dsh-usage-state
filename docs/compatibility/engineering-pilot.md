@@ -1,6 +1,25 @@
 # 共享工程基座试点
 
-[项目锁文件](../../dsh-engineering.lock.json) 固定基座仓库、分发 tag 和完整提交。项目入口共用这个锁。版本检查先核对显式 checkout 的 `origin` 和完整 tag ref，再读取文档或导出工具。基座工作树停留在维护者自己的分支即可。
+[项目锁文件](../../dsh-engineering.lock.json) 固定基座仓库、分发 tag 和完整提交。项目入口通过 `mise.toml` 调度锁定基座的 `scripts/locked-run.mjs`。版本检查先核对显式 checkout 的 `origin` 和完整 tag ref，再导出固定提交的工具或读取文档。基座工作树停留在维护者自己的分支即可。
+
+## v0.2.0-rc.1 升级
+
+上游 tag `refs/tags/v0.2.0-rc.1` 解引用为 `5380365eedf23e199ce7e8d0cb96b183b8660a80`，与本机 Git 对象和项目锁一致。锁文件保持 `schemaVersion: 1`。
+
+本次升级对齐 `v0.2+` 统一插件外壳契约：升级 `mise.toml`（`min_version = "2026.10.2"`、`node = "24.22.2"`、`setup` / `check`（含 `check:shell`）及 `verify:pack` → `verify:host` 串行 DAG），补齐 EGM L1 文档（`docs/README.md`、`docs/workflow.md`、`src/README.md`），将历史归档屏蔽迁移至仓库根 `.rgignore`（`/docs/archive/`），并在 `package.json` `files` 中将 `"README.md"` 锚定为 `"./README.md"` 以避免 `npm pack` 携带 `docs/README.md`。验证入口统一交由锁定基座 `locked-run.mjs` 调度，移除本地旧脚本 `scripts/verify-engineering.mjs` 及其锁测试。
+
+### 2026-11-25 验收
+
+基于提交 `cbd99f259f45f3a9933c1ca8a00291007ff25332` 上的对齐工作树，在 Node `24.22.2` / npm `11.19.1` 下完成 `E0`–`E2` 门禁验收（`E3` 原生 Desktop 与 `E4` 公开分发本轮为 `not-run`）：
+
+- **`E0`**：`locked-run.mjs doctor` 核对基座版本与 `mise` 托管 Node `24.22.2` 通过；`mise run check:shell` 返回 `Plugin shell OK (stage=installable-bundle)`；`verify:metadata` 与 `typecheck` 通过。
+- **`E1`**：全量单元测试、`smoke:runtime` 及 `verify:package` 通过（13 文件显式白名单、6 处包内 Markdown 链接、SVG 图标与双语 `locale/*.json`）；`verify:pack` 生成候选包 `dsh-usage-state-0.4.17.tgz`（SHA-256 `0663d3c192df198d158b1d1fa96c133c0c80edd8f4075453e5a1690f9df72072`，工作树未提交状态记为 `workingTreeDirty: true`），并硬链接为 `.tmp/verify-host/candidate.tgz` 供容器复用。
+- **`E2`**：`mise run verify:host` 在 Linux arm64 容器（Node `v24.22.2`、pnpm `11.28.5`、Playwright `1.56.1`、Chromium `141.0.7390.37`）完成 `all` 模式校验。报告 `provenance.producer` 为 `git-archive` 且提交等于 `5380365eedf23e199ce7e8d0cb96b183b8660a80`，`provenance.inputs.sourceCommit` 为 `cbd99f259f45f3a9933c1ca8a00291007ff25332`，`provenance.inputs.tarballSha256` 与 `verification.json` 完全一致。
+
+| 路径 | 实际 DSH | 结果 |
+| --- | --- | --- |
+| CLI 安装与 Web | `0.2.1-rc.5` | `setup`、`admission`、`webFixture`、`browser`、`webBoot`、`webNavigation`、`webReady`、`web`、`uninstall` 全阶段 `passed`；Chromium 确认输入框上方显示余额（`balanceAboveComposer: true`）且请求使用假文件凭据（`balanceRequestCredentialSource: "file"`）。 |
+| CLI 拒绝 | `0.2.0-rc.1` | `refused-as-expected`；拒绝诊断精确指向 `@deepseek-ai/dsh-settings` peer 约束，profile 未被修改。 |
 
 ## rc.3 升级
 
@@ -58,34 +77,32 @@
 
 ## 复跑当前锁定版本
 
-在拥有基座 Git 只读权限的环境中准备现有 checkout。在候选源码提交的干净工作树用项目固定 Node/npm 运行下列命令。缺少项目依赖时先运行 `npm ci`。需要 Docker Linux 引擎和容器内 npm registry 访问。若复跑历史报告，先在独立检出定位报告里的项目 `sourceCommit`。
+在拥有基座 Git 只读权限的环境中准备现有 checkout，并通过 `DSH_ENGINEERING_CHECKOUT` 指向基座目录。**正式支持或发布证据必须在干净已提交的工作树（`workingTreeDirty: false`）中构建与验证**，并随 `E2` 报告（`host-report.json`）一并保留同目录的 `E1` 记录（`verification.json` 与 `.sha256`），以便从 `HEAD` 提交完整复现候选包字节。通过 `mise` 使用固定 Node `24.22.2` / npm `11.19.1` 运行下列命令；缺少项目依赖时先运行 `mise run setup`。容器验证需要 Docker Linux 引擎和容器内 npm registry 访问；若复跑历史报告，先在独立检出定位报告里的项目 `sourceCommit`。
 
 ```sh
-base_checkout=/path/to/dsh-plugin-engineering
+export DSH_ENGINEERING_CHECKOUT=/path/to/dsh-plugin-engineering
 base_tag=$(node -p 'require("./dsh-engineering.lock.json").tag')
 # 核对 origin 与锁文件指向同一 GitHub 仓库。
-git -C "$base_checkout" remote get-url origin
+git -C "$DSH_ENGINEERING_CHECKOUT" remote get-url origin
 # 初次缺少 tag 时，从已核对的 origin 获取。
-if ! git -C "$base_checkout" show-ref --verify --quiet "refs/tags/$base_tag"; then
-  git -C "$base_checkout" fetch --no-tags --no-write-fetch-head origin "refs/tags/$base_tag:refs/tags/$base_tag"
+if ! git -C "$DSH_ENGINEERING_CHECKOUT" show-ref --verify --quiet "refs/tags/$base_tag"; then
+  git -C "$DSH_ENGINEERING_CHECKOUT" fetch --no-tags --no-write-fetch-head origin "refs/tags/$base_tag:refs/tags/$base_tag"
 fi
-node scripts/verify-engineering.mjs docs "$base_checkout" .agents/skills/dsh-plugin-onboarding/SKILL.md
-node scripts/verify-engineering.mjs docs "$base_checkout" docs/base-versions.md
-node scripts/verify-engineering.mjs docs "$base_checkout" docs/engineering-contract.md
-node scripts/verify-engineering.mjs docs "$base_checkout" docs/plugin-onboarding.md
-node scripts/verify-engineering.mjs docs "$base_checkout" docs/test-environments.md
-node scripts/verify-engineering.mjs docs "$base_checkout" docs/distribution.md
 
-npm run verify
-npm run smoke:runtime
-# 使用 npm run verify 输出的 tarball 路径。
-tarball=/path/from/verify/dsh-usage-state-VERSION.tgz
-candidate_dir=$(dirname "$tarball")
-npm run smoke:runtime -- --tarball "$tarball" --schema-version 3.18.3
-node scripts/verify-engineering.mjs all "$base_checkout" "$tarball" "$candidate_dir/engineering-all.json"
+mise exec -- node "$DSH_ENGINEERING_CHECKOUT/scripts/locked-run.mjs" doctor
+mise run check
+mise run verify:host
 ```
 
-复用已有候选时保留同目录的 `verification.json` 与 `.sha256` 文件，直接运行最后一条并选用新的报告路径。入口将 `verification.json` 中的干净源码提交与当前 HEAD 核对，使用现有包门禁复验字节，校验报告记录的实际基座提交、执行文件摘要和容器输入摘要。只复跑 CLI 时将 `all` 换成 `cli`。旧发布与兼容性巡检继续走各自的 [发布流程](../release.md) 和 [监测流程](../compatibility-monitor.md)。
+按需读取锁定提交的基座契约文档可使用：
+
+```sh
+mise exec -- node "$DSH_ENGINEERING_CHECKOUT/scripts/locked-run.mjs" docs docs/engineering-contract.md
+mise exec -- node "$DSH_ENGINEERING_CHECKOUT/scripts/locked-run.mjs" docs docs/plugin-onboarding.md
+mise exec -- node "$DSH_ENGINEERING_CHECKOUT/scripts/locked-run.mjs" docs docs/test-environments.md
+```
+
+`mise run verify:host` 通过三段串行 DAG `verify:pack` → `verify:host:container` → `verify:host` 运行：`verify:pack` 由 [`scripts/verify-host-pack.mjs`](../../scripts/verify-host-pack.mjs) 先以 PID 归属标记 `.in-progress.json`、活跃 `.dsh-locked-report-*` 检测与完成戳 `verified.json` 把关目标目录（默认 `.tmp/verify-host`，可用 `DSH_VERIFY_HOST_DIR` 隔离输出目录；因单工作树共享 `lib/`，真正并发的 `verify:host` 须使用独立 Git worktree），仅将已写出 `verified.json` 的上一轮完整产物自动归档至 `.tmp/verify-host/runs/` 而不删除，再执行 `npm run build` 与 `verify-package.mjs`（`E1`）校验发布白名单、图标、双语 `locale/*.json` 与包内链接并硬链接 `candidate.tgz`；`verify:host:container` 交由 `locked-run.mjs container all ... HEAD host-report.json`（`E2`）核对 `provenance.producer` 与 `provenance.inputs`；最后 `verify:host` 运行 `--verify-report` 核对 `verification.json` 与 `host-report.json` 的同包 `sha256` 及 `sourceCommit` 并写出 `verified.json` 完成戳。若上一轮中途中断留下未完成产物或失效标记，须先确认原 `mise run verify:host` 整条任务链已完全退出（含收尾 `--verify-report` 步骤，而非仅容器退出），再执行 `node scripts/verify-host-pack.mjs --archive-incomplete`（通过带 PID 归属的 `.recover.lock` 互斥保护；若遗留失效 `.recover.lock`，确认无恢复进程后按提示手动删除再重跑）。只复跑 CLI 时可将 `locked-run.mjs container` 的模式参数 `all` 改为 `cli` 并使用新报告路径。提交源码与预构建产物后另行运行 `npm run verify`（含 `verify:artifacts`）。旧发布与兼容性巡检继续走各自的 [发布流程](../release.md) 和 [监测流程](../compatibility-monitor.md)。
 
 [精确目标](../../scripts/compatibility/engineering-targets.json) 的允许对照为 `0.2.1-rc.5`，复用项目已有的隔离 Web 安装证据和 npm integrity。拒绝对照为紧邻项目既有下界 `0.2.0-rc.2` 的 `0.2.0-rc.1`，其精确 integrity 来自 npm registry，源码提交由官方 tag 固定。`0.2.2-rc.1` 启用了 `includePrerelease`，落在当前候选的 caret 范围内。[rc.5 项目证据](0.2.1-rc.5.md) · [项目历史下界](../archive/platform-compatibility-2026-10-17.md#dsh-021-compatibility) · [0.2.0-rc.1 官方 tag](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.0-rc.1) · [0.2.2-rc.1 兼容规则](https://github.com/deepseek-ai/deepseek-harness/blob/66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db/packages/boot/app-boot/src/plugin-compatibility.ts#L45-L64)
 
@@ -94,6 +111,7 @@ node scripts/verify-engineering.mjs all "$base_checkout" "$tarball" "$candidate_
 独立检出使用旧项目提交的锁和原候选包，保留原 `verification.json` 与 `.sha256`。`docs` 读取 rc.1，CLI 报告的实际生产者也仍为 rc.1。旧基座缺少 Web 宿主启动前 fixture 接口，并要求拒绝诊断包含 `engines.dsh`。本次复跑保留共享 CLI 的非零退出，并用旧项目入口复核 `0.2.0-rc.1` 正常退出 `1`、profile 未改变、合成无残留。[rc.1 复跑报告（诊断已裁剪）](engineering-pilot/rc2/rc1-replay.json) · [rc.1 补验报告](engineering-pilot/rc2/rc1-peer-replay.json) · [旧宿主兼容规则](https://github.com/deepseek-ai/deepseek-harness/blob/4878cdabd87d4041bdaff61d04c966883b9fd07a/packages/boot/app-boot/src/plugin-compatibility.ts)
 
 ```sh
+base_checkout="${DSH_ENGINEERING_CHECKOUT:-/path/to/dsh-plugin-engineering}"
 tarball=/path/to/original/dsh-usage-state-0.4.15.tgz
 rollback_dir=$(mktemp -d /tmp/dsh-usage-state-rc1-replay.XXXXXX)
 git clone --shared --no-checkout -- . "$rollback_dir/project"

@@ -122,9 +122,10 @@ npm ci
 npm run typecheck
 npm run build
 npm test
+# With a local engineering-base checkout, run the unified gate: mise run check
 ```
 
-See the [development guide (Chinese)](https://github.com/takboo/dsh-usage-state/blob/main/docs/development.md) for local profiles, watch and HMR requirements. The [documentation index (Chinese)](https://github.com/takboo/dsh-usage-state/blob/main/docs/index.md) links architecture, design, release, audit and research material by task.
+See the [development guide (Chinese)](https://github.com/takboo/dsh-usage-state/blob/main/docs/development.md) for local profiles, watch and HMR requirements, and [workflow and verification gates (Chinese)](https://github.com/takboo/dsh-usage-state/blob/main/docs/workflow.md) for the `mise` gate and evidence levels. Browse [documentation directory (Chinese)](https://github.com/takboo/dsh-usage-state/blob/main/docs/README.md) and the [documentation index (Chinese)](https://github.com/takboo/dsh-usage-state/blob/main/docs/index.md) for architecture, design, release, audit and research material.
 
 ## Acknowledgements and license
 

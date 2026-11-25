@@ -1,0 +1,2 @@
+# 默认 ripgrep 检索排除历史归档；显式查阅历史时使用 rg --no-ignore <pattern> docs/archive
+/docs/archive/

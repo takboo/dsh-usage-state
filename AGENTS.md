@@ -12,27 +12,30 @@ DSH 的余额与额度插件：Host 查询账户读数，Client 在设置页和�
 
 ## 按任务读取
 
+- 查阅文档目录与源码布局：先看 [文档索引](docs/README.md) 与 [源码目录索引](src/README.md)；按任务检索历史材料见 [文档导航](docs/index.md)。
+- 日常门禁、容器宿主验证与 `E0`–`E4` 证据边界：看 [工作流与验证门禁](docs/workflow.md)。
 - 改 Host、RPC、缓存或调度：先看 [架构与验证](docs/architecture.md)；行为取舍看 [设计共识](docs/design-consensus.md)，版本兼容看 [平台说明](docs/platform-notes.md)。
 - 新增或修改厂商数据源：看 [适配器指南](docs/adapters.md)，同步来源目录、配置、双语文案与单位/窗口 fixture。
 - 改 Client、配置表单或本地 HMR：看 [开发指南](docs/development.md)；不要用直接 DOM 操作或绕过 configForms 的独立配置写入路径。
-- 打包、发版或安装验收：看 [发布流程](docs/release.md)。真实账户、凭据落盘和视觉待验项记录在 [Backlog](docs/backlog.md)；历史研究仅按需从 [文档导航](docs/index.md) 查找。
-- 接入、复跑或升级共享基座：先读 [项目版本锁](dsh-engineering.lock.json)。
+- 打包、发版或安装验收：看 [发布流程](docs/release.md)。真实账户、凭据落盘和视觉待验项记录在 [Backlog](docs/backlog.md)。
+- 接入、复跑或升级共享基座：先读 [项目版本锁](dsh-engineering.lock.json) 与 [共享工程基座试点](docs/compatibility/engineering-pilot.md)。
 
 ## 开发与验证
 
-在仓库根目录运行。Node 以 [.node-version](.node-version)、npm 以 [packageManager](package.json) 为准；开发工具链要求高于预构建包的运行下界。依赖已安装时不要例行重装；需要复现锁文件时使用 `npm ci`，有意改依赖才更新锁文件。
+在仓库根目录运行。Node 由 [mise.toml](mise.toml) 与 [.node-version](.node-version) 共同固定为 `24.22.2`，npm 以 [packageManager](package.json) 为准；开发工具链要求高于预构建包的运行下界。遵循 `v0.2+` 统一插件外壳契约：根 `.rgignore` 排除 `/docs/archive/`，根目录不遗留 `.tgz`/`.zip`，受治理任务由 `mise.toml` 调度锁定基座的 `locked-run.mjs`。依赖已安装时不要例行重装；需要复现锁文件时使用 `mise run setup`（`npm ci`），有意改依赖才更新锁文件。
 
 1. 为缺陷先补可复现的回归，使用假凭据、fetch、账号服务与注入时钟；不调用真实余额接口、不使用真实密钥。
-2. 修改后执行：
+2. 修改后执行统一门禁（设置 `DSH_ENGINEERING_CHECKOUT` 指向本地基座检出）：
 
    ```bash
-   npm run verify:metadata
-   npm run typecheck
-   npm run build
-   npm test
-   npm run smoke:runtime
-   npm run verify:package
+   mise run check
    git diff --check
+   ```
+
+   涉及工程外壳、打包边界或宿主兼容变更时，再执行隔离容器真宿主门禁：
+
+   ```bash
+   mise run verify:host
    ```
 
 3. 三个预构建入口位于 `lib/`，必须从源码统一重建并随源码审阅/提交，不能只手改 bundle。修改发布资源时同步 exports/files，检查实际 tarball 内的图标、locale 和运行文件。

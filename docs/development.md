@@ -1,31 +1,23 @@
 # 开发指南
 
-从仓库根目录运行；当前设计见 [设计共识](design-consensus.md)，代码入口见 [架构](architecture.md)，发版见 [发布流程](release.md)。
+从仓库根目录运行；门禁与证据分级见 [工作流与验证门禁](workflow.md)，目录总览见 [文档索引](README.md)，当前设计见 [设计共识](design-consensus.md)，代码入口见 [架构](architecture.md)，发版见 [发布流程](release.md)。
 
 ## 工具链与本地回路
 
-规范Node由 [.node-version](../.node-version) 固定，npm由 [packageManager](../package.json) 固定。开发下界是Node22.18+的22线或Node24.11+；预构建运行下界Node20与开发要求不同。
+规范Node由 [mise.toml](../mise.toml) 与 [.node-version](../.node-version) 共同固定为 `24.22.2`，npm由 [packageManager](../package.json) 固定为 `11.19.1`。开发下界是Node22.18+的22线或Node24.11+；预构建运行下界Node20与开发要求不同。
 
-mise通过 [项目配置](../mise.toml) 读取同一份Node版本文件，不另设版本号。当前Node24.22.2自带固定的npm11.19.1，无需覆盖全局npm。首次使用执行：
+[mise.toml](../mise.toml) 声明最低 `mise` 版本 `2026.10.2`、精确 `[tools].node` 以及标准任务 `setup`、`check`、`verify:host`（当前 Node 24.22.2 自带 npm 11.19.1，无需覆盖全局 npm）。首次使用执行：
 
 ```bash
 mise trust
-mise install node
-mise exec -- node --version
-mise exec -- npm --version
+mise install
+mise run setup
 ```
 
-启用mise shell激活后，进入仓库会选择项目版本；未启用时，在下列命令前加 `mise exec --`，不要沿用启动终端时的旧PATH。安装不会改写全局配置，但mise会更新共享的浮动 `lts` 别名；全局使用 `node@lts` 的其他目录也可能随之切换，精确固定版本的项目不受影响。
+启用 mise shell 激活后，进入仓库会自动选择项目版本；未启用时，在独立 `node`/`npm` 命令前加 `mise exec --`，不要沿用启动终端时的旧 PATH。安装不会改写全局配置，但 mise 会更新共享的浮动 `lts` 别名；全局使用 `node@lts` 的其他目录也可能随之切换，精确固定版本的项目不受影响。日常全量检查通过 `mise run check` 运行（详见 [工作流与验证门禁](workflow.md)），也可直接运行单个底层脚本：
 
 ```bash
-node --version
-npm --version
-npm ci
-npm run verify:metadata
-npm run typecheck
-npm run build
-npm test
-npm run verify:package
+DSH_ENGINEERING_CHECKOUT=/path/to/dsh-plugin-engineering mise run check
 ```
 
 用 `npm ci` 复现锁文件；有意改依赖时才执行install并审查lock变化。React及相关DOM/类型/renderer保留18线，与宿主模块表匹配；TSX hook依赖TypeScript5的编译API，major升级需单独验证。
