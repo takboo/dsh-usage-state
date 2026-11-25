@@ -2,6 +2,14 @@
 
 DSH 的余额与额度插件：Host 查询账户读数，Client 在设置页和输入框上方展示。只处理当前余额/套餐窗口，不做回合成本归因、账本或历史统计。领域词汇见 [CONTEXT.md](CONTEXT.md)。
 
+## 工程治理继承
+
+本仓库继承 [`dsh-engineering.lock.json`](dsh-engineering.lock.json) 锁定 `v0.2.0` 基座工程契约（`docs/engineering-contract.md`）中的跨插件共享项目治理原则，详见 [工作流与验证门禁](docs/workflow.md)：
+
+- **`Verification is all you need`**：不靠口头担保，可验证不变量固化为自动化门禁与测试，经 `mise` 统一入口运行并按 `E0`–`E4` 如实报告。
+- **EGM 磁盘真相与产品 `README.md` 保护**：遵循 L1/L2/L3 文档分层与退场约定；根目录 `README.md` 保持对外产品视角，工程治理改动不将其改写为内部工程索引。
+- **YAGNI 与受控交付边界**：优先减法收敛，改动须经独立只读复核后提交；未获明确授权不自动 `git push` 或打版本 tag。
+
 ## 实现边界
 
 - 配置单元是 provider；当前每个 source+mode 仅保留首个有效 provider 的目标，不代表独立多账户支持。端点与自动发现的凭据必须属于同一 owner；不能把另一个 provider 的密钥或来源不明的默认密钥发到自定义 origin。
